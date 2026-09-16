@@ -47,11 +47,11 @@ export async function runSyncInvariantTests(): Promise<{ passed: number; failed:
     // 2. Idempotency Key Preservation
     const pushRes1 = await mockSyncServer.pushOperations({ shgId, deviceId, operations: [op1] });
     const pushRes2 = await mockSyncServer.pushOperations({ shgId, deviceId, operations: [op1] }); // Duplicate opId
-    const isIdempotent = pushRes2.acks?.[0]?.status === 'DUPLICATE' && pushRes2.acks[0].serverSeq === pushRes1.acks?.[0]?.serverSeq;
+    const isIdempotent = pushRes2.acks?.[0]?.status === 'ACKNOWLEDGED' && pushRes2.acks[0].serverSeq === pushRes1.acks?.[0]?.serverSeq;
     recordResult('Invariant 2: Idempotency Key Preservation (opId reuse returns cached ACK)', isIdempotent);
 
     // 3. Monotonic Sequence Counter Independence
-    const serverSeq = pushRes1.serverSeq;
+    const serverSeq = pushRes1.serverSeq || pushRes1.acks?.[0]?.serverSeq || 0;
     recordResult('Invariant 3: Monotonic Sequence Counter Independence', serverSeq > 0);
 
     // 4. OCC Scope Limits (Mutable Entities vs Append-Only)

@@ -6,11 +6,14 @@ export type SyncState = 'IDLE' | 'SYNCING' | 'CONFLICT' | 'ERROR';
 
 export type DerivedSyncStatus = 'SYNCED' | 'PENDING' | 'SYNCING' | 'CONFLICT' | 'OFFLINE' | 'ERROR';
 
+export type OperationAckStatus = 'ACKNOWLEDGED' | 'CONFLICT' | 'REJECTED';
+
 export interface OperationAck {
   opId: string;
-  serverSeq: number;
-  status: 'ACKNOWLEDGED' | 'DUPLICATE' | 'REJECTED';
-  reason?: string;
+  status: OperationAckStatus;
+  serverSeq?: number;
+  conflictDetails?: Record<string, any>;
+  errorMessage?: string;
 }
 
 export interface SyncPushRequest {
@@ -22,7 +25,7 @@ export interface SyncPushRequest {
 export interface SyncPushResponse {
   status: 'SUCCESS' | 'PARTIAL' | 'ERROR';
   acknowledgedOpIds: string[];
-  serverSeq: number;
+  serverSeq?: number;
   failedOperations?: Array<{ opId: string; reason: string }>;
   acks?: OperationAck[];
 }
@@ -31,6 +34,7 @@ export interface SyncPullRequest {
   shgId: string;
   deviceId: string;
   lastServerSeq: number;
+  batchSize?: number;
 }
 
 export interface ServerOperation {
@@ -50,7 +54,9 @@ export interface ServerOperation {
 export interface SyncPullResponse {
   shgId: string;
   currentServerSeq: number;
+  latestServerSeq?: number;
   operations: ServerOperation[];
+  hasMore?: boolean;
 }
 
 export type DeferredOperationStatus = 'DEFERRED' | 'RESOLVED';

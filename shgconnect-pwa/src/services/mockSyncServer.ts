@@ -69,8 +69,8 @@ class MockSyncServer {
         acks.push({
           opId: op.opId,
           serverSeq: existingAck.serverSeq,
-          status: 'DUPLICATE',
-          reason: 'Operation already processed previously'
+          status: existingAck.status || 'ACKNOWLEDGED',
+          errorMessage: 'Operation already processed previously'
         });
         acknowledgedOpIds.push(op.opId);
         continue;

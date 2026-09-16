@@ -25,6 +25,7 @@ import {
   queueMutation
 } from './db';
 import { mockSyncServer } from './mockSyncServer';
+import { syncApi } from './syncApi';
 
 type SyncListener = (state: {
   networkState: NetworkState;
@@ -194,7 +195,7 @@ class SyncCoordinator {
 
     if (pendingOps.length === 0) return;
 
-    const response = await mockSyncServer.pushOperations({
+    const response = await syncApi.push({
       shgId,
       deviceId: this.deviceId,
       operations: pendingOps
@@ -216,7 +217,7 @@ class SyncCoordinator {
     let meta = await getSyncMetadata(shgId);
     const lastServerSeq = meta?.lastServerSeq || 0;
 
-    const pullRes = await mockSyncServer.pullOperations({
+    const pullRes = await syncApi.pull({
       shgId,
       deviceId: this.deviceId,
       lastServerSeq
