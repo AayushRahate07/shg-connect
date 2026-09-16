@@ -1,6 +1,6 @@
 import React from 'react';
-import { Role, SupportedLanguage } from '../types/shg';
-import { ShieldCheck, Volume2, VolumeX, RotateCcw, BookOpen, Users, Database } from 'lucide-react';
+import { Role, SupportedLanguage, FederationScope } from '../types/shg';
+import { ShieldCheck, Volume2, VolumeX, RotateCcw, BookOpen, Users, Database, MapPin, Building, Network } from 'lucide-react';
 
 interface HeaderProps {
   currentRole: Role;
@@ -13,6 +13,8 @@ interface HeaderProps {
   onOpenBackupModal: () => void;
   shgName: string;
   shgNameRegional: string;
+  federation?: FederationScope;
+  onSwitchShgGroup?: (shgId: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -25,18 +27,41 @@ export const Header: React.FC<HeaderProps> = ({
   onResetData,
   onOpenBackupModal,
   shgName,
-  shgNameRegional
+  shgNameRegional,
+  federation,
+  onSwitchShgGroup
 }) => {
+  const breadcrumbText = federation
+    ? `${federation.district} / ${federation.block} / ${federation.gramPanchayat} / ${shgNameRegional || shgName}`
+    : "सातारा / खंडाळा / शिरवळ प्रभाग / महिला प्रगती बचत गट";
+
   return (
     <header className="bg-emerald-900 text-white shadow-lg sticky top-0 z-40 print:hidden">
       {/* Top Info Bar */}
       <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between text-xs border-b border-emerald-800/60 gap-2">
-        <div className="flex items-center space-x-2 font-medium">
+        <div className="flex flex-wrap items-center gap-2 font-medium">
           <span className="bg-emerald-700/80 px-2 py-0.5 rounded text-emerald-100 font-semibold tracking-wide">OFFLINE PWA</span>
-          <span>{language === 'mr' ? shgNameRegional : shgName}</span>
+          
+          {/* Administrative Hierarchy Breadcrumb Pill */}
+          <div className="flex items-center space-x-1.5 bg-emerald-950/80 text-amber-300 border border-emerald-700/80 px-2.5 py-0.5 rounded-full font-mono text-[11px] shadow-xs">
+            <Network className="w-3 h-3 text-amber-400 flex-shrink-0" />
+            <span className="truncate">{breadcrumbText}</span>
+          </div>
         </div>
         
         <div className="flex items-center space-x-3">
+          {/* Multi-Group Context Switcher */}
+          {onSwitchShgGroup && (
+            <select
+              onChange={(e) => onSwitchShgGroup(e.target.value)}
+              className="bg-emerald-950 border border-emerald-700 text-emerald-100 text-xs rounded-lg px-2 py-1 font-bold outline-none cursor-pointer"
+              title="Switch SHG Group Context"
+            >
+              <option value="SHG-MH-SAT-2024-0089">महिला प्रगती गट (Shirwal)</option>
+              <option value="SHG-MH-SAT-2024-0090">लक्ष्मी महिला बचत गट (Khandala)</option>
+            </select>
+          )}
+
           {/* TTS Audio Toggle */}
           <button
             onClick={onToggleTts}

@@ -13,8 +13,32 @@ export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI
 export type PaymentMode = 'CASH' | 'UPI_INTENT';
 export type SettlementStatus = 'SETTLED_CASH' | 'PENDING_BANK_RECONCILIATION' | 'SETTLED_DIGITAL_UTR';
 
+export interface FederationScope {
+  state: string;
+  district: string;
+  block: string;
+  gramPanchayat: string;
+  villageOrganization?: string; // Village Organization / Gram Sangha
+  clfName?: string;             // Cluster Level Federation
+}
+
+export interface SHGGroupInfo {
+  id: string;                   // e.g., "SHG-MH-SAT-2024-0089"
+  name: string;
+  formationDate: string;
+  federation: FederationScope;
+  bankDetails: {
+    accountNumberMasked: string; // e.g., "XXXX-XXXX-4589" (No raw account numbers)
+    ifscCode: string;
+    branchName: string;
+  };
+  entityVersion: number;        // Explicitly named entityVersion for OCC
+  updatedAt: string;
+}
+
 export interface Member {
   id: string;
+  shgId?: string;
   name: string;
   nameRegional: string;
   phone: string;
@@ -26,10 +50,12 @@ export interface Member {
   avatarColor: string;
   joinedDate?: string;
   occupation?: string;
+  entityVersion: number;        // OCC version
 }
 
 export interface Transaction {
   id: string;
+  shgId?: string;
   index: number;
   timestamp: string;
   memberId: string;
@@ -49,6 +75,7 @@ export interface Transaction {
 
 export interface Loan {
   id: string;
+  shgId?: string;
   memberId: string;
   memberName: string;
   principal: number;
@@ -58,6 +85,7 @@ export interface Loan {
   remainingBalance: number;
   status: 'ACTIVE' | 'REQUESTED' | 'REPAID' | 'REJECTED';
   dateDisbursed: string;
+  entityVersion: number;        // OCC version
 }
 
 export interface Meeting {

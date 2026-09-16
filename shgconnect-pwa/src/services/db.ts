@@ -10,7 +10,9 @@ import {
   LedgerBlock,
   AuditEnvelope,
   Officer,
-  SyncMetadata
+  SyncMetadata,
+  SHGGroupInfo,
+  FederationScope
 } from '../types/shg';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 
@@ -26,6 +28,45 @@ const LEGACY_STORAGE_KEYS = {
   OFFICERS: 'shg_connect_officers_v1'
 };
 
+export class ConcurrencyConflictError extends Error {
+  readonly code = 'CONCURRENCY_CONFLICT';
+  constructor(entityName: string, expected: number, actual: number) {
+    super(`Concurrency conflict on ${entityName}: expected version ${expected}, found ${actual}`);
+    this.name = 'ConcurrencyConflictError';
+  }
+}
+
+let currentActiveShgId = "SHG-MH-SAT-2024-0089";
+
+export function getCurrentShgId(): string {
+  return currentActiveShgId;
+}
+
+export function setCurrentShgId(shgId: string): void {
+  currentActiveShgId = shgId;
+}
+
+export const INITIAL_GROUP_INFO: SHGGroupInfo = {
+  id: "SHG-MH-SAT-2024-0089",
+  name: "Mahila Pragati Bachat Gat",
+  formationDate: "2024-01-15",
+  federation: {
+    state: "Maharashtra",
+    district: "Satara",
+    block: "Khandala",
+    gramPanchayat: "Shirwal Prabhag",
+    villageOrganization: "Shirwal Gram Sangha",
+    clfName: "Khandala Mahila Cluster Federation"
+  },
+  bankDetails: {
+    accountNumberMasked: "XXXX-XXXX-4589",
+    ifscCode: "MAHB0000124",
+    branchName: "Bank of Maharashtra, Shirwal"
+  },
+  entityVersion: 1,
+  updatedAt: "2026-09-17T00:00:00.000Z"
+};
+
 export interface GroupInfo {
   name: string;
   nameRegional: string;
@@ -39,7 +80,7 @@ export interface GroupInfo {
 export const INITIAL_GROUP: GroupInfo = {
   name: "Mahila Pragati Bachat Gat",
   nameRegional: "महिला प्रगति बचत गट",
-  shgCode: "SHG-MH-2024-884",
+  shgCode: "SHG-MH-SAT-2024-0089",
   village: "Shirwal",
   district: "Satara",
   monthlyPoolRate: 500,
@@ -73,6 +114,7 @@ export const DEFAULT_OFFICERS: OfficerCredentials[] = [
 export const INITIAL_MEMBERS: Member[] = [
   {
     id: "mem-1",
+    shgId: "SHG-MH-SAT-2024-0089",
     name: "Kamal-tai Patil",
     nameRegional: "कमलताई पाटील",
     phone: "9823011223",
@@ -81,10 +123,12 @@ export const INITIAL_MEMBERS: Member[] = [
     activeLoanBalance: 0,
     trustScore: 98,
     upiVpa: "kamalpatil@upi",
-    avatarColor: "bg-amber-500"
+    avatarColor: "bg-amber-500",
+    entityVersion: 1
   },
   {
     id: "mem-2",
+    shgId: "SHG-MH-SAT-2024-0089",
     name: "Sunita-bai Deshmukh",
     nameRegional: "सुनिताबाई देशमुख",
     phone: "9422033445",
@@ -93,10 +137,12 @@ export const INITIAL_MEMBERS: Member[] = [
     activeLoanBalance: 12000,
     trustScore: 95,
     upiVpa: "sunitabai@okicici",
-    avatarColor: "bg-emerald-600"
+    avatarColor: "bg-emerald-600",
+    entityVersion: 1
   },
   {
     id: "mem-3",
+    shgId: "SHG-MH-SAT-2024-0089",
     name: "Anita-tai Shinde",
     nameRegional: "अनिताताई शिंदे",
     phone: "9765088990",
@@ -105,10 +151,12 @@ export const INITIAL_MEMBERS: Member[] = [
     activeLoanBalance: 5000,
     trustScore: 92,
     upiVpa: "anitashinde@ybl",
-    avatarColor: "bg-blue-600"
+    avatarColor: "bg-blue-600",
+    entityVersion: 1
   },
   {
     id: "mem-4",
+    shgId: "SHG-MH-SAT-2024-0089",
     name: "Meena-bai Jadhav",
     nameRegional: "मीनाबाई जाधव",
     phone: "9890122334",
@@ -117,10 +165,12 @@ export const INITIAL_MEMBERS: Member[] = [
     activeLoanBalance: 0,
     trustScore: 90,
     upiVpa: "meenajadhav@paytm",
-    avatarColor: "bg-purple-600"
+    avatarColor: "bg-purple-600",
+    entityVersion: 1
   },
   {
     id: "mem-5",
+    shgId: "SHG-MH-SAT-2024-0089",
     name: "Rukmini-tai Kulkarni",
     nameRegional: "रुक्मिणीताई कुलकर्णी",
     phone: "9158044556",
@@ -129,13 +179,15 @@ export const INITIAL_MEMBERS: Member[] = [
     activeLoanBalance: 0,
     trustScore: 88,
     upiVpa: "rukminitai@upi",
-    avatarColor: "bg-rose-600"
+    avatarColor: "bg-rose-600",
+    entityVersion: 1
   }
 ];
 
 export const INITIAL_LOANS: Loan[] = [
   {
     id: "loan-101",
+    shgId: "SHG-MH-SAT-2024-0089",
     memberId: "mem-2",
     memberName: "Sunita-bai Deshmukh",
     principal: 20000,
@@ -144,10 +196,12 @@ export const INITIAL_LOANS: Loan[] = [
     totalPaid: 8000,
     remainingBalance: 12000,
     status: 'ACTIVE',
-    dateDisbursed: "2024-05-15"
+    dateDisbursed: "2024-05-15",
+    entityVersion: 1
   },
   {
     id: "loan-102",
+    shgId: "SHG-MH-SAT-2024-0089",
     memberId: "mem-3",
     memberName: "Anita-tai Shinde",
     principal: 10000,
@@ -156,7 +210,8 @@ export const INITIAL_LOANS: Loan[] = [
     totalPaid: 5000,
     remainingBalance: 5000,
     status: 'ACTIVE',
-    dateDisbursed: "2024-06-10"
+    dateDisbursed: "2024-06-10",
+    entityVersion: 1
   }
 ];
 
@@ -544,6 +599,50 @@ export async function getOutboxQueue(): Promise<OperationLog[]> {
 
 export async function getAuditTrail(): Promise<AuditEnvelope[]> {
   return await getAllFromStore<AuditEnvelope>('audit_trail');
+}
+
+/**
+ * Atomic Optimistic Concurrency Control (OCC) Check-and-Write Helper
+ */
+export async function updateEntityWithOCC<T extends { id: string; entityVersion: number }>(
+  storeName: 'members' | 'loans' | 'group_info',
+  id: string,
+  expectedVersion: number,
+  mutator: (current: T) => Omit<T, 'entityVersion'>
+): Promise<T> {
+  const db = await openDatabase();
+  return new Promise<T>((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    const req = store.get(id);
+
+    req.onsuccess = () => {
+      const record = req.result as T;
+      if (!record) {
+        tx.abort();
+        return reject(new Error(`Record with id ${id} not found in store ${storeName}`));
+      }
+      const currentVersion = record.entityVersion || 1;
+      if (currentVersion !== expectedVersion) {
+        tx.abort();
+        return reject(new ConcurrencyConflictError(storeName, expectedVersion, currentVersion));
+      }
+      const mutated = mutator(record);
+      const updatedRecord: T = {
+        ...(mutated as any),
+        id,
+        entityVersion: expectedVersion + 1
+      };
+      store.put(updatedRecord);
+    };
+
+    tx.oncomplete = () => {
+      const fetchReq = db.transaction(storeName, 'readonly').objectStore(storeName).get(id);
+      fetchReq.onsuccess = () => resolve(fetchReq.result as T);
+      fetchReq.onerror = () => reject(fetchReq.error);
+    };
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
 export async function saveAuditEnvelope(audit: AuditEnvelope): Promise<void> {

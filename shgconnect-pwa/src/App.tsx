@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution } from './types/shg';
-import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData, queueMutation } from './services/db';
+import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
 import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
@@ -162,7 +162,8 @@ export default function App() {
           totalPaid: 0,
           remainingBalance: loanDisbursed.amount,
           status: 'ACTIVE',
-          dateDisbursed: new Date().toISOString().split('T')[0]
+          dateDisbursed: new Date().toISOString().split('T')[0],
+          entityVersion: 1
         };
         const updatedLoans = [...loans, newLoan];
         setLoans(updatedLoans);
@@ -234,6 +235,11 @@ export default function App() {
     }
   };
 
+  const handleSwitchShgGroup = async (shgId: string) => {
+    setCurrentShgId(shgId);
+    await reloadAllData();
+  };
+
   if (loading || !group) {
     return (
       <div className="min-h-screen bg-[#14532D] flex items-center justify-center text-white">
@@ -258,6 +264,8 @@ export default function App() {
         onOpenBackupModal={() => setShowBackupModal(true)}
         shgName={group.name}
         shgNameRegional={group.nameRegional}
+        federation={INITIAL_GROUP_INFO.federation}
+        onSwitchShgGroup={handleSwitchShgGroup}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
