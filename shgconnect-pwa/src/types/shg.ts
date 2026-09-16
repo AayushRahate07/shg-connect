@@ -1,5 +1,13 @@
 export type Role = 'MEMBER' | 'ANIMATOR' | 'TREASURER';
 
+export type OfficerRole = 'PRESIDENT' | 'SECRETARY' | 'TREASURER';
+
+export interface OfficerSignature {
+  role: OfficerRole;
+  signedAt: string;
+  officerName: string;
+}
+
 export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI_REPAYMENT' | 'PENALTY' | 'RESOLUTION';
 
 export interface Member {
@@ -28,6 +36,8 @@ export interface Transaction {
   notes?: string;
   prevHash: string;
   hash: string;
+  signatories?: OfficerSignature[];
+  signatureProof?: string;
 }
 
 export interface Loan {
@@ -51,6 +61,8 @@ export interface Meeting {
   totalEmiCollected: number;
   totalDisbursed: number;
   attendanceRecord: Record<string, boolean>; // memberId -> boolean
+  signatories?: OfficerSignature[];
+  blockHash?: string;
 }
 
 export interface ChainVerificationBlockResult {
@@ -114,4 +126,13 @@ export interface Resolution {
   proposedBy: string;
   secondedBy: string;
   approvedUnanimously: boolean;
+}
+
+// Officer PIN state model
+export interface OfficerCredentials {
+  role: OfficerRole;
+  name: string;
+  nameRegional: string;
+  pinHash: string; // SHA-256 hash of PIN
+  defaultPin: string;
 }

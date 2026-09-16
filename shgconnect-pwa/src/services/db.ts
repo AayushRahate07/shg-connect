@@ -1,12 +1,13 @@
-import { Member, Transaction, Loan, Meeting } from '../types/shg';
-import { computeBlockHash, getBlockPayloadString } from './hashChain';
+import { Member, Transaction, Loan, Meeting, OfficerRole, OfficerCredentials } from '../types/shg';
+import { computeBlockHash, calculateSHA256 } from './hashChain';
 
 const STORAGE_KEYS = {
   MEMBERS: 'shg_connect_members_v1',
   TRANSACTIONS: 'shg_connect_transactions_v1',
   LOANS: 'shg_connect_loans_v1',
   MEETINGS: 'shg_connect_meetings_v1',
-  GROUP_INFO: 'shg_connect_group_info_v1'
+  GROUP_INFO: 'shg_connect_group_info_v1',
+  OFFICERS: 'shg_connect_officers_v1'
 };
 
 export interface GroupInfo {
@@ -28,6 +29,31 @@ export const INITIAL_GROUP: GroupInfo = {
   monthlyPoolRate: 500,
   totalGroupFund: 84500
 };
+
+// Default 3 Officers Credentials with default PINs ("1111", "2222", "3333")
+export const DEFAULT_OFFICERS: OfficerCredentials[] = [
+  {
+    role: 'PRESIDENT',
+    name: 'Sunita-bai Deshmukh',
+    nameRegional: 'सुनिताबाई देशमुख (अध्यक्ष)',
+    pinHash: '0e7517141fb53f21ee439b355b5a1d0a520954f91e4b096d24669aa5ab7a856f',
+    defaultPin: '1111'
+  },
+  {
+    role: 'SECRETARY',
+    name: 'Anita-tai Shinde',
+    nameRegional: 'अनिताताई शिंदे (सचिव)',
+    pinHash: 'edee29f882543b956620b26d0fc0e7314715d92c9704e6fe84a6c42a2223788a',
+    defaultPin: '2222'
+  },
+  {
+    role: 'TREASURER',
+    name: 'Kamal-tai Patil',
+    nameRegional: 'कमलताई पाटील (खजिनदार)',
+    pinHash: '1134a654e58b8ef4d6d6c6a7e04f0390a19e5d99b1a0e3678512530a6f80a311',
+    defaultPin: '3333'
+  }
+];
 
 export const INITIAL_MEMBERS: Member[] = [
   {
@@ -141,6 +167,22 @@ export const INITIAL_MEETINGS: Meeting[] = [
 ];
 
 /**
+ * Validates officer PIN against stored SHA-256 hash or default PIN string
+ */
+export async function verifyOfficerPin(role: OfficerRole, enteredPin: string): Promise<boolean> {
+  const officersStr = localStorage.getItem(STORAGE_KEYS.OFFICERS);
+  const officers: OfficerCredentials[] = officersStr ? JSON.parse(officersStr) : DEFAULT_OFFICERS;
+  const officer = officers.find(o => o.role === role) || DEFAULT_OFFICERS.find(o => o.role === role);
+  if (!officer) return false;
+
+  const cleanPin = enteredPin.trim();
+  if (cleanPin === officer.defaultPin) return true;
+
+  const hash = await calculateSHA256(cleanPin);
+  return hash === officer.pinHash || cleanPin === officer.defaultPin;
+}
+
+/**
  * Initializes and retrieves local state
  */
 export async function seedInitialDataIfNeeded(): Promise<{
@@ -149,22 +191,23 @@ export async function seedInitialDataIfNeeded(): Promise<{
   transactions: Transaction[];
   loans: Loan[];
   meetings: Meeting[];
+  officers: OfficerCredentials[];
 }> {
   let groupStr = localStorage.getItem(STORAGE_KEYS.GROUP_INFO);
   let membersStr = localStorage.getItem(STORAGE_KEYS.MEMBERS);
   let txStr = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
   let loansStr = localStorage.getItem(STORAGE_KEYS.LOANS);
   let meetingsStr = localStorage.getItem(STORAGE_KEYS.MEETINGS);
+  let officersStr = localStorage.getItem(STORAGE_KEYS.OFFICERS);
 
   if (!groupStr || !membersStr || !txStr) {
-    // Generate initial genesis chain
     const genesisTime = "2024-06-01T10:00:00.000Z";
     const genesisPrevHash = "GENESIS_BLOCK_00000000000000000000000000000000";
     
     const initialTxs: Transaction[] = [];
 
     // Block 0: Genesis
-    const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Genesis Monthly Pool Deposit";
+    const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Genesis Monthly Pool Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_genesis";
     const b0Hash = await computeBlockHash(0, genesisPrevHash, genesisTime, b0Payload);
     initialTxs.push({
       id: "tx-0",
@@ -176,12 +219,17 @@ export async function seedInitialDataIfNeeded(): Promise<{
       amount: 500,
       notes: "Genesis Monthly Pool Deposit",
       prevHash: genesisPrevHash,
-      hash: b0Hash
+      hash: b0Hash,
+      signatories: [
+        { role: 'PRESIDENT', signedAt: genesisTime, officerName: 'Sunita-bai Deshmukh' },
+        { role: 'TREASURER', signedAt: genesisTime, officerName: 'Kamal-tai Patil' }
+      ],
+      signatureProof: 'proof_genesis'
     });
 
     // Block 1: Sunita-bai Savings
     const b1Time = "2024-06-01T10:05:00.000Z";
-    const b1Payload = "mem-2:Sunita-bai Deshmukh:SAVINGS:500:Monthly Savings Deposit";
+    const b1Payload = "mem-2:Sunita-bai Deshmukh:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,SECRETARY]:SALT=proof_b1";
     const b1Hash = await computeBlockHash(1, b0Hash, b1Time, b1Payload);
     initialTxs.push({
       id: "tx-1",
@@ -193,24 +241,12 @@ export async function seedInitialDataIfNeeded(): Promise<{
       amount: 500,
       notes: "Monthly Savings Deposit",
       prevHash: b0Hash,
-      hash: b1Hash
-    });
-
-    // Block 2: Sunita-bai EMI payment
-    const b2Time = "2024-07-05T11:00:00.000Z";
-    const b2Payload = "mem-2:Sunita-bai Deshmukh:EMI_REPAYMENT:2150:EMI Principal+Interest";
-    const b2Hash = await computeBlockHash(2, b1Hash, b2Time, b2Payload);
-    initialTxs.push({
-      id: "tx-2",
-      index: 2,
-      timestamp: b2Time,
-      memberId: "mem-2",
-      memberName: "Sunita-bai Deshmukh",
-      type: 'EMI_REPAYMENT',
-      amount: 2150,
-      notes: "EMI Principal+Interest",
-      prevHash: b1Hash,
-      hash: b2Hash
+      hash: b1Hash,
+      signatories: [
+        { role: 'PRESIDENT', signedAt: b1Time, officerName: 'Sunita-bai Deshmukh' },
+        { role: 'SECRETARY', signedAt: b1Time, officerName: 'Anita-tai Shinde' }
+      ],
+      signatureProof: 'proof_b1'
     });
 
     // Save defaults
@@ -219,13 +255,15 @@ export async function seedInitialDataIfNeeded(): Promise<{
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(initialTxs));
     localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(INITIAL_LOANS));
     localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify(INITIAL_MEETINGS));
+    localStorage.setItem(STORAGE_KEYS.OFFICERS, JSON.stringify(DEFAULT_OFFICERS));
 
     return {
       group: INITIAL_GROUP,
       members: INITIAL_MEMBERS,
       transactions: initialTxs,
       loans: INITIAL_LOANS,
-      meetings: INITIAL_MEETINGS
+      meetings: INITIAL_MEETINGS,
+      officers: DEFAULT_OFFICERS
     };
   }
 
@@ -234,7 +272,8 @@ export async function seedInitialDataIfNeeded(): Promise<{
     members: JSON.parse(membersStr),
     transactions: JSON.parse(txStr),
     loans: loansStr ? JSON.parse(loansStr) : INITIAL_LOANS,
-    meetings: meetingsStr ? JSON.parse(meetingsStr) : INITIAL_MEETINGS
+    meetings: meetingsStr ? JSON.parse(meetingsStr) : INITIAL_MEETINGS,
+    officers: officersStr ? JSON.parse(officersStr) : DEFAULT_OFFICERS
   };
 }
 
@@ -260,11 +299,9 @@ export function resetToDemoData(): void {
   localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
   localStorage.removeItem(STORAGE_KEYS.LOANS);
   localStorage.removeItem(STORAGE_KEYS.MEETINGS);
+  localStorage.removeItem(STORAGE_KEYS.OFFICERS);
 }
 
-/**
- * Serializes all localStorage ledger items into a single portable JSON payload with timestamp
- */
 export function exportLedgerData(): string {
   const exportPayload = {
     app: "SHGConnect",
@@ -274,15 +311,13 @@ export function exportLedgerData(): string {
     members: localStorage.getItem(STORAGE_KEYS.MEMBERS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBERS)!) : INITIAL_MEMBERS,
     transactions: localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)!) : [],
     loans: localStorage.getItem(STORAGE_KEYS.LOANS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOANS)!) : INITIAL_LOANS,
-    meetings: localStorage.getItem(STORAGE_KEYS.MEETINGS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.MEETINGS)!) : INITIAL_MEETINGS
+    meetings: localStorage.getItem(STORAGE_KEYS.MEETINGS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.MEETINGS)!) : INITIAL_MEETINGS,
+    officers: localStorage.getItem(STORAGE_KEYS.OFFICERS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.OFFICERS)!) : DEFAULT_OFFICERS
   };
 
   return JSON.stringify(exportPayload, null, 2);
 }
 
-/**
- * Validates JSON structure and imports backup data into localStorage
- */
 export function importLedgerData(jsonStr: string): boolean {
   try {
     const data = JSON.parse(jsonStr);
@@ -297,12 +332,14 @@ export function importLedgerData(jsonStr: string): boolean {
     const transactionsData = data.transactions || data.shg_transactions || [];
     const loansData = data.loans || data.shg_loans || [];
     const meetingsData = data.meetings || data.shg_meetings || [];
+    const officersData = data.officers || DEFAULT_OFFICERS;
 
     localStorage.setItem(STORAGE_KEYS.GROUP_INFO, JSON.stringify(groupData));
     localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(membersData));
     localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactionsData));
     localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loansData));
     localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify(meetingsData));
+    localStorage.setItem(STORAGE_KEYS.OFFICERS, JSON.stringify(officersData));
 
     return true;
   } catch (err) {
@@ -310,4 +347,3 @@ export function importLedgerData(jsonStr: string): boolean {
     return false;
   }
 }
-

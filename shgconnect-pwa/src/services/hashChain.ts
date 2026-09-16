@@ -13,9 +13,15 @@ export async function calculateSHA256(text: string): Promise<string> {
 
 /**
  * Creates payload string representation for a block
+ * Injects 2-of-[#] verified signatories and signatureProof into payload
  */
 export function getBlockPayloadString(tx: Partial<Transaction>): string {
-  return `${tx.memberId || ''}:${tx.memberName || ''}:${tx.type || ''}:${tx.amount || 0}:${tx.notes || ''}`;
+  const base = `${tx.memberId || ''}:${tx.memberName || ''}:${tx.type || ''}:${tx.amount || 0}:${tx.notes || ''}`;
+  if (tx.signatories && tx.signatories.length > 0) {
+    const signerRoles = tx.signatories.map(s => s.role).join(',');
+    return `${base}:SIGNERS=[${signerRoles}]:SALT=${tx.signatureProof || ''}`;
+  }
+  return base;
 }
 
 /**
