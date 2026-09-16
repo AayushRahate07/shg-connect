@@ -1,6 +1,6 @@
 export type Role = 'MEMBER' | 'ANIMATOR' | 'TREASURER';
 
-export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI_REPAYMENT' | 'PENALTY';
+export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI_REPAYMENT' | 'PENALTY' | 'RESOLUTION';
 
 export interface Member {
   id: string;
@@ -13,6 +13,8 @@ export interface Member {
   trustScore: number;
   upiVpa?: string;
   avatarColor: string;
+  joinedDate?: string;
+  occupation?: string;
 }
 
 export interface Transaction {
@@ -67,3 +69,49 @@ export interface ChainVerificationResult {
 }
 
 export type SupportedLanguage = 'mr' | 'hi' | 'en';
+
+// Module 1: NABARD Panchasutra Score Model
+export interface PanchasutraScore {
+  regularMeetingsScore: number; // 0-20
+  regularSavingsScore: number;  // 0-20
+  internalLendingScore: number; // 0-20
+  timelyRecoveryScore: number;  // 0-20
+  transparentBooksScore: number;// 0-20
+  totalScore: number;           // 0-100
+  bankGrade: 'Grade A' | 'Grade B' | 'Grade C';
+  loanEligibilityInr: number;
+}
+
+// Module 2: Cash Box State Model
+export interface CashBoxDenominations {
+  n500: number;
+  n200: number;
+  n100: number;
+  n50: number;
+  n20: number;
+  n10: number;
+  coins: number;
+}
+
+export interface CashBoxState {
+  denominations: CashBoxDenominations;
+  totalCountedCash: number;
+  digitalExpectedCash: number;
+  discrepancy: number;
+  isBalanced: boolean;
+}
+
+// Module 3: Proceedings Resolution Model
+export type ResolutionCategory = 'LIVELIHOOD' | 'AGRICULTURE' | 'MEDICAL_EMERGENCY' | 'EDUCATION' | 'PENALTY_FINE';
+
+export interface Resolution {
+  id: string;
+  resolutionNumber: number;
+  date: string;
+  title: string;
+  category: ResolutionCategory;
+  description: string;
+  proposedBy: string;
+  secondedBy: string;
+  approvedUnanimously: boolean;
+}

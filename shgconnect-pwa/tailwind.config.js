@@ -8,13 +8,15 @@ export default {
     extend: {
       colors: {
         shg: {
-          green: "#065f46",
-          lightGreen: "#d1fae5",
-          orange: "#c2410c",
-          gold: "#b45309",
-          navy: "#1e3a8a",
-          paper: "#fefce8",
-          ink: "#0f172a"
+          green: "#14532D",
+          lightGreen: "#DCFCE7",
+          orange: "#C2410C",
+          gold: "#B45309",
+          navy: "#1E3A8A",
+          parchment: "#FDFBF7",
+          parchmentDark: "#F7F4EC",
+          inkBorder: "#E2DDD3",
+          inkText: "#1C1917"
         }
       }
     },

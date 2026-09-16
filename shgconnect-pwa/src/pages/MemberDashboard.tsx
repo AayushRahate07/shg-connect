@@ -3,6 +3,7 @@ import { Member, Transaction, SupportedLanguage, Loan } from '../types/shg';
 import { PassbookTable } from '../components/PassbookTable';
 import { UpiPaymentModal } from '../components/UpiPaymentModal';
 import { LoanCalculator } from '../components/LoanCalculator';
+import { MemberDossierModal } from '../components/MemberDossierModal';
 import { Wallet, QrCode, TrendingUp, Award, Clock, ArrowUpRight, Calculator, ShieldCheck } from 'lucide-react';
 
 interface MemberDashboardProps {
@@ -27,6 +28,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   const [paymentType, setPaymentType] = useState<'SAVINGS' | 'EMI_REPAYMENT'>('SAVINGS');
   const [paymentAmount, setPaymentAmount] = useState<number>(500);
   const [activeTab, setActiveTab] = useState<'passbook' | 'calculator'>('passbook');
+  const [selectedDossierMember, setSelectedDossierMember] = useState<Member | null>(null);
 
   const currentMember = members.find(m => m.id === selectedMemberId) || members[0];
   const memberLoans = loans.filter(l => l.memberId === selectedMemberId && l.status === 'ACTIVE');
@@ -45,15 +47,15 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   return (
     <div className="space-y-6">
       {/* Member Selector Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#FDFBF7] p-4 rounded-3xl shadow-xs border-2 border-[#E2DDD3] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center space-x-3">
-          <label className="text-xs font-bold text-slate-600">
+          <label className="text-xs font-bold text-stone-700">
             {language === 'mr' ? 'सभासद निवडा (Switch Member):' : 'Viewing Member:'}
           </label>
           <select
             value={selectedMemberId}
             onChange={(e) => setSelectedMemberId(e.target.value)}
-            className="bg-slate-50 border border-slate-300 text-slate-900 font-bold text-sm rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-emerald-500 outline-none"
+            className="bg-white border border-[#E2DDD3] text-[#1C1917] font-extrabold text-sm rounded-xl px-3 py-1.5 outline-none"
           >
             {members.map(m => (
               <option key={m.id} value={m.id}>
@@ -66,16 +68,16 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveTab('passbook')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              activeTab === 'passbook' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            className={`px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'passbook' ? 'bg-[#14532D] text-white shadow' : 'bg-white text-stone-700 hover:bg-stone-100 border border-[#E2DDD3]'
             }`}
           >
             📖 {language === 'mr' ? 'माझे पासबुक' : 'My Passbook'}
           </button>
           <button
             onClick={() => setActiveTab('calculator')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
-              activeTab === 'calculator' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            className={`px-4 py-2 rounded-xl text-xs font-black transition ${
+              activeTab === 'calculator' ? 'bg-[#14532D] text-white shadow' : 'bg-white text-stone-700 hover:bg-stone-100 border border-[#E2DDD3]'
             }`}
           >
             🧮 {language === 'mr' ? 'कर्ज गणक' : 'Loan Calculator'}
@@ -86,10 +88,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       {/* Member Summary Header Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Savings Balance Card */}
-        <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#14532D] to-emerald-950 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs text-emerald-200 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-emerald-200 font-bold uppercase tracking-wider">
                 {language === 'mr' ? 'एकूण बचत (Total Savings)' : 'Total Personal Savings'}
               </span>
               <div className="text-3xl font-black text-white mt-1">
@@ -97,7 +99,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
               </div>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-emerald-700/60 flex items-center justify-center text-emerald-100">
-              <Wallet className="w-5 h-5" />
+              <Wallet className="w-5 h-5 text-amber-400" />
             </div>
           </div>
 
@@ -105,7 +107,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
             <span className="text-xs text-emerald-300 font-medium">Monthly Pool: ₹500</span>
             <button
               onClick={() => handleOpenPayment('SAVINGS', 500)}
-              className="bg-amber-500 hover:bg-amber-600 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-bold shadow flex items-center space-x-1 transition"
+              className="bg-amber-400 hover:bg-amber-500 text-amber-950 px-3 py-1.5 rounded-xl text-xs font-black shadow flex items-center space-x-1 transition"
             >
               <QrCode className="w-3.5 h-3.5" />
               <span>{language === 'mr' ? 'बचत जमा करा' : 'Deposit Savings'}</span>
@@ -114,29 +116,29 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         </div>
 
         {/* Active Loan Balance Card */}
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div className="bg-[#FDFBF7] p-5 rounded-3xl shadow-xs border-2 border-[#E2DDD3] flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-stone-500 font-bold uppercase tracking-wider">
                 {language === 'mr' ? 'सक्रिय कर्ज (Active Loan Balance)' : 'Active Loan Balance'}
               </span>
-              <div className="text-2xl font-black text-slate-900 mt-1">
+              <div className="text-2xl font-black text-[#1C1917] mt-1">
                 ₹{currentMember.activeLoanBalance.toLocaleString('en-IN')}
               </div>
             </div>
             <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5" />
+              <TrendingUp className="w-5 h-5 text-amber-800" />
             </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-stone-500 font-medium">
               {activeLoan ? `Disbursed: ₹${activeLoan.principal.toLocaleString('en-IN')}` : 'No Active Loans'}
             </span>
             {currentMember.activeLoanBalance > 0 && (
               <button
                 onClick={() => handleOpenPayment('EMI_REPAYMENT', 2150)}
-                className="bg-emerald-800 hover:bg-emerald-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow flex items-center space-x-1 transition"
+                className="bg-[#14532D] hover:bg-emerald-900 text-white px-3 py-1.5 rounded-xl text-xs font-black shadow flex items-center space-x-1 transition"
               >
                 <QrCode className="w-3.5 h-3.5 text-amber-400" />
                 <span>{language === 'mr' ? 'हप्ता भरा (Pay EMI)' : 'Pay EMI via UPI'}</span>
@@ -146,26 +148,26 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         </div>
 
         {/* Trust Score Card */}
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div className="bg-[#FDFBF7] p-5 rounded-3xl shadow-xs border-2 border-[#E2DDD3] flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+              <span className="text-xs text-stone-500 font-bold uppercase tracking-wider">
                 {language === 'mr' ? 'विश्वास गुणांक (Trust Score)' : 'SHG Trust Score'}
               </span>
-              <div className="text-2xl font-black text-emerald-700 mt-1 flex items-center gap-2">
+              <div className="text-2xl font-black text-[#14532D] mt-1 flex items-center gap-2">
                 <span>{currentMember.trustScore}%</span>
-                <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-black bg-emerald-100 text-[#14532D] px-2 py-0.5 rounded-full">
                   EXCELLENT
                 </span>
               </div>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-[#14532D] flex items-center justify-center">
               <Award className="w-5 h-5" />
             </div>
           </div>
 
-          <div className="mt-4 text-xs text-slate-500 flex items-center space-x-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+          <div className="mt-4 text-xs text-stone-500 font-medium flex items-center space-x-1">
+            <ShieldCheck className="w-4 h-4 text-[#14532D]" />
             <span>{language === 'mr' ? '१००% वेळेवर परतफेड ट्रॅक' : '100% On-time repayment history'}</span>
           </div>
         </div>
@@ -180,9 +182,21 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           selectedMemberId={selectedMemberId}
           onSelectMemberFilter={setSelectedMemberId}
           onVerifyBlock={onVerifyBlockIndex}
+          onSelectMemberDossier={(m) => setSelectedDossierMember(m)}
         />
       ) : (
         <LoanCalculator language={language} />
+      )}
+
+      {/* Member Dossier Modal */}
+      {selectedDossierMember && (
+        <MemberDossierModal
+          member={selectedDossierMember}
+          transactions={transactions}
+          loans={loans}
+          language={language}
+          onClose={() => setSelectedDossierMember(null)}
+        />
       )}
 
       {/* UPI Payment Modal */}

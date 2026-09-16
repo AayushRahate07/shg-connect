@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage } from './types/shg';
+import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution } from './types/shg';
 import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData } from './services/db';
+import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash } from './services/hashChain';
 import { tts } from './services/tts';
+import { sound } from './services/sound';
 import { Header } from './components/Header';
 import { MemberDashboard } from './pages/MemberDashboard';
 import { AnimatorDashboard } from './pages/AnimatorDashboard';
@@ -21,6 +23,7 @@ export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [resolutions, setResolutions] = useState<Resolution[]>(INITIAL_RESOLUTIONS);
 
   const reloadAllData = async () => {
     const data = await seedInitialDataIfNeeded();
@@ -47,6 +50,16 @@ export default function App() {
     tts.setLanguage(lang);
   };
 
+  const handleAddResolution = (res: Omit<Resolution, 'id' | 'resolutionNumber'>) => {
+    sound.playStampSound();
+    const newRes: Resolution = {
+      ...res,
+      id: `res-${Date.now()}`,
+      resolutionNumber: resolutions.length + 1
+    };
+    setResolutions(prev => [...prev, newRes]);
+  };
+
   /**
    * Appends a new transaction block to the append-only SHA-256 hash-chain
    */
@@ -59,6 +72,7 @@ export default function App() {
     const member = members.find(m => m.id === memberId);
     if (!member) return;
 
+    sound.playStampSound();
     const lastBlock = transactions[transactions.length - 1];
     const newIndex = transactions.length;
     const prevHash = lastBlock ? lastBlock.hash : "GENESIS_BLOCK_00000000000000000000000000000000";
@@ -103,12 +117,13 @@ export default function App() {
   };
 
   /**
-   * Complete a full Meeting Session (Attendance + Savings + Disbursals)
+   * Complete a full Meeting Session (Attendance + Savings + Disbursals + Resolutions)
    */
   const handleCompleteMeetingSession = async (
     attendanceRecord: Record<string, boolean>,
     savingsCollected: { memberId: string; amount: number }[],
-    loanDisbursed?: { memberId: string; amount: number; notes: string }
+    loanDisbursed?: { memberId: string; amount: number; notes: string },
+    newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[]
   ) => {
     // Record savings transactions
     for (const item of savingsCollected) {
@@ -137,6 +152,11 @@ export default function App() {
         setLoans(updatedLoans);
         saveLoans(updatedLoans);
       }
+    }
+
+    // Record resolutions if any
+    if (newResolutions && newResolutions.length > 0) {
+      newResolutions.forEach(r => handleAddResolution(r));
     }
 
     // Record meeting metadata
@@ -185,17 +205,17 @@ export default function App() {
 
   if (loading || !group) {
     return (
-      <div className="min-h-screen bg-emerald-950 flex items-center justify-center text-white">
+      <div className="min-h-screen bg-[#14532D] flex items-center justify-center text-white">
         <div className="text-center space-y-3">
-          <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-bold tracking-wide text-emerald-200">Loading SHGConnect Offline Ledger...</p>
+          <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-sm font-black tracking-wide text-emerald-100">Loading SHGConnect Deep Domain Ledger...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F7F4EC] text-[#1C1917] flex flex-col font-sans">
       <Header
         currentRole={currentRole}
         onRoleChange={setCurrentRole}
@@ -226,8 +246,10 @@ export default function App() {
             transactions={transactions}
             loans={loans}
             meetings={meetings}
+            resolutions={resolutions}
             language={language}
             onCompleteMeetingSession={handleCompleteMeetingSession}
+            onAddResolution={handleAddResolution}
             onVerifyBlockIndex={(idx) => {}}
             onSimulateTamper={handleSimulateTamperAttack}
           />
@@ -243,9 +265,9 @@ export default function App() {
         />
       )}
 
-      <footer className="bg-slate-900 text-slate-400 text-xs text-center py-4 print:hidden border-t border-slate-800">
-        <p>SHGConnect - Grassroots Offline Trust Ledger for Self-Help Groups in India</p>
-        <p className="text-[10px] text-slate-500 mt-0.5">Built with React, Vite, PWA, Tailwind CSS & SHA-256 Web Crypto API</p>
+      <footer className="bg-[#1C1917] text-stone-400 text-xs text-center py-4 print:hidden border-t border-stone-800">
+        <p className="font-bold text-stone-300">SHGConnect - Grassroots Offline Trust Ledger & NABARD Panchasutra Operational System</p>
+        <p className="text-[10px] text-stone-500 mt-0.5">React 18, Vite 6, PWA, Tailwind CSS & Web Crypto SHA-256</p>
       </footer>
     </div>
   );
