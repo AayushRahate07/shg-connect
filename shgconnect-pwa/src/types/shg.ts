@@ -155,11 +155,13 @@ export interface Officer {
   status: 'ACTIVE' | 'REVOKED';
 }
 
+export * from './sync';
+
 export interface SyncMetadata {
   shgId: string;
   deviceId: string;
+  lastServerSeq: number;
   lastSyncAt: string | null;
-  lastServerVersion: number;
   lastAcknowledgedOpId: string | null;
   schemaVersion: number;
 }

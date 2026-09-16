@@ -12,12 +12,13 @@ import {
   Officer,
   SyncMetadata,
   SHGGroupInfo,
-  FederationScope
+  FederationScope,
+  DeferredRemoteOperation
 } from '../types/shg';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 
 const DB_NAME = 'SHGConnectDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const LEGACY_STORAGE_KEYS = {
   MEMBERS: 'shg_connect_members_v1',
@@ -283,6 +284,12 @@ export function openDatabase(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('group_info')) {
         db.createObjectStore('group_info', { keyPath: 'shgCode' });
       }
+      if (!db.objectStoreNames.contains('deferred_remote_ops')) {
+        const deferredStore = db.createObjectStore('deferred_remote_ops', { keyPath: 'id' });
+        deferredStore.createIndex('shgId', 'shgId', { unique: false });
+        deferredStore.createIndex('status', 'status', { unique: false });
+        deferredStore.createIndex('opId', 'opId', { unique: false });
+      }
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -441,9 +448,9 @@ export async function seedInitialDataIfNeeded(): Promise<{
         shgId: groupData.shgCode,
         deviceId: `dev-${Math.random().toString(36).substring(2, 9)}`,
         lastSyncAt: null,
-        lastServerVersion: 1,
+        lastServerSeq: 1,
         lastAcknowledgedOpId: null,
-        schemaVersion: 2
+        schemaVersion: 3
       };
       tx.objectStore('sync_metadata').put(syncMeta);
 
@@ -734,4 +741,74 @@ export async function importLedgerData(jsonStr: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function getDeferredRemoteOps(shgId?: string): Promise<DeferredRemoteOperation[]> {
+  const targetShgId = shgId || getCurrentShgId();
+  const allOps = await getAllFromStore<DeferredRemoteOperation>('deferred_remote_ops');
+  return allOps.filter(op => op.shgId === targetShgId && op.status === 'DEFERRED');
+}
+
+export async function saveDeferredRemoteOp(op: DeferredRemoteOperation): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('deferred_remote_ops', 'readwrite');
+    const store = tx.objectStore('deferred_remote_ops');
+    store.put(op);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function deleteDeferredRemoteOp(id: string): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('deferred_remote_ops', 'readwrite');
+    const store = tx.objectStore('deferred_remote_ops');
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function getSyncMetadata(shgId?: string): Promise<SyncMetadata | null> {
+  const targetShgId = shgId || getCurrentShgId();
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('sync_metadata', 'readonly');
+    const store = tx.objectStore('sync_metadata');
+    const req = store.get(targetShgId);
+    req.onsuccess = () => resolve((req.result as SyncMetadata) || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function saveSyncMetadata(metadata: SyncMetadata): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('sync_metadata', 'readwrite');
+    const store = tx.objectStore('sync_metadata');
+    store.put(metadata);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function updateOutboxOpStatus(opId: string, syncStatus: 'PENDING' | 'SYNCED'): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('outbox_queue', 'readwrite');
+    const store = tx.objectStore('outbox_queue');
+    const req = store.get(opId);
+    req.onsuccess = () => {
+      const op = req.result as OperationLog;
+      if (op) {
+        op.syncStatus = syncStatus;
+        store.put(op);
+      }
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 

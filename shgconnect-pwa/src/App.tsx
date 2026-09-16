@@ -9,6 +9,7 @@ import { Header } from './components/Header';
 import { MemberDashboard } from './pages/MemberDashboard';
 import { AnimatorDashboard } from './pages/AnimatorDashboard';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
+import { ConflictResolutionModal } from './components/ConflictResolutionModal';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -16,6 +17,7 @@ export default function App() {
   const [language, setLanguage] = useState<SupportedLanguage>('mr');
   const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
+  const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
 
   // App state
   const [group, setGroup] = useState<GroupInfo | null>(null);
@@ -266,6 +268,7 @@ export default function App() {
         shgNameRegional={group.nameRegional}
         federation={INITIAL_GROUP_INFO.federation}
         onSwitchShgGroup={handleSwitchShgGroup}
+        onOpenConflictModal={() => setShowConflictModal(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
@@ -303,6 +306,12 @@ export default function App() {
           onRestored={reloadAllData}
         />
       )}
+
+      {/* Conflict Resolution Modal */}
+      <ConflictResolutionModal
+        isOpen={showConflictModal}
+        onClose={() => setShowConflictModal(false)}
+      />
 
       <footer className="bg-[#1C1917] text-stone-400 text-xs text-center py-4 print:hidden border-t border-stone-800">
         <p className="font-bold text-stone-300">SHGConnect - Grassroots Offline Trust Ledger & NABARD Panchasutra Operational System</p>

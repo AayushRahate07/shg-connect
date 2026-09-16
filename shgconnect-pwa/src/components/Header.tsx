@@ -1,6 +1,7 @@
 import React from 'react';
 import { Role, SupportedLanguage, FederationScope } from '../types/shg';
 import { ShieldCheck, Volume2, VolumeX, RotateCcw, BookOpen, Users, Database, MapPin, Building, Network } from 'lucide-react';
+import { SyncStatusPill } from './SyncStatusPill';
 
 interface HeaderProps {
   currentRole: Role;
@@ -15,6 +16,7 @@ interface HeaderProps {
   shgNameRegional: string;
   federation?: FederationScope;
   onSwitchShgGroup?: (shgId: string) => void;
+  onOpenConflictModal?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -29,7 +31,8 @@ export const Header: React.FC<HeaderProps> = ({
   shgName,
   shgNameRegional,
   federation,
-  onSwitchShgGroup
+  onSwitchShgGroup,
+  onOpenConflictModal
 }) => {
   const breadcrumbText = federation
     ? `${federation.district} / ${federation.block} / ${federation.gramPanchayat} / ${shgNameRegional || shgName}`
@@ -40,7 +43,9 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Top Info Bar */}
       <div className="max-w-7xl mx-auto px-4 py-2 flex flex-wrap items-center justify-between text-xs border-b border-emerald-800/60 gap-2">
         <div className="flex flex-wrap items-center gap-2 font-medium">
-          <span className="bg-emerald-700/80 px-2 py-0.5 rounded text-emerald-100 font-semibold tracking-wide">OFFLINE PWA</span>
+          <SyncStatusPill onOpenConflictModal={onOpenConflictModal} />
+          
+          {/* Administrative Hierarchy Breadcrumb Pill */}
           
           {/* Administrative Hierarchy Breadcrumb Pill */}
           <div className="flex items-center space-x-1.5 bg-emerald-950/80 text-amber-300 border border-emerald-700/80 px-2.5 py-0.5 rounded-full font-mono text-[11px] shadow-xs">
