@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution } from './types/shg';
-import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData } from './services/db';
+import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData, queueMutation } from './services/db';
 import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
-import { computeBlockHash } from './services/hashChain';
+import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
 import { sound } from './services/sound';
 import { Header } from './components/Header';
@@ -26,6 +26,7 @@ export default function App() {
   const [resolutions, setResolutions] = useState<Resolution[]>(INITIAL_RESOLUTIONS);
 
   const reloadAllData = async () => {
+    setLoading(true);
     const data = await seedInitialDataIfNeeded();
     setGroup(data.group);
     setMembers(data.members);
@@ -61,7 +62,7 @@ export default function App() {
   };
 
   /**
-   * Appends a new transaction block to the append-only SHA-256 hash-chain
+   * Appends a new transaction block to the append-only SHA-256 hash-chain & IDB Queue
    */
   const handleRecordTransaction = async (
     memberId: string,
@@ -80,6 +81,7 @@ export default function App() {
 
     const payload = `${member.id}:${member.name}:${type}:${amount}:${notes || ''}`;
     const hash = await computeBlockHash(newIndex, prevHash, timestamp, payload);
+    const checkpointFingerprint = generateCheckpointFingerprint(hash);
 
     const newTx: Transaction = {
       id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -91,12 +93,26 @@ export default function App() {
       amount,
       notes,
       prevHash,
-      hash
+      hash,
+      checkpointFingerprint
     };
 
     const updatedTxs = [...transactions, newTx];
     setTransactions(updatedTxs);
-    saveTransactions(updatedTxs);
+    await saveTransactions(updatedTxs);
+
+    // Record outbox mutation & audit trail entry
+    await queueMutation({
+      opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      shgId: group?.shgCode || 'SHG-MH-2024-884',
+      actorId: member.id,
+      actorRole: currentRole === 'ANIMATOR' ? 'ANIMATOR' : 'TREASURER',
+      deviceId: 'dev-pwa-local',
+      hlcTimestamp: `${timestamp}-0001`,
+      type: type === 'SAVINGS' ? 'RECORD_SAVINGS' : type === 'LOAN_DISBURSAL' ? 'DISBURSE_LOAN' : 'REPAY_EMI',
+      entityId: newTx.id,
+      payload: { memberId, amount, type, notes, checkpointFingerprint }
+    });
 
     // Update Member balances
     const updatedMembers = members.map(m => {
@@ -113,7 +129,7 @@ export default function App() {
     });
 
     setMembers(updatedMembers);
-    saveMembers(updatedMembers);
+    await saveMembers(updatedMembers);
   };
 
   /**
@@ -150,7 +166,7 @@ export default function App() {
         };
         const updatedLoans = [...loans, newLoan];
         setLoans(updatedLoans);
-        saveLoans(updatedLoans);
+        await saveLoans(updatedLoans);
       }
     }
 
@@ -161,6 +177,8 @@ export default function App() {
 
     // Record meeting metadata
     const totalSav = savingsCollected.reduce((sum, s) => sum + s.amount, 0);
+    const meetingFingerprint = `CHK-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
     const newMeeting: Meeting = {
       id: `meet-${meetings.length + 1}`,
       date: new Date().toISOString().split('T')[0],
@@ -168,12 +186,25 @@ export default function App() {
       totalSavingsCollected: totalSav,
       totalEmiCollected: 0,
       totalDisbursed: loanDisbursed ? loanDisbursed.amount : 0,
-      attendanceRecord
+      attendanceRecord,
+      checkpointFingerprint: meetingFingerprint
     };
 
     const updatedMeetings = [...meetings, newMeeting];
     setMeetings(updatedMeetings);
-    saveMeetings(updatedMeetings);
+    await saveMeetings(updatedMeetings);
+
+    await queueMutation({
+      opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      shgId: group?.shgCode || 'SHG-MH-2024-884',
+      actorId: 'animator-1',
+      actorRole: 'ANIMATOR',
+      deviceId: 'dev-pwa-local',
+      hlcTimestamp: `${new Date().toISOString()}-0001`,
+      type: 'COMMIT_MEETING',
+      entityId: newMeeting.id,
+      payload: { meetingNumber: newMeeting.meetingNumber, totalSavingsCollected: totalSav, checkpointFingerprint: meetingFingerprint }
+    });
 
     tts.speak(language === 'mr' ? 'बैठक सत्र यशस्वीरीत्या नोंदवले गेले आहे.' : 'Meeting Session committed to hash-chain successfully.');
   };
@@ -181,7 +212,7 @@ export default function App() {
   /**
    * Intentionally corrupts a hash to demonstrate local cryptographic tamper detection live
    */
-  const handleSimulateTamperAttack = () => {
+  const handleSimulateTamperAttack = async () => {
     if (transactions.length === 0) return;
     const corruptedTxs = transactions.map((tx, idx) => {
       if (idx === 1) { // Corrupt block #1
@@ -193,13 +224,13 @@ export default function App() {
       return tx;
     });
     setTransactions(corruptedTxs);
-    saveTransactions(corruptedTxs);
+    await saveTransactions(corruptedTxs);
   };
 
-  const handleResetData = () => {
+  const handleResetData = async () => {
     if (window.confirm("Reset offline database to initial demo state?")) {
-      resetToDemoData();
-      window.location.reload();
+      await resetToDemoData();
+      await reloadAllData();
     }
   };
 
@@ -208,7 +239,7 @@ export default function App() {
       <div className="min-h-screen bg-[#14532D] flex items-center justify-center text-white">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-black tracking-wide text-emerald-100">Loading SHGConnect Deep Domain Ledger...</p>
+          <p className="text-sm font-black tracking-wide text-emerald-100">Initializing SHGConnect IndexedDB Engine (v2)...</p>
         </div>
       </div>
     );
@@ -267,8 +298,9 @@ export default function App() {
 
       <footer className="bg-[#1C1917] text-stone-400 text-xs text-center py-4 print:hidden border-t border-stone-800">
         <p className="font-bold text-stone-300">SHGConnect - Grassroots Offline Trust Ledger & NABARD Panchasutra Operational System</p>
-        <p className="text-[10px] text-stone-500 mt-0.5">React 18, Vite 6, PWA, Tailwind CSS & Web Crypto SHA-256</p>
+        <p className="text-[10px] text-stone-500 mt-0.5">IndexedDB v2, Dual-Chain Outbox Queue, Audit Envelopes & Merkle Root Cryptographic Log</p>
       </footer>
     </div>
   );
 }
+

@@ -38,6 +38,7 @@ export interface Transaction {
   hash: string;
   signatories?: OfficerSignature[];
   signatureProof?: string;
+  checkpointFingerprint?: string;
 }
 
 export interface Loan {
@@ -63,6 +64,70 @@ export interface Meeting {
   attendanceRecord: Record<string, boolean>; // memberId -> boolean
   signatories?: OfficerSignature[];
   blockHash?: string;
+  merkleRoot?: string;
+  checkpointFingerprint?: string;
+}
+
+export interface OperationLog {
+  opId: string;                  // UUID v4 (idempotency key)
+  shgId: string;
+  actorId: string;
+  actorRole: 'ANIMATOR' | 'PRESIDENT' | 'SECRETARY' | 'TREASURER';
+  deviceId: string;
+  hlcTimestamp: string;          // Hybrid Logical Clock (e.g., ISO-Counter format)
+  type: 'COMMIT_MEETING' | 'RECORD_SAVINGS' | 'DISBURSE_LOAN' | 'REPAY_EMI' | 'PASS_RESOLUTION';
+  entityId: string;
+  payload: Record<string, any>;
+  prevOpHash: string;            // SHA-256 chained strictly to previous device operation
+  syncStatus: 'PENDING' | 'SYNCED';
+}
+
+export interface LedgerBlock {
+  id: string;                    // UUID v4
+  localIndex: number;            // Local sequential index
+  shgId: string;
+  createdAt: string;
+  prevBlockHash: string;         // SHA-256 of previous finalized meeting block
+  merkleRoot: string;            // Merkle root of transaction hashes in this meeting
+  checkpointHash: string;        // Full 256-bit SHA-256 checkpoint
+  checkpointFingerprint: string; // Truncated display format: "CHK-XXXX-XXXX-XXXX"
+  signatoryProof: string;        // Salted quorum hashes
+  blockHash: string;             // Final block hash
+}
+
+export interface AuditEnvelope {
+  auditId: string;               // UUID v4
+  shgId: string;
+  actorId: string;
+  actorRole: string;
+  action: string;
+  entityType: 'TRANSACTION' | 'MEETING' | 'LOAN' | 'CONFIG';
+  entityId: string;
+  oldValue: Record<string, any> | null;
+  newValue: Record<string, any>;
+  reason?: string;
+  timestamp: string;
+  deviceId: string;
+  auditHash: string;             // Canonical SHA-256 digest
+}
+
+export interface Officer {
+  id: string;                    // Unique UUID (NOT role)
+  shgId: string;
+  role: 'PRESIDENT' | 'SECRETARY' | 'TREASURER';
+  displayName: string;
+  pinHash: string;
+  publicKey?: string;
+  status: 'ACTIVE' | 'REVOKED';
+}
+
+export interface SyncMetadata {
+  shgId: string;
+  deviceId: string;
+  lastSyncAt: string | null;
+  lastServerVersion: number;
+  lastAcknowledgedOpId: string | null;
+  schemaVersion: number;
 }
 
 export interface ChainVerificationBlockResult {
@@ -71,6 +136,8 @@ export interface ChainVerificationBlockResult {
   actualHash: string;
   status: 'VALID' | 'CORRUPTED';
   payloadSummary: string;
+  merkleRoot?: string;
+  checkpointFingerprint?: string;
 }
 
 export interface ChainVerificationResult {

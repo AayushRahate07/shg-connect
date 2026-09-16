@@ -16,9 +16,9 @@ export const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
 }) => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const handleDownloadBackup = () => {
+  const handleDownloadBackup = async () => {
     try {
-      const jsonStr = exportLedgerData();
+      const jsonStr = await exportLedgerData();
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const nowStr = new Date().toISOString().split('T')[0];
@@ -47,10 +47,10 @@ export const BackupRestoreModal: React.FC<BackupRestoreModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (content) {
-        const success = importLedgerData(content);
+        const success = await importLedgerData(content);
         if (success) {
           setFeedback({
             type: 'success',

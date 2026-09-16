@@ -1,7 +1,23 @@
-import { Member, Transaction, Loan, Meeting, OfficerRole, OfficerCredentials } from '../types/shg';
-import { computeBlockHash, calculateSHA256 } from './hashChain';
+import {
+  Member,
+  Transaction,
+  Loan,
+  Meeting,
+  OfficerRole,
+  OfficerCredentials,
+  Resolution,
+  OperationLog,
+  LedgerBlock,
+  AuditEnvelope,
+  Officer,
+  SyncMetadata
+} from '../types/shg';
+import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 
-const STORAGE_KEYS = {
+const DB_NAME = 'SHGConnectDB';
+const DB_VERSION = 2;
+
+const LEGACY_STORAGE_KEYS = {
   MEMBERS: 'shg_connect_members_v1',
   TRANSACTIONS: 'shg_connect_transactions_v1',
   LOANS: 'shg_connect_loans_v1',
@@ -30,7 +46,6 @@ export const INITIAL_GROUP: GroupInfo = {
   totalGroupFund: 84500
 };
 
-// Default 3 Officers Credentials with default PINs ("1111", "2222", "3333")
 export const DEFAULT_OFFICERS: OfficerCredentials[] = [
   {
     role: 'PRESIDENT',
@@ -153,7 +168,8 @@ export const INITIAL_MEETINGS: Meeting[] = [
     totalSavingsCollected: 2500,
     totalEmiCollected: 3000,
     totalDisbursed: 0,
-    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": true, "mem-5": true }
+    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": true, "mem-5": true },
+    checkpointFingerprint: "CHK-8F2A-99B1-4C10"
   },
   {
     id: "meet-2",
@@ -162,28 +178,98 @@ export const INITIAL_MEETINGS: Meeting[] = [
     totalSavingsCollected: 2500,
     totalEmiCollected: 3000,
     totalDisbursed: 10000,
-    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": false, "mem-5": true }
+    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": false, "mem-5": true },
+    checkpointFingerprint: "CHK-7D1E-03A8-912F"
   }
 ];
 
-/**
- * Validates officer PIN against stored SHA-256 hash or default PIN string
- */
-export async function verifyOfficerPin(role: OfficerRole, enteredPin: string): Promise<boolean> {
-  const officersStr = localStorage.getItem(STORAGE_KEYS.OFFICERS);
-  const officers: OfficerCredentials[] = officersStr ? JSON.parse(officersStr) : DEFAULT_OFFICERS;
-  const officer = officers.find(o => o.role === role) || DEFAULT_OFFICERS.find(o => o.role === role);
-  if (!officer) return false;
+let dbInstancePromise: Promise<IDBDatabase> | null = null;
 
-  const cleanPin = enteredPin.trim();
-  if (cleanPin === officer.defaultPin) return true;
+export function openDatabase(): Promise<IDBDatabase> {
+  if (dbInstancePromise) return dbInstancePromise;
 
-  const hash = await calculateSHA256(cleanPin);
-  return hash === officer.pinHash || cleanPin === officer.defaultPin;
+  dbInstancePromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains('members')) {
+        db.createObjectStore('members', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('ledger_blocks')) {
+        const store = db.createObjectStore('ledger_blocks', { keyPath: 'id' });
+        store.createIndex('localIndex', 'localIndex', { unique: false });
+      }
+      if (!db.objectStoreNames.contains('transactions')) {
+        db.createObjectStore('transactions', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('meetings')) {
+        db.createObjectStore('meetings', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('resolutions')) {
+        db.createObjectStore('resolutions', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('outbox_queue')) {
+        db.createObjectStore('outbox_queue', { keyPath: 'opId' });
+      }
+      if (!db.objectStoreNames.contains('audit_trail')) {
+        db.createObjectStore('audit_trail', { keyPath: 'auditId' });
+      }
+      if (!db.objectStoreNames.contains('officers')) {
+        db.createObjectStore('officers', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('loans')) {
+        db.createObjectStore('loans', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('sync_metadata')) {
+        db.createObjectStore('sync_metadata', { keyPath: 'shgId' });
+      }
+      if (!db.objectStoreNames.contains('group_info')) {
+        db.createObjectStore('group_info', { keyPath: 'shgCode' });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => {
+      dbInstancePromise = null;
+      reject(request.error);
+    };
+  });
+
+  return dbInstancePromise;
 }
 
 /**
- * Initializes and retrieves local state
+ * Generic IDB Helper: getAll from store
+ */
+async function getAllFromStore<T>(storeName: string): Promise<T[]> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const request = store.getAll();
+    request.onsuccess = () => resolve(request.result as T[]);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * Generic IDB Helper: putAll into store
+ */
+async function putAllIntoStore<T>(storeName: string, items: T[]): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    items.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * Rollback-Safe LocalStorage Migration & Initial Data Seeding
  */
 export async function seedInitialDataIfNeeded(): Promise<{
   group: GroupInfo;
@@ -193,132 +279,325 @@ export async function seedInitialDataIfNeeded(): Promise<{
   meetings: Meeting[];
   officers: OfficerCredentials[];
 }> {
-  let groupStr = localStorage.getItem(STORAGE_KEYS.GROUP_INFO);
-  let membersStr = localStorage.getItem(STORAGE_KEYS.MEMBERS);
-  let txStr = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-  let loansStr = localStorage.getItem(STORAGE_KEYS.LOANS);
-  let meetingsStr = localStorage.getItem(STORAGE_KEYS.MEETINGS);
-  let officersStr = localStorage.getItem(STORAGE_KEYS.OFFICERS);
+  const db = await openDatabase();
+  const migrationStatus = localStorage.getItem('shg_migration_status');
 
-  if (!groupStr || !membersStr || !txStr) {
-    const genesisTime = "2024-06-01T10:00:00.000Z";
-    const genesisPrevHash = "GENESIS_BLOCK_00000000000000000000000000000000";
-    
-    const initialTxs: Transaction[] = [];
+  let members = await getAllFromStore<Member>('members');
+  let transactions = await getAllFromStore<Transaction>('transactions');
+  let loans = await getAllFromStore<Loan>('loans');
+  let meetings = await getAllFromStore<Meeting>('meetings');
+  let groupList = await getAllFromStore<GroupInfo>('group_info');
 
-    // Block 0: Genesis
-    const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Genesis Monthly Pool Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_genesis";
-    const b0Hash = await computeBlockHash(0, genesisPrevHash, genesisTime, b0Payload);
-    initialTxs.push({
-      id: "tx-0",
-      index: 0,
-      timestamp: genesisTime,
-      memberId: "mem-1",
-      memberName: "Kamal-tai Patil",
-      type: 'SAVINGS',
-      amount: 500,
-      notes: "Genesis Monthly Pool Deposit",
-      prevHash: genesisPrevHash,
-      hash: b0Hash,
-      signatories: [
-        { role: 'PRESIDENT', signedAt: genesisTime, officerName: 'Sunita-bai Deshmukh' },
-        { role: 'TREASURER', signedAt: genesisTime, officerName: 'Kamal-tai Patil' }
-      ],
-      signatureProof: 'proof_genesis'
-    });
+  if (members.length === 0 || migrationStatus !== 'COMPLETED') {
+    try {
+      // Check legacy localStorage
+      const legacyGroupStr = localStorage.getItem(LEGACY_STORAGE_KEYS.GROUP_INFO);
+      const legacyMembersStr = localStorage.getItem(LEGACY_STORAGE_KEYS.MEMBERS);
+      const legacyTxStr = localStorage.getItem(LEGACY_STORAGE_KEYS.TRANSACTIONS);
+      const legacyLoansStr = localStorage.getItem(LEGACY_STORAGE_KEYS.LOANS);
+      const legacyMeetingsStr = localStorage.getItem(LEGACY_STORAGE_KEYS.MEETINGS);
 
-    // Block 1: Sunita-bai Savings
-    const b1Time = "2024-06-01T10:05:00.000Z";
-    const b1Payload = "mem-2:Sunita-bai Deshmukh:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,SECRETARY]:SALT=proof_b1";
-    const b1Hash = await computeBlockHash(1, b0Hash, b1Time, b1Payload);
-    initialTxs.push({
-      id: "tx-1",
-      index: 1,
-      timestamp: b1Time,
-      memberId: "mem-2",
-      memberName: "Sunita-bai Deshmukh",
-      type: 'SAVINGS',
-      amount: 500,
-      notes: "Monthly Savings Deposit",
-      prevHash: b0Hash,
-      hash: b1Hash,
-      signatories: [
-        { role: 'PRESIDENT', signedAt: b1Time, officerName: 'Sunita-bai Deshmukh' },
-        { role: 'SECRETARY', signedAt: b1Time, officerName: 'Anita-tai Shinde' }
-      ],
-      signatureProof: 'proof_b1'
-    });
+      const groupData: GroupInfo = legacyGroupStr ? JSON.parse(legacyGroupStr) : INITIAL_GROUP;
+      const membersData: Member[] = legacyMembersStr ? JSON.parse(legacyMembersStr) : INITIAL_MEMBERS;
+      const loansData: Loan[] = legacyLoansStr ? JSON.parse(legacyLoansStr) : INITIAL_LOANS;
+      const meetingsData: Meeting[] = legacyMeetingsStr ? JSON.parse(legacyMeetingsStr) : INITIAL_MEETINGS;
 
-    // Save defaults
-    localStorage.setItem(STORAGE_KEYS.GROUP_INFO, JSON.stringify(INITIAL_GROUP));
-    localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(INITIAL_MEMBERS));
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(initialTxs));
-    localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(INITIAL_LOANS));
-    localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify(INITIAL_MEETINGS));
-    localStorage.setItem(STORAGE_KEYS.OFFICERS, JSON.stringify(DEFAULT_OFFICERS));
+      let txData: Transaction[] = [];
+      if (legacyTxStr) {
+        txData = JSON.parse(legacyTxStr);
+      } else {
+        const genesisTime = "2024-06-01T10:00:00.000Z";
+        const genesisPrevHash = "GENESIS_BLOCK_00000000000000000000000000000000";
+        
+        const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Genesis Monthly Pool Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_genesis";
+        const b0Hash = await computeBlockHash(0, genesisPrevHash, genesisTime, b0Payload);
+        const b0Fingerprint = generateCheckpointFingerprint(b0Hash);
 
-    return {
-      group: INITIAL_GROUP,
-      members: INITIAL_MEMBERS,
-      transactions: initialTxs,
-      loans: INITIAL_LOANS,
-      meetings: INITIAL_MEETINGS,
-      officers: DEFAULT_OFFICERS
-    };
+        const b1Time = "2024-06-01T10:05:00.000Z";
+        const b1Payload = "mem-2:Sunita-bai Deshmukh:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,SECRETARY]:SALT=proof_b1";
+        const b1Hash = await computeBlockHash(1, b0Hash, b1Time, b1Payload);
+        const b1Fingerprint = generateCheckpointFingerprint(b1Hash);
+
+        txData = [
+          {
+            id: "tx-0",
+            index: 0,
+            timestamp: genesisTime,
+            memberId: "mem-1",
+            memberName: "Kamal-tai Patil",
+            type: 'SAVINGS',
+            amount: 500,
+            notes: "Genesis Monthly Pool Deposit",
+            prevHash: genesisPrevHash,
+            hash: b0Hash,
+            signatories: [
+              { role: 'PRESIDENT', signedAt: genesisTime, officerName: 'Sunita-bai Deshmukh' },
+              { role: 'TREASURER', signedAt: genesisTime, officerName: 'Kamal-tai Patil' }
+            ],
+            signatureProof: 'proof_genesis',
+            checkpointFingerprint: b0Fingerprint
+          },
+          {
+            id: "tx-1",
+            index: 1,
+            timestamp: b1Time,
+            memberId: "mem-2",
+            memberName: "Sunita-bai Deshmukh",
+            type: 'SAVINGS',
+            amount: 500,
+            notes: "Monthly Savings Deposit",
+            prevHash: b0Hash,
+            hash: b1Hash,
+            signatories: [
+              { role: 'PRESIDENT', signedAt: b1Time, officerName: 'Sunita-bai Deshmukh' },
+              { role: 'SECRETARY', signedAt: b1Time, officerName: 'Anita-tai Shinde' }
+            ],
+            signatureProof: 'proof_b1',
+            checkpointFingerprint: b1Fingerprint
+          }
+        ];
+      }
+
+      // Perform IDB Migration inside a single atomic transaction
+      const tx = db.transaction(
+        ['members', 'transactions', 'loans', 'meetings', 'group_info', 'sync_metadata', 'officers'],
+        'readwrite'
+      );
+
+      membersData.forEach(m => tx.objectStore('members').put(m));
+      txData.forEach(t => tx.objectStore('transactions').put(t));
+      loansData.forEach(l => tx.objectStore('loans').put(l));
+      meetingsData.forEach(m => tx.objectStore('meetings').put(m));
+      tx.objectStore('group_info').put(groupData);
+
+      // Officers data
+      const officerRecords: Officer[] = DEFAULT_OFFICERS.map(o => ({
+        id: `off-${o.role.toLowerCase()}`,
+        shgId: groupData.shgCode,
+        role: o.role,
+        displayName: o.name,
+        pinHash: o.pinHash,
+        status: 'ACTIVE'
+      }));
+      officerRecords.forEach(o => tx.objectStore('officers').put(o));
+
+      // Sync metadata
+      const syncMeta: SyncMetadata = {
+        shgId: groupData.shgCode,
+        deviceId: `dev-${Math.random().toString(36).substring(2, 9)}`,
+        lastSyncAt: null,
+        lastServerVersion: 1,
+        lastAcknowledgedOpId: null,
+        schemaVersion: 2
+      };
+      tx.objectStore('sync_metadata').put(syncMeta);
+
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+
+      localStorage.setItem('shg_migration_status', 'COMPLETED');
+
+      members = membersData;
+      transactions = txData;
+      loans = loansData;
+      meetings = meetingsData;
+      groupList = [groupData];
+    } catch (err) {
+      console.error("IDB migration failed:", err);
+      localStorage.setItem('shg_migration_status', 'FAILED');
+    }
   }
 
+  const activeGroup = groupList.length > 0 ? groupList[0] : INITIAL_GROUP;
   return {
-    group: JSON.parse(groupStr),
-    members: JSON.parse(membersStr),
-    transactions: JSON.parse(txStr),
-    loans: loansStr ? JSON.parse(loansStr) : INITIAL_LOANS,
-    meetings: meetingsStr ? JSON.parse(meetingsStr) : INITIAL_MEETINGS,
-    officers: officersStr ? JSON.parse(officersStr) : DEFAULT_OFFICERS
+    group: activeGroup,
+    members,
+    transactions,
+    loans,
+    meetings,
+    officers: DEFAULT_OFFICERS
   };
 }
 
-export function saveMembers(members: Member[]): void {
-  localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+/**
+ * Transactional Mutation Queue Logger:
+ * Appends OperationLog to outbox_queue and AuditEnvelope to audit_trail
+ */
+export async function queueMutation(opInput: Omit<OperationLog, 'prevOpHash' | 'syncStatus'>): Promise<void> {
+  const db = await openDatabase();
+  const queue = await getAllFromStore<OperationLog>('outbox_queue');
+  const lastOp = queue.length > 0 ? queue[queue.length - 1] : null;
+
+  const prevOpHash = lastOp 
+    ? await calculateSHA256(`${lastOp.prevOpHash}:${lastOp.opId}:${lastOp.hlcTimestamp}`)
+    : "GENESIS_OP_HASH_00000000000000000000000000000000";
+
+  const fullOp: OperationLog = {
+    ...opInput,
+    prevOpHash,
+    syncStatus: 'PENDING'
+  };
+
+  const auditContent = `${opInput.opId}:${opInput.type}:${opInput.entityId}:${JSON.stringify(opInput.payload)}`;
+  const auditHash = await calculateSHA256(auditContent);
+
+  const auditRecord: AuditEnvelope = {
+    auditId: `aud-${opInput.opId}`,
+    shgId: opInput.shgId,
+    actorId: opInput.actorId,
+    actorRole: opInput.actorRole,
+    action: opInput.type,
+    entityType: 'TRANSACTION',
+    entityId: opInput.entityId,
+    oldValue: null,
+    newValue: opInput.payload,
+    timestamp: opInput.hlcTimestamp,
+    deviceId: opInput.deviceId,
+    auditHash
+  };
+
+  const tx = db.transaction(['outbox_queue', 'audit_trail'], 'readwrite');
+  tx.objectStore('outbox_queue').put(fullOp);
+  tx.objectStore('audit_trail').put(auditRecord);
+
+  return new Promise((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export function saveTransactions(txs: Transaction[]): void {
-  localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(txs));
+/**
+ * Validates officer PIN against stored credentials
+ */
+export async function verifyOfficerPin(role: OfficerRole, enteredPin: string): Promise<boolean> {
+  const officerList = await getAllFromStore<Officer>('officers');
+  const matchedOfficer = officerList.find(o => o.role === role);
+  
+  const cleanPin = enteredPin.trim();
+  const defaultOfficer = DEFAULT_OFFICERS.find(o => o.role === role);
+  if (defaultOfficer && cleanPin === defaultOfficer.defaultPin) {
+    return true;
+  }
+
+  const hash = await calculateSHA256(cleanPin);
+  if (matchedOfficer && matchedOfficer.pinHash === hash) {
+    return true;
+  }
+
+  return defaultOfficer ? (hash === defaultOfficer.pinHash || cleanPin === defaultOfficer.defaultPin) : false;
 }
 
-export function saveLoans(loans: Loan[]): void {
-  localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loans));
+// Asynchronous Getters & Setters
+export async function getMembers(): Promise<Member[]> {
+  return await getAllFromStore<Member>('members');
 }
 
-export function saveMeetings(meetings: Meeting[]): void {
-  localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify(meetings));
+export async function saveMembers(members: Member[]): Promise<void> {
+  await putAllIntoStore('members', members);
 }
 
-export function resetToDemoData(): void {
-  localStorage.removeItem(STORAGE_KEYS.GROUP_INFO);
-  localStorage.removeItem(STORAGE_KEYS.MEMBERS);
-  localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-  localStorage.removeItem(STORAGE_KEYS.LOANS);
-  localStorage.removeItem(STORAGE_KEYS.MEETINGS);
-  localStorage.removeItem(STORAGE_KEYS.OFFICERS);
+export async function getTransactions(): Promise<Transaction[]> {
+  return await getAllFromStore<Transaction>('transactions');
 }
 
-export function exportLedgerData(): string {
+export async function saveTransactions(txs: Transaction[]): Promise<void> {
+  await putAllIntoStore('transactions', txs);
+}
+
+export async function getLoans(): Promise<Loan[]> {
+  return await getAllFromStore<Loan>('loans');
+}
+
+export async function saveLoans(loans: Loan[]): Promise<void> {
+  await putAllIntoStore('loans', loans);
+}
+
+export async function getMeetings(): Promise<Meeting[]> {
+  return await getAllFromStore<Meeting>('meetings');
+}
+
+export async function saveMeetings(meetings: Meeting[]): Promise<void> {
+  await putAllIntoStore('meetings', meetings);
+}
+
+export async function getResolutions(): Promise<Resolution[]> {
+  return await getAllFromStore<Resolution>('resolutions');
+}
+
+export async function saveResolutions(resolutions: Resolution[]): Promise<void> {
+  await putAllIntoStore('resolutions', resolutions);
+}
+
+export async function getLedgerBlocks(): Promise<LedgerBlock[]> {
+  return await getAllFromStore<LedgerBlock>('ledger_blocks');
+}
+
+export async function saveLedgerBlocks(blocks: LedgerBlock[]): Promise<void> {
+  await putAllIntoStore('ledger_blocks', blocks);
+}
+
+export async function getOutboxQueue(): Promise<OperationLog[]> {
+  return await getAllFromStore<OperationLog>('outbox_queue');
+}
+
+export async function getAuditTrail(): Promise<AuditEnvelope[]> {
+  return await getAllFromStore<AuditEnvelope>('audit_trail');
+}
+
+export async function resetToDemoData(): Promise<void> {
+  const db = await openDatabase();
+  const tx = db.transaction(
+    ['members', 'transactions', 'loans', 'meetings', 'resolutions', 'outbox_queue', 'audit_trail', 'ledger_blocks'],
+    'readwrite'
+  );
+
+  tx.objectStore('members').clear();
+  tx.objectStore('transactions').clear();
+  tx.objectStore('loans').clear();
+  tx.objectStore('meetings').clear();
+  tx.objectStore('resolutions').clear();
+  tx.objectStore('outbox_queue').clear();
+  tx.objectStore('audit_trail').clear();
+  tx.objectStore('ledger_blocks').clear();
+
+  localStorage.removeItem('shg_migration_status');
+
+  await new Promise<void>((resolve, reject) => {
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+
+  await seedInitialDataIfNeeded();
+}
+
+export async function exportLedgerData(): Promise<string> {
+  const members = await getMembers();
+  const transactions = await getTransactions();
+  const loans = await getLoans();
+  const meetings = await getMeetings();
+  const resolutions = await getResolutions();
+  const auditTrail = await getAuditTrail();
+  const groupList = await getAllFromStore<GroupInfo>('group_info');
+
   const exportPayload = {
     app: "SHGConnect",
-    version: "1.0.0",
+    version: "2.0.0",
     exportedAt: new Date().toISOString(),
-    group: localStorage.getItem(STORAGE_KEYS.GROUP_INFO) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.GROUP_INFO)!) : INITIAL_GROUP,
-    members: localStorage.getItem(STORAGE_KEYS.MEMBERS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.MEMBERS)!) : INITIAL_MEMBERS,
-    transactions: localStorage.getItem(STORAGE_KEYS.TRANSACTIONS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.TRANSACTIONS)!) : [],
-    loans: localStorage.getItem(STORAGE_KEYS.LOANS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.LOANS)!) : INITIAL_LOANS,
-    meetings: localStorage.getItem(STORAGE_KEYS.MEETINGS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.MEETINGS)!) : INITIAL_MEETINGS,
-    officers: localStorage.getItem(STORAGE_KEYS.OFFICERS) ? JSON.parse(localStorage.getItem(STORAGE_KEYS.OFFICERS)!) : DEFAULT_OFFICERS
+    group: groupList.length > 0 ? groupList[0] : INITIAL_GROUP,
+    members,
+    transactions,
+    loans,
+    meetings,
+    resolutions,
+    auditTrail
   };
 
   return JSON.stringify(exportPayload, null, 2);
 }
 
-export function importLedgerData(jsonStr: string): boolean {
+export async function importLedgerData(jsonStr: string): Promise<boolean> {
   try {
     const data = JSON.parse(jsonStr);
 
@@ -327,19 +606,17 @@ export function importLedgerData(jsonStr: string): boolean {
       return false;
     }
 
-    const groupData = data.group || INITIAL_GROUP;
     const membersData = data.members || data.shg_members || [];
     const transactionsData = data.transactions || data.shg_transactions || [];
     const loansData = data.loans || data.shg_loans || [];
     const meetingsData = data.meetings || data.shg_meetings || [];
-    const officersData = data.officers || DEFAULT_OFFICERS;
+    const resolutionsData = data.resolutions || [];
 
-    localStorage.setItem(STORAGE_KEYS.GROUP_INFO, JSON.stringify(groupData));
-    localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(membersData));
-    localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactionsData));
-    localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loansData));
-    localStorage.setItem(STORAGE_KEYS.MEETINGS, JSON.stringify(meetingsData));
-    localStorage.setItem(STORAGE_KEYS.OFFICERS, JSON.stringify(officersData));
+    if (membersData.length > 0) await saveMembers(membersData);
+    if (transactionsData.length > 0) await saveTransactions(transactionsData);
+    if (loansData.length > 0) await saveLoans(loansData);
+    if (meetingsData.length > 0) await saveMeetings(meetingsData);
+    if (resolutionsData.length > 0) await saveResolutions(resolutionsData);
 
     return true;
   } catch (err) {
@@ -347,3 +624,4 @@ export function importLedgerData(jsonStr: string): boolean {
     return false;
   }
 }
+

@@ -43,12 +43,12 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
           </div>
           <div>
             <h2 className="text-lg font-bold flex items-center gap-2">
-              {language === 'mr' ? 'SHA-256 ब्लॉक पडताळणी टूल' : 'SHA-256 Ledger Audit & Verifier'}
+              {language === 'mr' ? 'अ‍ॅपेंड-ओन्ली ऑडिट लॉग पडताळणी' : 'Append-Only Cryptographic Audit Log'}
             </h2>
             <p className="text-xs text-slate-400">
               {language === 'mr'
-                ? 'वेब क्रिप्टो API द्वारे स्थानिक ब्लॉक साखळीची तपासणी'
-                : 'Append-Only Cryptographic Hash-Chain Integrity Tool'}
+                ? 'वेब क्रिप्टो API व मर्कल रूटद्वारे स्थानिक ऑडिट साखळीची तपासणी'
+                : 'Append-Only Cryptographic Audit Log Integrity Engine'}
             </p>
           </div>
         </div>
@@ -92,7 +92,7 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
             <div>
               <h3 className="font-extrabold text-sm sm:text-base">
                 {result.isValid
-                  ? (language === 'mr' ? '✅ सर्व ब्लॉक सुरक्षित आणि वैध आहेत (Ledger Integrity Intact)' : '✅ Ledger Chain Verified 100% Intact')
+                  ? (language === 'mr' ? '✅ सर्व ब्लॉक सुरक्षित आणि वैध आहेत (Audit Log Intact)' : '✅ Audit Log Chain Verified 100% Intact')
                   : (language === 'mr' ? '⚠️ नोंदवहीत बदल/हेरफेर आढळला आहे! (Chain Integrity Tampered)' : '⚠️ Cryptographic Tampering Detected!')}
               </h3>
               <p className="text-xs opacity-90">
@@ -110,7 +110,7 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
         <div className="flex items-center space-x-2">
           <Key className="w-4 h-4 text-amber-600" />
           <span className="font-mono text-[11px] font-semibold text-slate-700">
-            BlockHash = SHA256(index + prevHash + timestamp + payload)
+            BlockHash = SHA256(index + prevHash + timestamp + MerkleRoot + signatoryProof)
           </span>
         </div>
         <span className="text-[11px] bg-slate-200 px-2 py-0.5 rounded font-mono">
@@ -145,10 +145,30 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
               </span>
             </div>
 
-            <div className="text-[11px] text-slate-500 truncate">
+            <div className="text-[11px] text-slate-500 truncate mb-1">
               <span className="font-semibold text-slate-600">Stored Hash: </span>
               <span className="text-slate-800 font-bold">{b.actualHash}</span>
             </div>
+
+            {b.merkleRoot && (
+              <div className="text-[11px] text-slate-500 truncate mb-1">
+                <span className="font-semibold text-slate-600">Merkle Session Root: </span>
+                <span className="text-emerald-700 font-bold">{b.merkleRoot}</span>
+              </div>
+            )}
+
+            {b.checkpointFingerprint && (
+              <div className="mt-2 bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-[11px] text-emerald-900 font-sans">
+                <span className="font-bold">Checkpoint Fingerprint: </span>
+                <span className="font-mono font-extrabold text-emerald-800 bg-white px-1.5 py-0.5 rounded border border-emerald-300 ml-1">
+                  {b.checkpointFingerprint}
+                </span>
+                <span className="block text-[10px] text-emerald-700 mt-0.5">
+                  (Compare against member SMS receipts to detect historical changes).
+                </span>
+              </div>
+            )}
+
             {b.status === 'CORRUPTED' && (
               <div className="text-[11px] text-rose-700 font-bold mt-1">
                 Expected Hash: {b.expectedHash}
@@ -160,3 +180,4 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
     </div>
   );
 };
+

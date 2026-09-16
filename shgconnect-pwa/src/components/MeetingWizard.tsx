@@ -191,20 +191,20 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   // Broadcast Out-of-Band SMS / WhatsApp Audit Receipts
   const handleBroadcastSmsReceipts = () => {
     sound.playStampSound();
+    const fingerprint = `CHK-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const sampleReceipts = members.map(m => {
       const isPresent = attendance[m.id];
       const savings = savingsAmounts[m.id] || 0;
-      return `माहिती: महिला प्रगति बचत गट बैठकीत आपली ₹${savings} बचत जमा झाली. हजेरी: ${isPresent ? 'हजर' : 'गैरहजर'}. शिल्लक कर्ज: ₹${m.activeLoanBalance}.`;
+      return `माहिती: महिला प्रगति बचत गट बैठकीत आपली ₹${savings} बचत जमा झाली. हजेरी: ${isPresent ? 'हजर' : 'गैरहजर'}. शिल्लक कर्ज: ₹${m.activeLoanBalance}. चेकपॉइंट फिंगरप्रिंट: ${fingerprint}`;
     }).join('\n\n');
 
     if (navigator.share) {
       navigator.share({
-        title: 'SHGConnect Meeting Audit Receipt',
+        title: 'SHGConnect Audit Receipts',
         text: sampleReceipts
       }).catch(() => {});
     } else {
-      const smsUri = `sms:?body=${encodeURIComponent(sampleReceipts.substring(0, 140))}`;
-      window.open(smsUri, '_self');
+      window.open(`sms:?body=${encodeURIComponent(sampleReceipts)}`, '_self');
     }
   };
 

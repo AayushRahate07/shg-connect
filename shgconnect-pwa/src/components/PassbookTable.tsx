@@ -287,14 +287,21 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
                       ₹{row.balance.toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-3 text-center print:hidden">
-                      <button
-                        onClick={() => onVerifyBlock && onVerifyBlock(row.index)}
-                        className="inline-flex items-center space-x-1 bg-white hover:bg-emerald-50 text-[#14532D] border border-emerald-400 px-2 py-1 rounded-md text-[10px] font-mono transition shadow-2xs font-bold"
-                        title={`Full SHA-256 Hash: ${row.hash}`}
-                      >
-                        <ShieldCheck className="w-3 h-3 text-emerald-700" />
-                        <span>0x{row.hash.substring(0, 6)}...{row.hash.substring(row.hash.length - 4)}</span>
-                      </button>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button
+                          onClick={() => onVerifyBlock && onVerifyBlock(row.index)}
+                          className="inline-flex items-center space-x-1 bg-white hover:bg-emerald-50 text-[#14532D] border border-emerald-400 px-2 py-0.5 rounded-md text-[10px] font-mono transition shadow-2xs font-bold"
+                          title={`Full SHA-256 Hash: ${row.hash}`}
+                        >
+                          <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                          <span>0x{row.hash.substring(0, 6)}...{row.hash.substring(row.hash.length - 4)}</span>
+                        </button>
+                        {row.checkpointFingerprint && (
+                          <span className="text-[9px] font-mono font-extrabold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.2 rounded">
+                            {row.checkpointFingerprint}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
