@@ -10,6 +10,9 @@ export interface OfficerSignature {
 
 export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI_REPAYMENT' | 'PENALTY' | 'RESOLUTION';
 
+export type PaymentMode = 'CASH' | 'UPI_INTENT';
+export type SettlementStatus = 'SETTLED_CASH' | 'PENDING_BANK_RECONCILIATION' | 'SETTLED_DIGITAL_UTR';
+
 export interface Member {
   id: string;
   name: string;
@@ -39,6 +42,9 @@ export interface Transaction {
   signatories?: OfficerSignature[];
   signatureProof?: string;
   checkpointFingerprint?: string;
+  paymentMode?: PaymentMode;
+  settlementStatus?: SettlementStatus;
+  utrReference?: string; // 12-character alphanumeric bank reference
 }
 
 export interface Loan {
@@ -129,6 +135,31 @@ export interface SyncMetadata {
   lastAcknowledgedOpId: string | null;
   schemaVersion: number;
 }
+
+export interface NRLMCreditAssessment {
+  shgAgeMonths: number;
+  panchasutraHealthScore: number;     // 0-100 operational index
+  eligibleCorpus: number;             // Savings + retained earnings/interest
+  activeRepaymentRate: number;        // Percentage (0-100)
+  recommendedDose: 'INELIGIBLE_AGE' | 'DOSE_1' | 'DOSE_2' | 'DOSE_3_PLUS';
+  estimatedCreditLimit: number;
+  appraisalDisclaimer: string;
+}
+
+export interface EventContext {
+  shgId: string;
+  actorId: string;
+  actorRole: 'ANIMATOR' | 'PRESIDENT' | 'SECRETARY' | 'TREASURER';
+  deviceId: string;
+}
+
+export type DomainEvent =
+  | { type: 'MEETING_COMMITTED'; payload: { meetingId: string; blockId: string; totalSavings: number; totalDisbursed: number } }
+  | { type: 'SAVINGS_RECORDED'; payload: { memberId: string; amount: number; paymentMode: PaymentMode; settlementStatus: SettlementStatus; utrReference?: string } }
+  | { type: 'LOAN_DISBURSED'; payload: { memberId: string; amount: number; purpose: string } }
+  | { type: 'EMI_REPAID'; payload: { memberId: string; principal: number; interest: number } }
+  | { type: 'CASH_MISMATCH_FLAGGED'; payload: { expected: number; physicalCounted: number; variance: number } }
+  | { type: 'QUORUM_SIGNATURES_AUTHENTICATED'; payload: { officerRoles: string[]; sessionHash: string } };
 
 export interface ChainVerificationBlockResult {
   index: number;

@@ -1,12 +1,13 @@
 import React from 'react';
-import { SupportedLanguage, PanchasutraScore, Member, Transaction } from '../types/shg';
-import { Award, Building2, CheckCircle2, ShieldCheck, TrendingUp, AlertTriangle, Scale } from 'lucide-react';
+import { SupportedLanguage, PanchasutraScore, Member, Transaction, NRLMCreditAssessment } from '../types/shg';
+import { Award, Building2, CheckCircle2, ShieldCheck, TrendingUp, AlertTriangle, Scale, Info } from 'lucide-react';
 
 interface PanchasutraAuditCardProps {
   members: Member[];
   transactions: Transaction[];
   isChainValid: boolean;
   language: SupportedLanguage;
+  shgAgeMonths?: number;
 }
 
 export function calculatePanchasutraScore(
@@ -61,16 +62,63 @@ export function calculatePanchasutraScore(
   };
 }
 
+export function calculateNRLMCreditAssessment(
+  members: Member[],
+  panchasutraScore: number,
+  shgAgeMonths: number = 18
+): NRLMCreditAssessment {
+  const eligibleCorpus = members.reduce((sum, m) => sum + m.totalSavings, 0);
+  const avgTrust = members.reduce((sum, m) => sum + m.trustScore, 0) / (members.length || 1);
+
+  let recommendedDose: 'INELIGIBLE_AGE' | 'DOSE_1' | 'DOSE_2' | 'DOSE_3_PLUS' = 'DOSE_1';
+  let estimatedCreditLimit = 0;
+
+  if (shgAgeMonths < 6) {
+    recommendedDose = 'INELIGIBLE_AGE';
+    estimatedCreditLimit = 0;
+  } else if (shgAgeMonths < 12) {
+    recommendedDose = 'DOSE_1';
+    estimatedCreditLimit = Math.max(6 * eligibleCorpus, 150000);
+  } else if (shgAgeMonths < 24) {
+    recommendedDose = 'DOSE_2';
+    estimatedCreditLimit = Math.max(8 * eligibleCorpus, 300000);
+  } else {
+    recommendedDose = 'DOSE_3_PLUS';
+    estimatedCreditLimit = 600000; // Minimum ₹6,00,000 baseline; actual sanction via MCP/appraisal
+  }
+
+  const appraisalDisclaimer = "Suggested internal credit-readiness indicator based on DAY-NRLM circular guidance. Final sanction limit, drawing power, and interest subvention are determined solely by the financing bank branch via Micro-Credit Plan (MCP) appraisal and credit history.";
+
+  return {
+    shgAgeMonths,
+    panchasutraHealthScore: panchasutraScore,
+    eligibleCorpus,
+    activeRepaymentRate: Math.round(avgTrust),
+    recommendedDose,
+    estimatedCreditLimit,
+    appraisalDisclaimer
+  };
+}
+
 export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
   members,
   transactions,
   isChainValid,
-  language
+  language,
+  shgAgeMonths = 18
 }) => {
   const score = calculatePanchasutraScore(members, transactions, isChainValid);
+  const nrlmAssessment = calculateNRLMCreditAssessment(members, score.totalScore, shgAgeMonths);
 
-  // Circular gauge calculations
-  const strokeDashoffset = 283 - (283 * score.totalScore) / 100;
+  const getDoseBadgeLabel = (dose: string) => {
+    switch (dose) {
+      case 'INELIGIBLE_AGE': return language === 'mr' ? 'अपात्र (६ महिन्यांपेक्षा कमी वय)' : 'Ineligible (< 6 Months Vintage)';
+      case 'DOSE_1': return language === 'mr' ? 'प्रस्तावित हप्ता १ (Dose 1: ₹1.5L आधारभूत)' : 'Suggested Dose 1 (₹1.5 Lakh Min)';
+      case 'DOSE_2': return language === 'mr' ? 'प्रस्तावित हप्ता २ (Dose 2: ₹3.0L आधारभूत)' : 'Suggested Dose 2 (₹3.0 Lakh Min)';
+      case 'DOSE_3_PLUS': return language === 'mr' ? 'प्रस्तावित हप्ता ३+ (Dose 3+: ₹6.0L आधारभूत + MCP मूल्यमापन)' : 'Suggested Dose 3+ (₹6.0L Min + MCP Appraisal)';
+      default: return dose;
+    }
+  };
 
   return (
     <div className="bg-[#FDFBF7] border-2 border-[#E2DDD3] rounded-3xl p-6 shadow-md space-y-6">
@@ -79,7 +127,7 @@ export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
         <div>
           <div className="flex items-center space-x-2">
             <span className="bg-[#14532D] text-emerald-100 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-wider">
-              NRLM / NABARD Norms
+              DAY-NRLM / RBI Framework
             </span>
             <span className={`px-3 py-1 rounded-full text-xs font-black ${
               score.bankGrade === 'Grade A' ? 'bg-amber-400 text-amber-950' : 'bg-blue-600 text-white'
@@ -88,12 +136,12 @@ export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
             </span>
           </div>
           <h2 className="text-xl font-black text-[#1C1917] mt-2 flex items-center gap-2">
-            🏛️ {language === 'mr' ? 'नाबार्ड "पंचसूत्र" बँक क्रेडिट मानके' : 'NABARD Panchasutra Credit Linkage Audit'}
+            🏛️ {language === 'mr' ? 'SHGConnect कार्यक्षमता निर्देशांक (पंचसूत्र मानके)' : 'SHGConnect Operational Health Index (Panchasutra-Aligned)'}
           </h2>
           <p className="text-xs text-stone-600">
             {language === 'mr'
               ? 'बँक कर्जासाठी बचत गटाचे ५ संस्थात्मक निकष मूल्यमापन'
-              : 'Institutional 5-Pillar evaluation for Indian Bank Credit Linkage'}
+              : 'Operational 5-Pillar audit index for Indian Bank Credit Linkage'}
           </p>
         </div>
 
@@ -129,9 +177,9 @@ export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
           </div>
 
           <div>
-            <div className="text-xs font-bold text-stone-500 uppercase">{language === 'mr' ? 'पात्रता दर्जा' : 'Credit Linkage'}</div>
+            <div className="text-xs font-bold text-stone-500 uppercase">{language === 'mr' ? 'पात्रता दर्जा' : 'Health Index'}</div>
             <div className="text-lg font-black text-[#14532D]">{score.bankGrade}</div>
-            <div className="text-[11px] font-semibold text-amber-900">NABARD Qualified</div>
+            <div className="text-[11px] font-semibold text-amber-900">DAY-NRLM Compliant</div>
           </div>
         </div>
       </div>
@@ -197,28 +245,52 @@ export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
         </div>
       </div>
 
-      {/* Bank Linkage Estimate Banner */}
-      <div className="bg-[#F7F4EC] border border-[#E2DDD3] rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-[#14532D] text-amber-400 flex items-center justify-center font-bold">
-            <Building2 className="w-5 h-5" />
+      {/* DAY-NRLM Credit Readiness Assessment Section */}
+      <div className="bg-white border-2 border-amber-300 rounded-2xl p-5 space-y-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200 pb-3">
+          <div className="flex items-center space-x-2">
+            <Building2 className="w-5 h-5 text-amber-700" />
+            <h3 className="font-extrabold text-base text-[#1C1917]">
+              {language === 'mr' ? 'दीनदयाळ अंत्योदय योजना (DAY-NRLM) बँक क्रेडिट तयारता मूल्यमापन' : 'NRLM Credit Readiness Assessment'}
+            </h3>
           </div>
-          <div>
-            <span className="text-xs text-stone-600 font-bold uppercase">
-              {language === 'mr' ? 'अंदाजित बँक कर्ज पात्रता (Bank Loan Eligibility)' : 'Estimated Bank Credit Linkage'}
+          <span className="bg-amber-100 text-amber-950 border border-amber-300 px-3 py-1 rounded-full text-xs font-black">
+            {getDoseBadgeLabel(nrlmAssessment.recommendedDose)}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-[#FDFBF7] border border-[#E2DDD3] p-3 rounded-xl">
+            <span className="text-[11px] text-stone-500 font-bold uppercase block">
+              {language === 'mr' ? 'बचत गटाचे वय (SHG Age)' : 'SHG Active Vintage'}
             </span>
-            <div className="text-2xl font-black text-[#1C1917]">
-              ₹{score.loanEligibilityInr.toLocaleString('en-IN')}
-            </div>
+            <span className="text-lg font-black text-[#1C1917]">{nrlmAssessment.shgAgeMonths} Months</span>
+          </div>
+
+          <div className="bg-[#FDFBF7] border border-[#E2DDD3] p-3 rounded-xl">
+            <span className="text-[11px] text-stone-500 font-bold uppercase block">
+              {language === 'mr' ? 'एकूण बचत कॉर्पस (Eligible Corpus)' : 'Eligible Savings Corpus'}
+            </span>
+            <span className="text-lg font-black text-[#14532D]">₹{nrlmAssessment.eligibleCorpus.toLocaleString('en-IN')}</span>
+          </div>
+
+          <div className="bg-[#FDFBF7] border border-[#E2DDD3] p-3 rounded-xl">
+            <span className="text-[11px] text-stone-500 font-bold uppercase block">
+              {language === 'mr' ? 'अंदाजित क्रेडिट मर्यादा (Est. Limit)' : 'Estimated Credit Limit'}
+            </span>
+            <span className="text-xl font-black text-[#14532D]">₹{nrlmAssessment.estimatedCreditLimit.toLocaleString('en-IN')}</span>
           </div>
         </div>
 
-        <div className="text-xs text-stone-600 max-w-xs text-right">
-          {language === 'mr' 
-            ? 'गट ग्रेड A असल्यामुळे बचत रक्कमेच्या १० पट पर्यंत बँक कर्ज मिळण्यास पात्र.'
-            : 'Grade A classification entitles the SHG to up to 10x savings pool credit linkage.'}
+        {/* Institutional Disclaimer */}
+        <div className="bg-amber-50 border border-amber-200 text-amber-950 p-3 rounded-xl text-xs font-medium flex items-start space-x-2">
+          <Info className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+          <p className="leading-snug text-[11px]">
+            {nrlmAssessment.appraisalDisclaimer}
+          </p>
         </div>
       </div>
     </div>
   );
 };
+

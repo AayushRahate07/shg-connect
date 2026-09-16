@@ -7,6 +7,7 @@ import { tts } from '../services/tts';
 import { sound } from '../services/sound';
 import { CashBoxReconciliation } from './CashBoxReconciliation';
 import { ResolutionRegister } from './ResolutionRegister';
+import { eventBus } from '../services/eventBus';
 
 interface MeetingWizardProps {
   members: Member[];
@@ -183,6 +184,41 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
         notes: loanPurpose
       };
     }
+
+    // Emit Quorum Authenticated and Meeting Committed events to eventBus
+    await eventBus.emit(
+      {
+        type: 'QUORUM_SIGNATURES_AUTHENTICATED',
+        payload: {
+          officerRoles: confirmedSigs.map(s => s.role),
+          sessionHash: proofHash
+        }
+      },
+      {
+        shgId: 'SHG-MH-2024-884',
+        actorId: confirmedSigs[0]?.role || 'TREASURER',
+        actorRole: (confirmedSigs[0]?.role as any) || 'TREASURER',
+        deviceId: 'dev-pwa-local'
+      }
+    );
+
+    await eventBus.emit(
+      {
+        type: 'MEETING_COMMITTED',
+        payload: {
+          meetingId: `meet-${Date.now()}`,
+          blockId: proofHash.substring(0, 10),
+          totalSavings: totalSavingsCollected,
+          totalDisbursed: loanData ? loanData.amount : 0
+        }
+      },
+      {
+        shgId: 'SHG-MH-2024-884',
+        actorId: 'animator-1',
+        actorRole: 'ANIMATOR',
+        deviceId: 'dev-pwa-local'
+      }
+    );
 
     onCompleteMeeting(attendance, savingsList, loanData, sessionResolutions, confirmedSigs, proofHash);
     setIsCommitted(true);

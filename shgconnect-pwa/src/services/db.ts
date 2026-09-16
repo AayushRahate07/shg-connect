@@ -546,6 +546,17 @@ export async function getAuditTrail(): Promise<AuditEnvelope[]> {
   return await getAllFromStore<AuditEnvelope>('audit_trail');
 }
 
+export async function saveAuditEnvelope(audit: AuditEnvelope): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('audit_trail', 'readwrite');
+    const store = tx.objectStore('audit_trail');
+    store.put(audit);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function resetToDemoData(): Promise<void> {
   const db = await openDatabase();
   const tx = db.transaction(
