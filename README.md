@@ -2,12 +2,14 @@
 
 # SHGCONNECT
 
-### Offline-First Digital Ledger for Self-Help Groups
+### Offline-First Digital Ledger & Synchronization Platform for Self-Help Groups
 
-[![License](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
-[![Frontend](https://img.shields.io/badge/Frontend-React%20%7C%20Vite%20%7C%20TypeScript-blue.svg)](shgconnect-pwa)
-[![Backend](https://img.shields.io/badge/Backend-Node.js%20%7C%20Express%20%7C%20PostgreSQL-indigo.svg)](server)
-[![Tests](https://img.shields.io/badge/Tests-16%2F16%20Client%20%7C%2016%2F16%20Server-emerald.svg)](#-verification)
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge\&logo=react\&logoColor=black)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge\&logo=typescript\&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge\&logo=node.js\&logoColor=white)](https://nodejs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?style=for-the-badge\&logo=postgresql\&logoColor=white)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge\&logo=docker\&logoColor=white)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -17,7 +19,7 @@
 
 **SHGConnect** is an offline-first Progressive Web App for managing records and day-to-day operations of Self-Help Groups (SHGs).
 
-It provides a digital alternative to paper-based records for:
+It provides digital workflows for:
 
 * Savings
 * Loans and repayments
@@ -25,77 +27,83 @@ It provides a digital alternative to paper-based records for:
 * Meetings
 * Cash reconciliation
 * Audit records
+* UPI / UTR settlement tracking
 
-The application stores data locally using **IndexedDB** and synchronizes with a PostgreSQL backend when connectivity is available.
+The client stores data locally using **IndexedDB** and synchronizes with a **PostgreSQL backend** when connectivity is available.
 
----
-
-## 🏛️ System Architecture
+The system is designed around the separation of:
 
 ```text
-                         OFFLINE CLIENT
-
-┌──────────────────────────────────────────────────────────────┐
-│                  React + Vite + TypeScript                   │
-│                                                              │
-│       Member / Animator UI       Meeting Workflows           │
-├──────────────────────────────────────────────────────────────┤
-│                    IndexedDB + Web Crypto                    │
-│                                                              │
-│ Members │ Loans │ Meetings │ Ledger │ Audit │ Outbox Queue  │
-└──────────────────────────────┬───────────────────────────────┘
-                               │
-                         Push / Pull Sync
-                               │
-                               ▼
-┌──────────────────────────────────────────────────────────────┐
-│                    NODE + EXPRESS API                        │
-├──────────────────────────────────────────────────────────────┤
-│                       PostgreSQL 15                           │
-│                                                              │
-│ Sequence Generator │ Operation Log │ Idempotency │ SHG Data │
-└──────────────────────────────────────────────────────────────┘
+LOCAL COMMIT  ≠  REMOTE SYNC
 ```
-
-The client and server maintain separate responsibilities, with local persistence handled independently from remote synchronization.
 
 ---
 
-# ✨ Features
+# 🏛️ System Architecture
 
-### 1. 📖 Digital Passbook
+```text
+                         OFFLINE CLIENT PWA
 
-Records common SHG transactions and activities:
+┌─────────────────────────────────────────────────────────────────────┐
+│                     React + Vite + TypeScript                      │
+│                                                                     │
+│       Member / Animator UI     │     Meeting Workflows             │
+├─────────────────────────────────────────────────────────────────────┤
+│                       IndexedDB + Web Crypto                       │
+│                                                                     │
+│ Members │ Loans │ Meetings │ Ledger │ Audit Trail │ Outbox Queue   │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                         Push / Pull Sync
+                                │
+                    X-SHG-ID │ X-Device-ID │ opId
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    NODE.JS + EXPRESS SERVER                        │
+│                                                                     │
+│                 Atomic PostgreSQL Transactions                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                         PostgreSQL 15                              │
+│                                                                     │
+│ Sequence Generator │ Idempotency │ Operation Log │ SHG State       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# ✨ Key Features
+
+### 📖 Digital Passbook
+
+Digital records for common SHG operations:
 
 * Savings
 * Loan disbursal
 * EMI repayment
 * Attendance
 * Meeting resolutions
+* Transaction filtering
+* Printing / PDF export
 
-The ledger can also be filtered and printed for record keeping.
+### 📊 Panchasutra Tracking
 
----
+Tracks five operational indicators:
 
-### 2. 📊 Panchasutra Tracking
+| Indicator                | Maximum |
+| ------------------------ | ------: |
+| Regular Meetings         |      20 |
+| Regular Savings          |      20 |
+| Internal Lending         |      20 |
+| Timely Loan Recovery     |      20 |
+| Transparent Book-keeping |      20 |
+| **Total**                | **100** |
 
-The application tracks five operational indicators:
+The resulting score is used for the application's operational grading workflow.
 
-| Indicator                | Score |
-| ------------------------ | ----: |
-| Regular Meetings         |    20 |
-| Regular Savings          |    20 |
-| Internal Lending         |    20 |
-| Timely Loan Recovery     |    20 |
-| Transparent Book-keeping |    20 |
+### 🔐 2-of-3 Meeting Quorum
 
-These contribute to a **0–100 operational score** and corresponding group grading.
-
----
-
-### 3. 🔐 Meeting Quorum
-
-Meeting finalization uses a **2-of-3 officer approval** model involving:
+Meeting sessions require approval from at least two of:
 
 ```text
 President
@@ -103,120 +111,286 @@ Secretary
 Treasurer
 ```
 
-At least two officers must provide their PIN before the meeting session is finalized.
+PIN-based authorization is incorporated into the meeting's cryptographic record.
 
----
+### 🔗 Cryptographic Audit Trail
 
-### 4. 🔗 Audit Trail
+Uses the Web Crypto API for:
 
-Meeting and ledger activity can be represented using a SHA-256 based hash chain.
+* SHA-256 hash chains
+* Merkle session roots
+* Checkpoint fingerprints
+* Quorum proofs
 
-```text
-Block N
-   │
-   ├── Data
-   ├── Previous Hash
-   └── Session Proof
-          │
-          ▼
-       SHA-256
-          │
-          ▼
-       Block N+1
-```
+### 💰 Cash Reconciliation
 
-Session roots and checkpoint fingerprints are also generated for audit references.
-
----
-
-### 5. 💰 Cash Reconciliation
-
-The cash workflow allows users to enter physical denominations:
+Physical cash can be entered by denomination:
 
 ```text
 ₹500  ₹200  ₹100  ₹50  ₹20  ₹10  Coins
 ```
 
-The counted amount is compared against the expected ledger balance to identify discrepancies.
+The system compares the counted cash against the expected ledger balance.
 
----
-
-### 6. 📱 UPI & UTR
+### 📱 UPI & UTR
 
 Supports:
 
 * UPI intent links
-* QR-based payment initiation
-* UTR reference capture
-* Cash settlement fallback
+* QR payment initiation
+* UTR capture
+* Digital settlement
+* Cash fallback
 
----
+### 🛡️ Encrypted Backups
 
-### 7. 🛡️ Encrypted Backups
-
-Local application state can be exported and restored through encrypted JSON snapshots.
-
-Encryption uses:
-
-* AES-256-GCM
-* PBKDF2
-* SHA-256
-* Web Crypto API
-
----
-
-# 🔄 Synchronization
-
-SHGConnect follows an offline-first synchronization model.
+Local state can be exported and restored through encrypted JSON snapshots using:
 
 ```text
-Local Operation
-      │
-      ▼
-   IndexedDB
-      │
-      ▼
- Outbox Queue
-      │
-      ▼
-  Push to Server
-      │
-      ▼
- PostgreSQL
-      │
-      ▼
- Operation Log
-      │
-      ▼
- Pull Changes
-      │
-      ▼
- Local Database
+AES-256-GCM
+PBKDF2
+SHA-256
+Web Crypto API
 ```
 
-### Conflict Handling
+---
 
-The synchronization layer uses:
-
-* Operation IDs for idempotency
-* Server sequence numbers
-* Entity versioning
-* PostgreSQL row-level locking
-* Explicit conflict resolution
-
-Conflicts can be handled through:
+# 🔄 Offline-First Synchronization
 
 ```text
-ACCEPT_REMOTE
-KEEP_LOCAL
-RETRY_MERGED
+                  LOCAL DEVICE
+                       │
+                       ▼
+                ┌─────────────┐
+                │  IndexedDB  │
+                └──────┬──────┘
+                       │
+                       ▼
+                 Outbox Queue
+                       │
+                 Network Available
+                       │
+                       ▼
+                POST /sync/push
+                       │
+                       ▼
+              PostgreSQL Transaction
+                       │
+                       ▼
+             Server Operation Log
+                       │
+                       ▼
+                POST /sync/pull
+                       │
+                       ▼
+                 Local Database
+```
+
+### Synchronization mechanisms
+
+* Operation-level idempotency using `opId`
+* Monotonic server sequence numbers
+* Entity versioning
+* PostgreSQL row-level locking
+* Canonical server operation log
+* Explicit conflict resolution
+
+### Conflict Resolution
+
+```text
+              CONFLICT
+                  │
+       ┌──────────┼──────────┐
+       ▼          ▼          ▼
+ ACCEPT_REMOTE  KEEP_LOCAL  RETRY_MERGED
+```
+
+---
+
+# 🧩 Tech Stack
+
+| Layer                | Technologies                                 |
+| -------------------- | -------------------------------------------- |
+| **Frontend**         | React 18, Vite 6, TypeScript 5               |
+| **Styling**          | Tailwind CSS                                 |
+| **Icons**            | Lucide                                       |
+| **PWA**              | Workbox                                      |
+| **Local Storage**    | IndexedDB v3                                 |
+| **Cryptography**     | Web Crypto API, AES-256-GCM, SHA-256, PBKDF2 |
+| **Audio**            | Web Speech API, Web Audio API                |
+| **Backend**          | Node.js, Express, TypeScript                 |
+| **Database**         | PostgreSQL 15                                |
+| **Database Driver**  | `pg`                                         |
+| **Testing**          | Vitest                                       |
+| **Containerization** | Docker, Docker Compose                       |
+
+---
+
+# 📂 Project Structure
+
+```text
+shg-connect/
+│
+├── README.md
+├── SHGConnect_Implementation_Report.txt
+│
+├── shgconnect-pwa/
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   │
+│   └── src/
+│       ├── types/
+│       │   ├── shg.ts
+│       │   └── sync.ts
+│       │
+│       ├── services/
+│       │   ├── db.ts
+│       │   ├── syncApi.ts
+│       │   ├── syncCoordinator.ts
+│       │   ├── mockSyncServer.ts
+│       │   ├── cryptoBackup.ts
+│       │   └── hashChain.ts
+│       │
+│       ├── components/
+│       │   ├── Header.tsx
+│       │   ├── SyncStatusPill.tsx
+│       │   ├── ConflictResolutionModal.tsx
+│       │   ├── PanchasutraAuditCard.tsx
+│       │   ├── MeetingWizard.tsx
+│       │   └── BackupRestoreModal.tsx
+│       │
+│       └── App.tsx
+│
+└── server/
+    ├── package.json
+    ├── tsconfig.json
+    ├── .env.example
+    ├── docker-compose.yml
+    ├── Dockerfile
+    ├── schema.sql
+    │
+    └── src/
+        ├── app.ts
+        ├── server.ts
+        ├── db.ts
+        │
+        ├── types/
+        │   └── sync.ts
+        │
+        ├── services/
+        │   └── syncService.ts
+        │
+        ├── routes/
+        │   └── sync.ts
+        │
+        ├── middleware/
+        │   └── errorHandler.ts
+        │
+        └── tests/
+            └── sync.integration.test.ts
+```
+
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+Make sure you have:
+
+* **Node.js 18+**
+* **npm 9+**
+* **PostgreSQL 15+** or Docker
+
+---
+
+## 1. Clone Repository
+
+```bash
+git clone https://github.com/AayushRahate07/shg-connect.git
+cd shg-connect
+```
+
+---
+
+## 2. Start the Frontend
+
+```bash
+cd shgconnect-pwa
+npm install
+npm run dev
+```
+
+The PWA will be available at:
+
+```text
+http://localhost:5173
+```
+
+### Production Build
+
+```bash
+npm run build
+```
+
+---
+
+## 3. Start the Backend
+
+Open another terminal:
+
+```bash
+cd shg-connect/server
+npm install
+```
+
+### Start PostgreSQL
+
+Using Docker:
+
+```bash
+docker-compose up -d
+```
+
+Or use an existing PostgreSQL 15+ installation and configure the environment variables using:
+
+```text
+.env.example
+```
+
+### Start Server
+
+```bash
+npm run dev
+```
+
+The API will run at:
+
+```text
+http://localhost:4000
+```
+
+### Production Build
+
+```bash
+npm run build
+npm start
 ```
 
 ---
 
 # 🧪 Verification
 
+The project includes client-side synchronization invariant tests and server-side PostgreSQL integration tests.
+
 ### Client
+
+```bash
+cd shgconnect-pwa
+
+npx tsx -e "import { runSyncInvariantTests } from './src/services/__tests__/sync.test.ts'; runSyncInvariantTests().then(console.log);"
+```
 
 ```text
 16 / 16 Invariant Tests Passed
@@ -224,122 +398,91 @@ RETRY_MERGED
 
 ### Server
 
+```bash
+cd server
+npm test
+```
+
 ```text
 16 / 16 Integration Tests Passed
 ```
 
-The tests cover synchronization behavior including atomic transactions, idempotency, concurrency handling, sequence ordering, and tenant isolation.
+The server suite covers atomic push/pull behavior, idempotency, optimistic concurrency, sequence ordering, and tenant isolation.
 
 ---
 
-# 🛠️ Tech Stack
+# 🌐 API Reference
 
-| Layer            | Technologies                   |
-| ---------------- | ------------------------------ |
-| **Frontend**     | React 18, Vite 6, TypeScript 5 |
-| **Styling**      | Tailwind CSS                   |
-| **Storage**      | IndexedDB                      |
-| **Cryptography** | Web Crypto API                 |
-| **Backend**      | Node.js, Express, TypeScript   |
-| **Database**     | PostgreSQL 15                  |
-| **Testing**      | Vitest                         |
-| **Deployment**   | Docker, Docker Compose         |
+## `POST /api/v1/sync/push`
 
----
+Pushes a batch of locally generated operations to the server.
 
-# 📂 Repository Structure
+**Headers**
 
 ```text
-shg-connect/
-│
-├── shgconnect-pwa/
-│   └── src/
-│       ├── types/
-│       ├── services/
-│       │   ├── db.ts
-│       │   ├── syncApi.ts
-│       │   ├── syncCoordinator.ts
-│       │   ├── cryptoBackup.ts
-│       │   └── hashChain.ts
-│       │
-│       ├── components/
-│       │   ├── MeetingWizard.tsx
-│       │   ├── PanchasutraAuditCard.tsx
-│       │   ├── ConflictResolutionModal.tsx
-│       │   └── BackupRestoreModal.tsx
-│       │
-│       └── App.tsx
-│
-├── server/
-│   ├── schema.sql
-│   └── src/
-│       ├── services/
-│       │   └── syncService.ts
-│       ├── routes/
-│       │   └── sync.ts
-│       └── tests/
-│
-├── SHGConnect_Implementation_Report.txt
-└── README.md
+X-SHG-ID
+X-Device-ID
 ```
 
----
-
-# 🚀 Quickstart
-
-### Client
-
-```bash
-git clone https://github.com/AayushRahate07/shg-connect.git
-cd shg-connect/shgconnect-pwa
-
-npm install
-npm run dev
-```
-
-Client runs on:
+**Response states**
 
 ```text
-http://localhost:5173
+ACKNOWLEDGED
+CONFLICT
+REJECTED
 ```
 
-### Server
+---
 
-```bash
-cd ../server
+## `POST /api/v1/sync/pull`
 
-npm install
-docker-compose up -d
-npm run dev
-```
+Retrieves operations after the device's last known server sequence.
 
-Server runs on:
+**Request**
 
 ```text
-http://localhost:4000
+shgId
+deviceId
+lastServerSeq
+batchSize
+```
+
+Operations are returned in ascending `server_seq` order.
+
+---
+
+## `GET /health`
+
+Returns backend health status.
+
+```json
+{
+  "status": "ok",
+  "timestamp": "..."
+}
 ```
 
 ---
 
-# 🌐 API
+# 🔭 Development Scope
 
-### `POST /api/v1/sync/push`
+Current development focuses on:
 
-Pushes local operations to the server.
-
-### `POST /api/v1/sync/pull`
-
-Retrieves operations after a specified server sequence.
-
-### `GET /health`
-
-Returns server health status.
+* Offline-first client workflows
+* Local ledger persistence
+* Client/server synchronization
+* Conflict handling
+* Cryptographic audit records
+* SHG operational workflows
+* PostgreSQL-backed persistence
 
 ---
 
-# 📄 License
+# 📜 License
 
 Distributed under the **MIT License**.
+
+See [`LICENSE`](LICENSE) for more information.
 
 ---
 
