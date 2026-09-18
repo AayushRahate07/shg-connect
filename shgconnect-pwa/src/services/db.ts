@@ -49,7 +49,7 @@ export function setCurrentShgId(shgId: string): void {
 
 export const INITIAL_GROUP_INFO: SHGGroupInfo = {
   id: "SHG-MH-SAT-2024-0089",
-  name: "Mahila Pragati Bachat Gat",
+  name: "Savitri Mahila Bachat Gat",
   formationDate: "2024-01-15",
   federation: {
     state: "Maharashtra",
@@ -76,16 +76,18 @@ export interface GroupInfo {
   district: string;
   monthlyPoolRate: number; // e.g. 500
   totalGroupFund: number;
+  federation?: FederationScope;
 }
 
 export const INITIAL_GROUP: GroupInfo = {
-  name: "Mahila Pragati Bachat Gat",
-  nameRegional: "महिला प्रगति बचत गट",
+  name: "Savitri Mahila Bachat Gat",
+  nameRegional: "सावित्री महिला बचत गट",
   shgCode: "SHG-MH-SAT-2024-0089",
   village: "Shirwal",
   district: "Satara",
   monthlyPoolRate: 500,
-  totalGroupFund: 84500
+  totalGroupFund: 84500,
+  federation: INITIAL_GROUP_INFO.federation
 };
 
 export const DEFAULT_OFFICERS: OfficerCredentials[] = [
@@ -219,8 +221,8 @@ export const INITIAL_LOANS: Loan[] = [
 export const INITIAL_MEETINGS: Meeting[] = [
   {
     id: "meet-1",
-    date: "2024-07-05",
-    meetingNumber: 12,
+    date: "2026-09-18",
+    meetingNumber: 15,
     totalSavingsCollected: 2500,
     totalEmiCollected: 3000,
     totalDisbursed: 0,
@@ -229,8 +231,8 @@ export const INITIAL_MEETINGS: Meeting[] = [
   },
   {
     id: "meet-2",
-    date: "2024-08-05",
-    meetingNumber: 13,
+    date: "2026-09-10",
+    meetingNumber: 14,
     totalSavingsCollected: 2500,
     totalEmiCollected: 3000,
     totalDisbursed: 10000,
@@ -368,17 +370,27 @@ export async function seedInitialDataIfNeeded(): Promise<{
       if (legacyTxStr) {
         txData = JSON.parse(legacyTxStr);
       } else {
-        const genesisTime = "2024-06-01T10:00:00.000Z";
+        const genesisTime = "2026-09-18T10:00:00.000Z";
         const genesisPrevHash = "GENESIS_BLOCK_00000000000000000000000000000000";
         
-        const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Genesis Monthly Pool Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_genesis";
+        const b0Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_genesis";
         const b0Hash = await computeBlockHash(0, genesisPrevHash, genesisTime, b0Payload);
         const b0Fingerprint = generateCheckpointFingerprint(b0Hash);
 
-        const b1Time = "2024-06-01T10:05:00.000Z";
-        const b1Payload = "mem-2:Sunita-bai Deshmukh:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,SECRETARY]:SALT=proof_b1";
+        const b1Time = "2026-08-18T10:00:00.000Z";
+        const b1Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,SECRETARY]:SALT=proof_b1";
         const b1Hash = await computeBlockHash(1, b0Hash, b1Time, b1Payload);
         const b1Fingerprint = generateCheckpointFingerprint(b1Hash);
+
+        const b2Time = "2026-07-18T10:00:00.000Z";
+        const b2Payload = "mem-1:Kamal-tai Patil:SAVINGS:500:Monthly Savings Deposit:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_b2";
+        const b2Hash = await computeBlockHash(2, b1Hash, b2Time, b2Payload);
+        const b2Fingerprint = generateCheckpointFingerprint(b2Hash);
+
+        const b3Time = "2024-01-15T10:00:00.000Z";
+        const b3Payload = "mem-1:Kamal-tai Patil:SAVINGS:17000:Initial Balance:SIGNERS=[PRESIDENT,TREASURER]:SALT=proof_b3";
+        const b3Hash = await computeBlockHash(3, b2Hash, b3Time, b3Payload);
+        const b3Fingerprint = generateCheckpointFingerprint(b3Hash);
 
         txData = [
           {
@@ -389,7 +401,7 @@ export async function seedInitialDataIfNeeded(): Promise<{
             memberName: "Kamal-tai Patil",
             type: 'SAVINGS',
             amount: 500,
-            notes: "Genesis Monthly Pool Deposit",
+            notes: "मासिक बचत जमा",
             prevHash: genesisPrevHash,
             hash: b0Hash,
             signatories: [
@@ -403,11 +415,11 @@ export async function seedInitialDataIfNeeded(): Promise<{
             id: "tx-1",
             index: 1,
             timestamp: b1Time,
-            memberId: "mem-2",
-            memberName: "Sunita-bai Deshmukh",
+            memberId: "mem-1",
+            memberName: "Kamal-tai Patil",
             type: 'SAVINGS',
             amount: 500,
-            notes: "Monthly Savings Deposit",
+            notes: "मासिक बचत जमा",
             prevHash: b0Hash,
             hash: b1Hash,
             signatories: [
@@ -416,6 +428,42 @@ export async function seedInitialDataIfNeeded(): Promise<{
             ],
             signatureProof: 'proof_b1',
             checkpointFingerprint: b1Fingerprint
+          },
+          {
+            id: "tx-2",
+            index: 2,
+            timestamp: b2Time,
+            memberId: "mem-1",
+            memberName: "Kamal-tai Patil",
+            type: 'SAVINGS',
+            amount: 500,
+            notes: "मासिक बचत जमा",
+            prevHash: b1Hash,
+            hash: b2Hash,
+            signatories: [
+              { role: 'PRESIDENT', signedAt: b2Time, officerName: 'Sunita-bai Deshmukh' },
+              { role: 'TREASURER', signedAt: b2Time, officerName: 'Kamal-tai Patil' }
+            ],
+            signatureProof: 'proof_b2',
+            checkpointFingerprint: b2Fingerprint
+          },
+          {
+            id: "tx-3",
+            index: 3,
+            timestamp: b3Time,
+            memberId: "mem-1",
+            memberName: "Kamal-tai Patil",
+            type: 'SAVINGS',
+            amount: 17000,
+            notes: "आरंभिक बचत जमा (Initial Balance)",
+            prevHash: b2Hash,
+            hash: b3Hash,
+            signatories: [
+              { role: 'PRESIDENT', signedAt: b3Time, officerName: 'Sunita-bai Deshmukh' },
+              { role: 'TREASURER', signedAt: b3Time, officerName: 'Kamal-tai Patil' }
+            ],
+            signatureProof: 'proof_b3',
+            checkpointFingerprint: b3Fingerprint
           }
         ];
       }

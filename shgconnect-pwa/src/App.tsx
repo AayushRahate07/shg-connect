@@ -5,19 +5,23 @@ import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
 import { sound } from './services/sound';
-import { Header } from './components/Header';
+import { AppShell } from './components/layout/AppShell';
 import { MemberDashboard } from './pages/MemberDashboard';
 import { AnimatorDashboard } from './pages/AnimatorDashboard';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
+import { SyncCenterModal } from './components/sync/SyncCenterModal';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<Role>('MEMBER');
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [navStack, setNavStack] = useState<string[]>(['home']);
   const [language, setLanguage] = useState<SupportedLanguage>('mr');
   const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
   const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
+  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
 
   // App state
   const [group, setGroup] = useState<GroupInfo | null>(null);
@@ -42,6 +46,10 @@ export default function App() {
     reloadAllData();
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
+
   const handleToggleTts = () => {
     const nextState = !ttsEnabled;
     setTtsEnabled(nextState);
@@ -52,6 +60,66 @@ export default function App() {
     setLanguage(lang);
     tts.setLanguage(lang);
   };
+
+  const handleSelectTab = (tab: string) => {
+    if (tab === 'sync') {
+      setShowSyncModal(true);
+      return;
+    }
+
+    const primaryTabs = ['home', 'savings', 'loans', 'meetings', 'more'];
+    setNavStack(prev => {
+      if (tab === 'home') {
+        return ['home'];
+      }
+      if (primaryTabs.includes(tab)) {
+        return ['home', tab];
+      }
+      return [...prev, tab];
+    });
+    setActiveTab(tab);
+    try {
+      window.history.pushState({ tab }, '', `#${tab}`);
+    } catch (e) {
+      // Browser history fallback
+    }
+  };
+
+  const handleGoBack = () => {
+    if (navStack.length > 1) {
+      const newStack = navStack.slice(0, navStack.length - 1);
+      const prevTab = newStack[newStack.length - 1];
+      setNavStack(newStack);
+      setActiveTab(prevTab);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (navStack.length > 1) {
+        handleGoBack();
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [navStack]);
+
+  const getTabLabel = (tab: string) => {
+    switch (tab) {
+      case 'home': return language === 'mr' ? 'मुख्य पृष्ठ' : language === 'hi' ? 'मुख्य पृष्ठ' : 'Home';
+      case 'savings': return language === 'mr' ? 'माझी बचत' : language === 'hi' ? 'मेरी बचत' : 'My Savings';
+      case 'loans': return language === 'mr' ? 'माझे कर्ज' : language === 'hi' ? 'मेरा ऋण' : 'My Loans';
+      case 'meetings': return language === 'mr' ? 'माझ्या बैठका' : language === 'hi' ? 'मेरी बैठकें' : 'My Meetings';
+      case 'more': return language === 'mr' ? 'अधिक' : language === 'hi' ? 'अधिक' : 'More';
+      case 'passbook': return language === 'mr' ? 'माझे पासबुक' : language === 'hi' ? 'मेरा पासबुक' : 'My Passbook';
+      case 'calculator': return language === 'mr' ? 'बचत ध्येय' : language === 'hi' ? 'बचत लक्ष्य' : 'Savings Goal';
+      case 'panchasutra': return 'SHG Operational Health';
+      default: return language === 'mr' ? 'मागे' : 'Back';
+    }
+  };
+
+  const parentTab = navStack.length > 1 ? navStack[navStack.length - 2] : 'home';
+  const parentTabLabel = getTabLabel(parentTab);
 
   const handleAddResolution = (res: Omit<Resolution, 'id' | 'resolutionNumber'>) => {
     sound.playStampSound();
@@ -244,59 +312,79 @@ export default function App() {
 
   if (loading || !group) {
     return (
-      <div className="min-h-screen bg-[#14532D] flex items-center justify-center text-white">
-        <div className="text-center space-y-3">
+      <div className="min-h-screen bg-[#0F4C3A] flex items-center justify-center text-white font-sans">
+        <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-black tracking-wide text-emerald-100">Initializing SHGConnect IndexedDB Engine (v2)...</p>
+          <div>
+            <h2 className="text-lg font-black tracking-tight">SHGConnect PWA</h2>
+            <p className="text-xs font-semibold text-emerald-200 mt-1">Initializing IndexedDB & Cryptographic Trust Engine...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F4EC] text-[#1C1917] flex flex-col font-sans">
-      <Header
-        currentRole={currentRole}
-        onRoleChange={setCurrentRole}
-        language={language}
-        onLanguageChange={handleLanguageChange}
-        ttsEnabled={ttsEnabled}
-        onToggleTts={handleToggleTts}
-        onResetData={handleResetData}
-        onOpenBackupModal={() => setShowBackupModal(true)}
-        shgName={group.name}
-        shgNameRegional={group.nameRegional}
-        federation={INITIAL_GROUP_INFO.federation}
-        onSwitchShgGroup={handleSwitchShgGroup}
-        onOpenConflictModal={() => setShowConflictModal(true)}
-      />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
-        {currentRole === 'MEMBER' ? (
-          <MemberDashboard
-            members={members}
-            transactions={transactions}
-            loans={loans}
-            language={language}
-            onRecordTransaction={handleRecordTransaction}
-            onVerifyBlockIndex={(idx) => setCurrentRole('ANIMATOR')}
-          />
-        ) : (
-          <AnimatorDashboard
-            group={group}
-            members={members}
-            transactions={transactions}
-            loans={loans}
-            meetings={meetings}
-            resolutions={resolutions}
-            language={language}
-            onCompleteMeetingSession={handleCompleteMeetingSession}
-            onAddResolution={handleAddResolution}
-            onVerifyBlockIndex={(idx) => {}}
-            onSimulateTamper={handleSimulateTamperAttack}
-          />
-        )}
-      </main>
+    <AppShell
+      currentRole={currentRole}
+      onRoleChange={setCurrentRole}
+      activeTab={activeTab}
+      onSelectTab={handleSelectTab}
+      language={language}
+      onLanguageChange={handleLanguageChange}
+      ttsEnabled={ttsEnabled}
+      onToggleTts={handleToggleTts}
+      onResetData={handleResetData}
+      onOpenBackupModal={() => setShowBackupModal(true)}
+      shgName={group.name}
+      shgNameRegional={group.nameRegional}
+      federation={group.federation || INITIAL_GROUP_INFO.federation}
+      onSwitchShgGroup={handleSwitchShgGroup}
+      onOpenConflictModal={() => setShowConflictModal(true)}
+      onGoBack={handleGoBack}
+      parentTabLabel={parentTabLabel}
+    >
+      {currentRole === 'MEMBER' ? (
+        <MemberDashboard
+          members={members}
+          transactions={transactions}
+          loans={loans}
+          meetings={meetings}
+          language={language}
+          onRecordTransaction={handleRecordTransaction}
+          onVerifyBlockIndex={(idx) => setCurrentRole('ANIMATOR')}
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          onOpenSyncCenter={() => setShowSyncModal(true)}
+          onToggleTts={handleToggleTts}
+          ttsEnabled={ttsEnabled}
+          onLanguageChange={handleLanguageChange}
+          onOpenBackupModal={() => setShowBackupModal(true)}
+          onResetData={handleResetData}
+        />
+      ) : (
+        <AnimatorDashboard
+          group={group}
+          members={members}
+          transactions={transactions}
+          loans={loans}
+          meetings={meetings}
+          resolutions={resolutions}
+          language={language}
+          onCompleteMeetingSession={handleCompleteMeetingSession}
+          onAddResolution={handleAddResolution}
+          onVerifyBlockIndex={(idx) => {}}
+          onSimulateTamper={handleSimulateTamperAttack}
+          activeTab={activeTab}
+          onSelectTab={handleSelectTab}
+          onToggleTts={handleToggleTts}
+          ttsEnabled={ttsEnabled}
+          onLanguageChange={handleLanguageChange}
+          onOpenBackupModal={() => setShowBackupModal(true)}
+          onOpenSyncCenter={() => setShowSyncModal(true)}
+          onResetData={handleResetData}
+        />
+      )}
 
       {/* Backup and Restore Modal */}
       {showBackupModal && (
@@ -313,11 +401,14 @@ export default function App() {
         onClose={() => setShowConflictModal(false)}
       />
 
-      <footer className="bg-[#1C1917] text-stone-400 text-xs text-center py-4 print:hidden border-t border-stone-800">
-        <p className="font-bold text-stone-300">SHGConnect - Grassroots Offline Trust Ledger & NABARD Panchasutra Operational System</p>
-        <p className="text-[10px] text-stone-500 mt-0.5">IndexedDB v2, Dual-Chain Outbox Queue, Audit Envelopes & Merkle Root Cryptographic Log</p>
-      </footer>
-    </div>
+      {/* Data Sync Center Modal */}
+      <SyncCenterModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        onOpenConflictModal={() => setShowConflictModal(true)}
+      />
+    </AppShell>
   );
 }
+
 

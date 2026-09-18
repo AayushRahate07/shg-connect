@@ -43,26 +43,26 @@ export const ConflictResolutionModal: React.FC<Props> = ({ isOpen, onClose }) =>
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full border border-[#E4E6E2] overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="bg-rose-50 dark:bg-rose-950/40 p-4 border-b border-rose-200 dark:border-rose-900/50 flex items-center justify-between">
+        <div className="bg-[#FFF3D8] p-5 border-b border-[#E69A24]/30 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-rose-100 dark:bg-rose-900/60 text-rose-600 rounded-lg">
+            <div className="p-2 bg-[#E69A24]/20 text-[#C47A13] rounded-xl">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-lg">
-                Concurrency Conflicts ({deferredOps.length})
+              <h3 className="font-bold text-[#1F2925] text-lg">
+                Record Conflict Resolution ({deferredOps.length})
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Remote server updates contradict un-synced local changes. Review and select resolution.
+              <p className="text-xs text-[#6B756F] font-medium mt-0.5">
+                A record differs between devices. Choose which version to keep on the ledger.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+            className="p-1.5 text-[#6B756F] hover:text-[#1F2925] rounded-lg"
           >
             <X className="w-5 h-5" />
           </button>
@@ -71,74 +71,71 @@ export const ConflictResolutionModal: React.FC<Props> = ({ isOpen, onClose }) =>
         {/* Modal Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
           {loading ? (
-            <div className="text-center py-8 text-slate-500">Loading deferred operations...</div>
+            <div className="text-center py-8 text-[#6B756F]">Loading conflict records...</div>
           ) : deferredOps.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Check className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-              <p className="font-semibold text-slate-700 dark:text-slate-300">All conflicts resolved!</p>
+            <div className="text-center py-8 text-[#6B756F]">
+              <Check className="w-12 h-12 text-[#198754] mx-auto mb-2" />
+              <p className="font-bold text-[#1F2925]">All conflicts resolved!</p>
             </div>
           ) : (
             deferredOps.map(op => (
               <div
                 key={op.id}
-                className="border border-slate-200 dark:border-slate-800 rounded-lg p-4 bg-slate-50 dark:bg-slate-800/50 space-y-4"
+                className="border border-[#E4E6E2] rounded-xl p-4 bg-[#F7F6F2] space-y-4"
               >
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                <div className="flex items-center justify-between border-b border-[#E4E6E2] pb-2">
                   <div>
-                    <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
-                      {op.entityType.toUpperCase()} #{op.entityId}
-                    </span>
-                    <span className="ml-2 text-xs text-slate-500">
-                      Server Seq #{op.serverSeq}
+                    <span className="text-xs font-bold text-[#176B52] bg-[#E7F2ED] px-2.5 py-0.5 rounded-full">
+                      {op.entityType.toUpperCase()} Record
                     </span>
                   </div>
-                  <span className="text-xs text-slate-400">
-                    {new Date(op.conflictDetectedAt).toLocaleTimeString()}
+                  <span className="text-xs text-[#6B756F]">
+                    Detected {new Date(op.conflictDetectedAt).toLocaleTimeString()}
                   </span>
                 </div>
 
-                {/* Diff Comparison */}
-                <div className="grid grid-cols-2 gap-4 text-xs font-mono">
+                {/* Human Diff Comparison */}
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   {/* Local State */}
-                  <div className="bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-900/40">
-                    <div className="font-sans font-bold text-amber-900 dark:text-amber-300 mb-1 flex items-center gap-1">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Device (Local) Version (v{op.localVersion})
+                  <div className="bg-white p-3.5 rounded-xl border border-[#E4E6E2] space-y-1">
+                    <div className="font-bold text-[#1F2925] flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#C47A13]" /> This Device Version
                     </div>
-                    <pre className="text-amber-950 dark:text-amber-200 overflow-x-auto whitespace-pre-wrap">
+                    <div className="text-[#6B756F] font-mono text-[11px] overflow-x-auto whitespace-pre-wrap bg-[#F7F6F2] p-2 rounded-lg mt-1">
                       {JSON.stringify(op.localPayload, null, 2)}
-                    </pre>
+                    </div>
                   </div>
 
                   {/* Remote State */}
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-3 rounded-lg border border-blue-200 dark:border-blue-900/40">
-                    <div className="font-sans font-bold text-blue-900 dark:text-blue-300 mb-1 flex items-center gap-1">
-                      <ShieldAlert className="w-3.5 h-3.5" /> Remote Server Version (v{op.remoteVersion})
+                  <div className="bg-white p-3.5 rounded-xl border border-[#E4E6E2] space-y-1">
+                    <div className="font-bold text-[#1F2925] flex items-center gap-1">
+                      <ShieldAlert className="w-3.5 h-3.5 text-[#176B52]" /> Other Device Version
                     </div>
-                    <pre className="text-blue-950 dark:text-blue-200 overflow-x-auto whitespace-pre-wrap">
+                    <div className="text-[#6B756F] font-mono text-[11px] overflow-x-auto whitespace-pre-wrap bg-[#F7F6F2] p-2 rounded-lg mt-1">
                       {JSON.stringify(op.remotePayload, null, 2)}
-                    </pre>
+                    </div>
                   </div>
                 </div>
 
-                {/* Action Choices */}
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                {/* Human Action Choices */}
+                <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-[#E7E5E4]">
                   <button
                     onClick={() => handleResolve(op.id, 'KEEP_LOCAL')}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="px-3.5 py-2 bg-[#0F766E] hover:bg-[#0D9488] text-white text-xs font-bold rounded-xl transition shadow-xs"
                   >
-                    Keep Local Version
+                    या फोनवरील नोंद ठेवा (Keep Local)
                   </button>
                   <button
                     onClick={() => handleResolve(op.id, 'ACCEPT_REMOTE')}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="px-3.5 py-2 bg-white hover:bg-[#F5F5F4] text-[#1C1917] border border-[#E7E5E4] text-xs font-bold rounded-xl transition shadow-xs"
                   >
-                    Accept Remote Version
+                    दुसऱ्या डिव्हाइसची नोंद ठेवा (Keep Remote)
                   </button>
                   <button
                     onClick={() => handleResolve(op.id, 'RETRY_MERGED')}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    className="px-3.5 py-2 bg-[#F97316] hover:bg-[#EA580C] text-white text-xs font-bold rounded-xl transition shadow-xs"
                   >
-                    Merge & Save
+                    दोन्ही जोडून जतन करा (Merge Both)
                   </button>
                 </div>
               </div>
