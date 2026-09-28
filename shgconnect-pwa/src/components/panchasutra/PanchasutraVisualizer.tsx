@@ -89,6 +89,36 @@ export const PanchasutraVisualizer: React.FC<PanchasutraVisualizerProps> = ({
           </div>
         </div>
 
+        {/* Positive Drivers & Warnings Explainability Section */}
+        <div className="bg-[#FAFAF9] rounded-xl border border-[#E7E5E4] p-4 space-y-3">
+          <h4 className="font-bold text-xs text-gray-800 uppercase tracking-wider">
+            {language === 'mr' ? 'गुण विश्लेषण व मुख्य घटक (Explainability Drivers)' : 'Score Analysis & Performance Drivers'}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="space-y-1.5 bg-emerald-50/50 border border-emerald-200/60 p-3 rounded-lg">
+              <span className="font-bold text-emerald-900 block flex items-center gap-1">
+                <Check className="w-3.5 h-3.5 text-emerald-700" />
+                {language === 'mr' ? 'सकारात्मक घटक (Positive Drivers)' : 'Positive Drivers'}
+              </span>
+              <ul className="text-stone-700 space-y-1 font-medium pl-4 list-disc">
+                <li>{language === 'mr' ? 'नियमित १००% मासिक बचत जमा' : '100% On-time monthly savings collection'}</li>
+                <li>{language === 'mr' ? 'पारदर्शक डिजिटल हिशोब व ब्लॉकचेन हॅश' : 'Cryptographically verified passbook records'}</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1.5 bg-amber-50/50 border border-amber-200/60 p-3 rounded-lg">
+              <span className="font-bold text-amber-900 block flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-700" />
+                {language === 'mr' ? 'सुधारणा आवश्यक बाबी (Warning Factors)' : 'Areas for Improvement'}
+              </span>
+              <ul className="text-stone-700 space-y-1 font-medium pl-4 list-disc">
+                <li>{language === 'mr' ? 'मागील बैठकीत १ सदस्य अनुपस्थित' : '1 member absent in previous session'}</li>
+                <li>{language === 'mr' ? '१ कर्जाची परतफेड २ दिवस उशिरा' : '1 EMI payment slightly delayed'}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Institutional Disclaimer */}
         <div className="p-4 bg-[#FAFAF9] rounded-xl border border-[#E7E5E4] text-xs text-[#78716C] flex items-start space-x-2">
           <HelpCircle className="w-4 h-4 text-[#0F766E] flex-shrink-0 mt-0.5" />

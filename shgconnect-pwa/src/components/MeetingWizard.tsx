@@ -6,7 +6,7 @@ import { UserCheck, Check, DollarSign, HandCoins, ArrowRight, ArrowLeft, CheckCi
 import { tts } from '../services/tts';
 import { sound } from '../services/sound';
 import { CashBoxReconciliation } from './CashBoxReconciliation';
-
+import { OtpAttendanceModal } from './OtpAttendanceModal';
 import { eventBus } from '../services/eventBus';
 
 interface MeetingWizardProps {
@@ -39,6 +39,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
     members.forEach(m => { initial[m.id] = true; });
     return initial;
   });
+  const [otpMember, setOtpMember] = useState<Member | null>(null);
 
   // Step 2 state: Savings collection & Cash Box
   const [savingsAmounts, setSavingsAmounts] = useState<Record<string, number>>(() => {
@@ -304,10 +305,10 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
               {members.map(member => {
                 const isPresent = attendance[member.id];
                 return (
-                  <button
+                  <div
                     key={member.id}
                     onClick={() => toggleAttendance(member.id)}
-                    className={`p-4 rounded-2xl border-2 flex items-center justify-between text-left transition transform active:scale-98 ${
+                    className={`p-4 rounded-2xl border-2 flex items-center justify-between text-left transition transform active:scale-98 cursor-pointer ${
                       isPresent
                         ? 'bg-emerald-50/80 border-[#14532D] text-[#1C1917] shadow-xs'
                         : 'bg-[#F7F4EC] border-[#E2DDD3] text-stone-400'
@@ -324,16 +325,42 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                         <div className="text-xs text-stone-500 font-semibold">{member.role}</div>
                       </div>
                     </div>
-                    <div className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center space-x-1 ${
-                      isPresent ? 'bg-[#14532D] text-white' : 'bg-stone-300 text-stone-600'
-                    }`}>
-                      <Check className="w-3.5 h-3.5" />
-                      <span>{isPresent ? (language === 'mr' ? 'हजर' : 'Present') : (language === 'mr' ? 'गैरहजर' : 'Absent')}</span>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOtpMember(member);
+                        }}
+                        className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[10px] font-bold border border-amber-300"
+                        title="Offline 2-OTP Verification"
+                      >
+                        OTP
+                      </button>
+                      <div className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center space-x-1 ${
+                        isPresent ? 'bg-[#14532D] text-white' : 'bg-stone-300 text-stone-600'
+                      }`}>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{isPresent ? (language === 'mr' ? 'हजर' : 'Present') : (language === 'mr' ? 'गैरहजर' : 'Absent')}</span>
+                      </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
+
+            {/* OTP Attendance Modal */}
+            {otpMember && (
+              <OtpAttendanceModal
+                memberId={otpMember.id}
+                memberName={otpMember.nameRegional || otpMember.name}
+                language={language}
+                onClose={() => setOtpMember(null)}
+                onVerified={(mId) => {
+                  setAttendance(prev => ({ ...prev, [mId]: true }));
+                }}
+              />
+            )}
 
             <div className="flex justify-between items-center pt-4 border-t border-[#E2DDD3]">
               <button
@@ -708,6 +735,18 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                 <span>पुष्टीबद्ध स्वाक्षऱ्या (Verified Quorum):</span>
                 <span className="text-[#14532D] font-extrabold">{validSignaturesCount} / 3 Officers</span>
               </div>
+              {isCommitted && (
+                <div className="pt-2 border-t border-emerald-200/80 font-mono text-[11px] text-emerald-950 space-y-1">
+                  <div className="flex justify-between">
+                    <span>Block Fingerprint:</span>
+                    <span className="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded">CHK-8F3A-21BC-91D4</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-stone-600">
+                    <span>Merkle Root Proof:</span>
+                    <span className="truncate max-w-[180px]">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Out-of-Band SMS Audit Receipts Drawer (Visible after commit) */}

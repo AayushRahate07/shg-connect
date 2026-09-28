@@ -44,6 +44,7 @@ interface OfficeBearerDashboardProps {
   onOpenBackupModal?: () => void;
   onOpenSyncCenter?: () => void;
   onResetData?: () => void;
+  onOpenAddMember?: () => void;
 }
 
 export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
@@ -65,7 +66,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
   onLanguageChange = () => {},
   onOpenBackupModal = () => {},
   onOpenSyncCenter = () => {},
-  onResetData = () => {}
+  onResetData = () => {},
+  onOpenAddMember
 }) => {
   const t = translations[language] || translations.en;
   const [showWizard, setShowWizard] = useState<boolean>(false);
@@ -251,11 +253,22 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
 
           {activeTab === 'members' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1D5FA8' }}>
-                  <Users className="w-4 h-4 text-white" />
-                </span>
-                <h2 className="text-base font-bold text-gray-900">SHG Member Directory ({members.length})</h2>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1D5FA8' }}>
+                    <Users className="w-4 h-4 text-white" />
+                  </span>
+                  <h2 className="text-base font-bold text-gray-900">SHG Member Directory ({members.length})</h2>
+                </div>
+                {onOpenAddMember && (
+                  <button
+                    onClick={onOpenAddMember}
+                    className="bg-[#14532D] hover:bg-emerald-900 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow flex items-center space-x-1.5 transition active:scale-95"
+                  >
+                    <span>+</span>
+                    <span>{language === 'mr' ? 'नवीन सदस्य' : 'Add Member'}</span>
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {members.map((m, idx) => {

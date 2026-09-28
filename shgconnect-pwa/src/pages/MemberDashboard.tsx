@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Member, Transaction, SupportedLanguage, Loan, Meeting } from '../types/shg';
 import { translations } from '../i18n/translations';
 import { MemberHome } from '../components/member/MemberHome';
+import { MemberPassbook } from '../components/member/MemberPassbook';
+import { MemberLoan } from '../components/member/MemberLoan';
 import { SavingsView } from '../components/member/SavingsView';
 import { LoansView } from '../components/member/LoansView';
 import { MeetingsView } from '../components/member/MeetingsView';
@@ -110,13 +112,12 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
       {/* 3. My Loans Page */}
       {activeTab === 'loans' && (
-        <LoansView
+        <MemberLoan
           member={currentMember}
           loans={loans}
           transactions={transactions}
           language={language}
           onOpenUpiPayment={handleOpenPayment}
-          onNavigateTab={handleNavigate}
         />
       )}
 
@@ -138,11 +139,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
       {/* 6. Detailed Passbook Page */}
       {activeTab === 'passbook' && (
-        <PassbookTable
-          transactions={memberTransactions}
-          members={members}
+        <MemberPassbook
+          member={currentMember}
+          transactions={transactions}
           language={language}
-          onVerifyBlock={onVerifyBlockIndex}
         />
       )}
 

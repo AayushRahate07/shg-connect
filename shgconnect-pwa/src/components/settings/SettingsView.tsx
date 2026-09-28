@@ -142,6 +142,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {language === 'mr' ? 'सिंक केंद्र' : 'Sync Center'}
             </button>
           </div>
+
+          <div className="pt-2 border-t border-[#E7E5E4] flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-amber-900">
+                {language === 'mr' ? 'डेमो मोड (Demo Mode)' : 'Demo & Presentation Mode'}
+              </div>
+              <div className="text-[11px] text-[#78716C] font-medium">
+                {language === 'mr' ? 'डेमो डेटा पुन्हा लोड करा (Reset Sample Data)' : 'Load Savitri Mahila Bachat Gat demo dataset'}
+              </div>
+            </div>
+            <button
+              onClick={onResetData}
+              className="px-3.5 py-2 bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 rounded-xl text-xs font-bold transition shadow-2xs"
+            >
+              {language === 'mr' ? 'डेमो रीसेट' : 'Reset Demo'}
+            </button>
+          </div>
         </div>
 
         {/* Group Context & Federation Scope */}

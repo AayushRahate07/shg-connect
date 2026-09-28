@@ -3,7 +3,9 @@ import { SupportedLanguage } from '../../types/shg';
 import { translations } from '../../i18n/translations';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { FileSpreadsheet, Printer, Landmark, Calendar, ShieldCheck, ArrowRight } from 'lucide-react';
+import { FileSpreadsheet, Printer, Landmark, Calendar, ShieldCheck, ArrowRight, Download } from 'lucide-react';
+import { generateMemberLedgerCSV, generateTransactionAuditCSV, printPanchasutraCertificate } from '../../services/reportGenerator';
+import { INITIAL_GROUP, getMembers, getTransactions } from '../../services/db';
 
 interface ReportsViewProps {
   language: SupportedLanguage;
@@ -22,27 +24,42 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 }) => {
   const t = translations[language] || translations.en;
 
+  const handleDownloadMemberCSV = async () => {
+    const members = await getMembers();
+    const txs = await getTransactions();
+    generateMemberLedgerCSV(members, txs);
+  };
+
+  const handleDownloadTxCSV = async () => {
+    const txs = await getTransactions();
+    generateTransactionAuditCSV(txs);
+  };
+
+  const handlePrintCertificate = () => {
+    printPanchasutraCertificate(INITIAL_GROUP, language);
+  };
+
   const categories = [
     {
-      title: 'Financial',
+      title: 'Financial Statements',
       icon: <Landmark className="w-5 h-5 text-[#176B52]" />,
       items: [
-        { label: 'Group Cash Book & Balance Sheet', desc: 'Complete statement of pool savings and loan balances', action: onOpenPassbook },
-        { label: 'Member Passbook Statements', desc: 'Individual passbook slips with running balances', action: onOpenPassbook },
-        { label: 'Loan Repayment & EMI Log', desc: 'Outstanding balances, interest rates, and UTR references', action: onOpenPassbook }
+        { label: 'Export Member Directory (CSV)', desc: 'Download CSV file of all members & savings', action: handleDownloadMemberCSV },
+        { label: 'Export Ledger Transactions (CSV)', desc: 'Download CSV file of all transaction records', action: handleDownloadTxCSV },
+        { label: 'Member Passbook Statements', desc: 'Individual passbook slips with running balances', action: onOpenPassbook }
       ]
     },
     {
-      title: 'Operations',
+      title: 'Operations & Compliance',
       icon: <Calendar className="w-5 h-5 text-[#E69A24]" />,
       items: [
-        { label: 'SHG Operational Health Report', desc: 'Score breakdown and internal operational indicators', action: onOpenPanchasutra },
+        { label: 'Panchasutra Certificate (Print PDF)', desc: 'Generate printable NABARD Panchasutra audit certificate', action: handlePrintCertificate },
         { label: 'Proceedings & Resolution Book', desc: 'Meeting minutes, proposed motions, and voting outcomes', action: onOpenResolutions },
-        { label: 'Member Attendance Summary', desc: 'Historical attendance percentages per member', action: onOpenPassbook }
+        { label: 'SHG Operational Health Visualizer', desc: 'Detailed 5-pillar operational score breakdown', action: onOpenPanchasutra }
       ]
     },
     {
-      title: 'Audit',
+      title: 'Cryptographic Audit',
       icon: <ShieldCheck className="w-5 h-5 text-[#1F2925]" />,
       items: [
         { label: 'SHA-256 Append-Only Ledger Audit', desc: 'Verify cryptographic hash integrity and session Merkle roots', action: onOpenVerifier },
@@ -59,13 +76,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           <h1 className="text-2xl font-bold tracking-tight text-[#1F2925]">{t.nav.reports}</h1>
           <p className="text-xs text-[#6B756F] mt-1 font-medium">Group financial statements, meeting proceedings, and audit records</p>
         </div>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center space-x-2 bg-[#F7F6F2] hover:bg-[#E7F2ED] text-[#1F2925] border border-[#E4E6E2] px-4 py-2 rounded-xl text-xs font-bold transition"
-        >
-          <Printer className="w-4 h-4 text-[#176B52]" />
-          <span>Print Reports</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadTxCSV}
+            className="flex items-center space-x-2 bg-emerald-800 hover:bg-emerald-900 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition shadow"
+          >
+            <Download className="w-4 h-4 text-amber-300" />
+            <span>Export Ledger CSV</span>
+          </button>
+          <button
+            onClick={handlePrintCertificate}
+            className="flex items-center space-x-2 bg-[#F7F6F2] hover:bg-[#E7F2ED] text-[#1F2925] border border-[#E4E6E2] px-3.5 py-2 rounded-xl text-xs font-bold transition"
+          >
+            <Printer className="w-4 h-4 text-[#176B52]" />
+            <span>Print Audit Certificate</span>
+          </button>
+        </div>
       </div>
 
       {/* Categories Grid */}

@@ -84,8 +84,36 @@ class TTSService {
   public speak(message: string) {
     if (!this.enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
+
     const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = this.currentLang === 'mr' ? 'mr-IN' : this.currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+    const voices = window.speechSynthesis.getVoices();
+
+    let targetLang = this.currentLang === 'mr' ? 'mr-IN' : this.currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+
+    // Devanagari Voice Fallback Hierarchy: mr-IN -> hi-IN -> en-IN
+    if (this.currentLang === 'mr') {
+      const mrVoice = voices.find(v => v.lang.startsWith('mr'));
+      const hiVoice = voices.find(v => v.lang.startsWith('hi'));
+      if (mrVoice) {
+        utterance.voice = mrVoice;
+        targetLang = 'mr-IN';
+      } else if (hiVoice) {
+        utterance.voice = hiVoice;
+        targetLang = 'hi-IN'; // Fall back to Hindi voice for Devanagari script
+      } else {
+        targetLang = 'en-IN';
+      }
+    } else if (this.currentLang === 'hi') {
+      const hiVoice = voices.find(v => v.lang.startsWith('hi'));
+      if (hiVoice) {
+        utterance.voice = hiVoice;
+        targetLang = 'hi-IN';
+      } else {
+        targetLang = 'en-IN';
+      }
+    }
+
+    utterance.lang = targetLang;
     utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   }

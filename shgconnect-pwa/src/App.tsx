@@ -13,6 +13,7 @@ import { AuditorDashboard } from './pages/AuditorDashboard';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
 import { SyncCenterModal } from './components/sync/SyncCenterModal';
+import { AddMemberModal } from './components/member/AddMemberModal';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -24,6 +25,7 @@ export default function App() {
   const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
   const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
   const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
 
   // App state
   const [group, setGroup] = useState<GroupInfo | null>(null);
@@ -202,6 +204,55 @@ export default function App() {
 
     setMembers(updatedMembers);
     await saveMembers(updatedMembers);
+  };
+
+  /**
+   * Registers a new SHG member into IndexedDB & outbox sync queue
+   */
+  const handleAddMember = async (data: {
+    name: string;
+    nameRegional: string;
+    phone: string;
+    role: Role;
+    occupation?: string;
+    initialSavings: number;
+  }) => {
+    const avatarColors = ['bg-amber-500', 'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-rose-600'];
+    const newMember: Member = {
+      id: `mem-${Date.now()}`,
+      shgId: group?.shgCode || 'SHG-MH-2024-884',
+      name: data.name,
+      nameRegional: data.nameRegional,
+      phone: data.phone,
+      role: data.role,
+      totalSavings: data.initialSavings,
+      activeLoanBalance: 0,
+      trustScore: 90,
+      occupation: data.occupation,
+      joinedDate: new Date().toISOString().split('T')[0],
+      avatarColor: avatarColors[members.length % avatarColors.length],
+      entityVersion: 1
+    };
+
+    const updatedMembers = [...members, newMember];
+    setMembers(updatedMembers);
+    await saveMembers(updatedMembers);
+
+    await queueMutation({
+      opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      shgId: group?.shgCode || 'SHG-MH-2024-884',
+      actorId: 'animator-1',
+      actorRole: 'ANIMATOR',
+      deviceId: 'dev-pwa-local',
+      hlcTimestamp: `${new Date().toISOString()}-0001`,
+      type: 'RECORD_SAVINGS',
+      entityId: newMember.id,
+      payload: { memberName: newMember.name, role: newMember.role, initialSavings: data.initialSavings }
+    });
+
+    if (data.initialSavings > 0) {
+      await handleRecordTransaction(newMember.id, data.initialSavings, 'SAVINGS', 'Initial Savings Deposit');
+    }
   };
 
   /**
@@ -385,6 +436,7 @@ export default function App() {
           onOpenBackupModal={() => setShowBackupModal(true)}
           onOpenSyncCenter={() => setShowSyncModal(true)}
           onResetData={handleResetData}
+          onOpenAddMember={() => setShowAddMemberModal(true)}
         />
       ) : currentRole === 'ANIMATOR' ? (
         <AnimatorDashboard
@@ -398,6 +450,7 @@ export default function App() {
           onToggleTts={handleToggleTts}
           ttsEnabled={ttsEnabled}
           onResetData={handleResetData}
+          onOpenAddMember={() => setShowAddMemberModal(true)}
         />
       ) : (
         <AuditorDashboard
@@ -409,6 +462,15 @@ export default function App() {
           onLanguageChange={handleLanguageChange}
           onToggleTts={handleToggleTts}
           ttsEnabled={ttsEnabled}
+        />
+      )}
+
+      {/* Add New Member Modal */}
+      {showAddMemberModal && (
+        <AddMemberModal
+          language={language}
+          onClose={() => setShowAddMemberModal(false)}
+          onAddMember={handleAddMember}
         />
       )}
 

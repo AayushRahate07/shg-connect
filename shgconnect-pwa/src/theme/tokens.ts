@@ -68,3 +68,13 @@ export const formatDate = (isoString?: string): string => {
     return isoString;
   }
 };
+
+/** Minimum 48px touch target for rural accessibility */
+export const touchTargetStyle = {
+  minWidth: '48px',
+  minHeight: '48px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center'
+};
+
