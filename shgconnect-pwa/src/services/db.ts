@@ -13,12 +13,15 @@ import {
   SyncMetadata,
   SHGGroupInfo,
   FederationScope,
-  DeferredRemoteOperation
+  DeferredRemoteOperation,
+  Role,
+  GroupInfo
 } from '../types/shg';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
+import { DEMO_ASSIGNED_GROUPS, DEMO_MEMBERS, DEMO_LOANS, DEMO_MEETINGS } from './demoData';
 
 const DB_NAME = 'SHGConnectDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const LEGACY_STORAGE_KEYS = {
   MEMBERS: 'shg_connect_members_v1',
@@ -68,16 +71,7 @@ export const INITIAL_GROUP_INFO: SHGGroupInfo = {
   updatedAt: "2026-09-17T00:00:00.000Z"
 };
 
-export interface GroupInfo {
-  name: string;
-  nameRegional: string;
-  shgCode: string;
-  village: string;
-  district: string;
-  monthlyPoolRate: number; // e.g. 500
-  totalGroupFund: number;
-  federation?: FederationScope;
-}
+export type { GroupInfo };
 
 export const INITIAL_GROUP: GroupInfo = {
   name: "Savitri Mahila Bachat Gat",
@@ -114,132 +108,9 @@ export const DEFAULT_OFFICERS: OfficerCredentials[] = [
   }
 ];
 
-export const INITIAL_MEMBERS: Member[] = [
-  {
-    id: "mem-1",
-    shgId: "SHG-MH-SAT-2024-0089",
-    name: "Kamal-tai Patil",
-    nameRegional: "कमलताई पाटील",
-    phone: "9823011223",
-    role: "OFFICE_BEARER",
-    totalSavings: 18500,
-    activeLoanBalance: 0,
-    trustScore: 98,
-    upiVpa: "kamalpatil@upi",
-    avatarColor: "bg-amber-500",
-    entityVersion: 1
-  },
-  {
-    id: "mem-2",
-    shgId: "SHG-MH-SAT-2024-0089",
-    name: "Sunita-bai Deshmukh",
-    nameRegional: "सुनिताबाई देशमुख",
-    phone: "9422033445",
-    role: "ANIMATOR",
-    totalSavings: 21000,
-    activeLoanBalance: 12000,
-    trustScore: 95,
-    upiVpa: "sunitabai@okicici",
-    avatarColor: "bg-emerald-600",
-    entityVersion: 1
-  },
-  {
-    id: "mem-3",
-    shgId: "SHG-MH-SAT-2024-0089",
-    name: "Anita-tai Shinde",
-    nameRegional: "अनिताताई शिंदे",
-    phone: "9765088990",
-    role: "MEMBER",
-    totalSavings: 14500,
-    activeLoanBalance: 5000,
-    trustScore: 92,
-    upiVpa: "anitashinde@ybl",
-    avatarColor: "bg-blue-600",
-    entityVersion: 1
-  },
-  {
-    id: "mem-4",
-    shgId: "SHG-MH-SAT-2024-0089",
-    name: "Meena-bai Jadhav",
-    nameRegional: "मीनाबाई जाधव",
-    phone: "9890122334",
-    role: "MEMBER",
-    totalSavings: 16000,
-    activeLoanBalance: 0,
-    trustScore: 90,
-    upiVpa: "meenajadhav@paytm",
-    avatarColor: "bg-purple-600",
-    entityVersion: 1
-  },
-  {
-    id: "mem-5",
-    shgId: "SHG-MH-SAT-2024-0089",
-    name: "Rukmini-tai Kulkarni",
-    nameRegional: "रुक्मिणीताई कुलकर्णी",
-    phone: "9158044556",
-    role: "MEMBER",
-    totalSavings: 14500,
-    activeLoanBalance: 0,
-    trustScore: 88,
-    upiVpa: "rukminitai@upi",
-    avatarColor: "bg-rose-600",
-    entityVersion: 1
-  }
-];
-
-export const INITIAL_LOANS: Loan[] = [
-  {
-    id: "loan-101",
-    shgId: "SHG-MH-SAT-2024-0089",
-    memberId: "mem-2",
-    memberName: "Sunita-bai Deshmukh",
-    principal: 20000,
-    interestRateMonthly: 1.5,
-    tenureMonths: 10,
-    totalPaid: 8000,
-    remainingBalance: 12000,
-    status: 'ACTIVE',
-    dateDisbursed: "2024-05-15",
-    entityVersion: 1
-  },
-  {
-    id: "loan-102",
-    shgId: "SHG-MH-SAT-2024-0089",
-    memberId: "mem-3",
-    memberName: "Anita-tai Shinde",
-    principal: 10000,
-    interestRateMonthly: 1.5,
-    tenureMonths: 6,
-    totalPaid: 5000,
-    remainingBalance: 5000,
-    status: 'ACTIVE',
-    dateDisbursed: "2024-06-10",
-    entityVersion: 1
-  }
-];
-
-export const INITIAL_MEETINGS: Meeting[] = [
-  {
-    id: "meet-1",
-    date: "2026-09-18",
-    meetingNumber: 15,
-    totalSavingsCollected: 2500,
-    totalEmiCollected: 3000,
-    totalDisbursed: 0,
-    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": true, "mem-5": true },
-    checkpointFingerprint: "CHK-8F2A-99B1-4C10"
-  },
-  {
-    id: "meet-2",
-    date: "2026-09-10",
-    meetingNumber: 14,
-    totalSavingsCollected: 2500,
-    totalEmiCollected: 3000,
-    totalDisbursed: 10000,
-    attendanceRecord: { "mem-1": true, "mem-2": true, "mem-3": true, "mem-4": false, "mem-5": true },
-    checkpointFingerprint: "CHK-7D1E-03A8-912F"
-  }
-];
+export const INITIAL_MEMBERS: Member[] = DEMO_MEMBERS;
+export const INITIAL_LOANS: Loan[] = DEMO_LOANS;
+export const INITIAL_MEETINGS: Meeting[] = DEMO_MEETINGS;
 
 let dbInstancePromise: Promise<IDBDatabase> | null = null;
 
@@ -251,20 +122,43 @@ export function openDatabase(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
       const db = request.result;
+      const tx = (request.transaction || (event.currentTarget as any)?.transaction) as IDBTransaction | null;
 
+      let membersStore: IDBObjectStore;
       if (!db.objectStoreNames.contains('members')) {
-        db.createObjectStore('members', { keyPath: 'id' });
+        membersStore = db.createObjectStore('members', { keyPath: 'id' });
+      } else {
+        membersStore = tx!.objectStore('members');
       }
+      if (!membersStore.indexNames.contains('by_shg_and_id')) {
+        membersStore.createIndex('by_shg_and_id', ['shgId', 'id'], { unique: false });
+      }
+
       if (!db.objectStoreNames.contains('ledger_blocks')) {
         const store = db.createObjectStore('ledger_blocks', { keyPath: 'id' });
         store.createIndex('localIndex', 'localIndex', { unique: false });
       }
+
+      let txStore: IDBObjectStore;
       if (!db.objectStoreNames.contains('transactions')) {
-        db.createObjectStore('transactions', { keyPath: 'id' });
+        txStore = db.createObjectStore('transactions', { keyPath: 'id' });
+      } else {
+        txStore = tx!.objectStore('transactions');
       }
+      if (!txStore.indexNames.contains('by_shg_and_id')) {
+        txStore.createIndex('by_shg_and_id', ['shgId', 'id'], { unique: false });
+      }
+
+      let meetingsStore: IDBObjectStore;
       if (!db.objectStoreNames.contains('meetings')) {
-        db.createObjectStore('meetings', { keyPath: 'id' });
+        meetingsStore = db.createObjectStore('meetings', { keyPath: 'id' });
+      } else {
+        meetingsStore = tx!.objectStore('meetings');
       }
+      if (!meetingsStore.indexNames.contains('by_shg_and_id')) {
+        meetingsStore.createIndex('by_shg_and_id', ['shgId', 'id'], { unique: false });
+      }
+
       if (!db.objectStoreNames.contains('resolutions')) {
         db.createObjectStore('resolutions', { keyPath: 'id' });
       }
@@ -277,9 +171,17 @@ export function openDatabase(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains('officers')) {
         db.createObjectStore('officers', { keyPath: 'id' });
       }
+
+      let loansStore: IDBObjectStore;
       if (!db.objectStoreNames.contains('loans')) {
-        db.createObjectStore('loans', { keyPath: 'id' });
+        loansStore = db.createObjectStore('loans', { keyPath: 'id' });
+      } else {
+        loansStore = tx!.objectStore('loans');
       }
+      if (!loansStore.indexNames.contains('by_shg_and_id')) {
+        loansStore.createIndex('by_shg_and_id', ['shgId', 'id'], { unique: false });
+      }
+
       if (!db.objectStoreNames.contains('sync_metadata')) {
         db.createObjectStore('sync_metadata', { keyPath: 'shgId' });
       }
@@ -479,6 +381,7 @@ export async function seedInitialDataIfNeeded(): Promise<{
       loansData.forEach(l => tx.objectStore('loans').put(l));
       meetingsData.forEach(m => tx.objectStore('meetings').put(m));
       tx.objectStore('group_info').put(groupData);
+      DEMO_ASSIGNED_GROUPS.forEach(g => tx.objectStore('group_info').put(g));
 
       // Officers data
       const officerRecords: Officer[] = DEFAULT_OFFICERS.map(o => ({
@@ -858,5 +761,79 @@ export async function updateOutboxOpStatus(opId: string, syncStatus: 'PENDING' |
     tx.onerror = () => reject(tx.error);
   });
 }
+
+/**
+ * Registers a new SHG Member offline, appends to IndexedDB, and queues mutation for sync (Phase 6.2)
+ */
+export async function addMember(
+  data: {
+    name: string;
+    nameRegional: string;
+    phone: string;
+    role: Role;
+    occupation?: string;
+    initialSavings: number;
+    shgId?: string;
+  }
+): Promise<Member> {
+  const targetShgId = data.shgId || getCurrentShgId();
+  const avatarColors = ['bg-amber-500', 'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-rose-600'];
+  const allMembers = await getMembers();
+  const shgMembers = allMembers.filter(m => (m as any).shgId === targetShgId);
+
+  const newMember: Member = {
+    id: `mem-${Date.now()}`,
+    shgId: targetShgId,
+    name: data.name,
+    nameRegional: data.nameRegional,
+    phone: data.phone,
+    role: data.role,
+    totalSavings: data.initialSavings || 0,
+    activeLoanBalance: 0,
+    trustScore: 90,
+    occupation: data.occupation,
+    joinedDate: new Date().toISOString().split('T')[0],
+    avatarColor: avatarColors[shgMembers.length % avatarColors.length],
+    entityVersion: 1
+  };
+
+  const updatedMembers = [...allMembers, newMember];
+  await saveMembers(updatedMembers);
+
+  await queueMutation({
+    opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    shgId: targetShgId,
+    actorId: 'animator-1',
+    actorRole: 'ANIMATOR',
+    deviceId: 'dev-pwa-local',
+    hlcTimestamp: `${new Date().toISOString()}-0001`,
+    type: 'RECORD_SAVINGS',
+    entityId: newMember.id,
+    payload: { memberName: newMember.name, role: newMember.role, initialSavings: data.initialSavings }
+  });
+
+  return newMember;
+}
+
+/**
+ * Multi-SHG Local IndexedDB Cache helper (Phase 9)
+ * Retrieves all stored SHG groups cached locally
+ */
+export async function getAllCachedGroups(): Promise<GroupInfo[]> {
+  const groups = await getAllFromStore<GroupInfo>('group_info');
+  return groups;
+}
+
+export async function saveGroupInfo(group: GroupInfo): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('group_info', 'readwrite');
+    const store = tx.objectStore('group_info');
+    store.put(group);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 
 

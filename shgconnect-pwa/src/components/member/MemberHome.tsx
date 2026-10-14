@@ -176,6 +176,49 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
         </div>
       </div>
 
+      {/* ── 4 Quick Navigation Tiles (Spec: Passbook, Loans, Meetings, Goals) ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button
+          onClick={() => onNavigateTab('passbook')}
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-emerald-50/60 rounded-2xl border border-stone-200/80 hover:border-emerald-300 shadow-sm transition text-center group min-h-[52px]"
+        >
+          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📖</span>
+          <span className="text-xs font-bold text-stone-800 group-hover:text-emerald-800">
+            {language === 'mr' ? 'माझे पासबुक' : language === 'hi' ? 'मेरी पासबुक' : 'My Passbook'}
+          </span>
+        </button>
+
+        <button
+          onClick={() => onNavigateTab('loans')}
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-blue-50/60 rounded-2xl border border-stone-200/80 hover:border-blue-300 shadow-sm transition text-center group min-h-[52px]"
+        >
+          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">🏦</span>
+          <span className="text-xs font-bold text-stone-800 group-hover:text-blue-800">
+            {language === 'mr' ? 'माझे कर्ज' : language === 'hi' ? 'मेरा ऋण' : 'My Loan'}
+          </span>
+        </button>
+
+        <button
+          onClick={() => onNavigateTab('meetings')}
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-amber-50/60 rounded-2xl border border-stone-200/80 hover:border-amber-300 shadow-sm transition text-center group min-h-[52px]"
+        >
+          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📅</span>
+          <span className="text-xs font-bold text-stone-800 group-hover:text-amber-800">
+            {language === 'mr' ? 'बैठका' : language === 'hi' ? 'बैठकें' : 'Meetings'}
+          </span>
+        </button>
+
+        <button
+          onClick={() => onNavigateTab('goals')}
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-purple-50/60 rounded-2xl border border-stone-200/80 hover:border-purple-300 shadow-sm transition text-center group min-h-[52px]"
+        >
+          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">🎯</span>
+          <span className="text-xs font-bold text-stone-800 group-hover:text-purple-800">
+            {language === 'mr' ? 'बचत ध्येय' : language === 'hi' ? 'बचत लक्ष्य' : 'Savings Goal'}
+          </span>
+        </button>
+      </div>
+
       {/* ── Quick Actions ── */}
       <div className="grid grid-cols-2 gap-3">
         <button

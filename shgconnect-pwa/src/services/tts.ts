@@ -28,19 +28,53 @@ class TTSService {
   }
 
   /**
+   * Finds the best voice matching Devanagari fallback hierarchy:
+   * 1. mr-IN (Marathi)
+   * 2. hi-IN (Hindi)
+   * 3. en-IN strictly reserved for numbers/currency readouts or English locale
+   */
+  private getBestVoice(
+    voices: SpeechSynthesisVoice[],
+    targetLang: SupportedLanguage,
+    isNumeric: boolean = false
+  ): { voice?: SpeechSynthesisVoice; langCode: string } {
+    if (targetLang === 'mr') {
+      const mrVoice = voices.find(v => v.lang.toLowerCase().startsWith('mr'));
+      if (mrVoice) return { voice: mrVoice, langCode: 'mr-IN' };
+      const hiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
+      if (hiVoice) return { voice: hiVoice, langCode: 'hi-IN' }; // Fall back to Hindi Devanagari voice
+      if (isNumeric) {
+        const enVoice = voices.find(v => v.lang.toLowerCase().startsWith('en-in') || v.lang.toLowerCase().startsWith('en'));
+        return { voice: enVoice, langCode: 'en-IN' };
+      }
+      return { langCode: 'mr-IN' };
+    } else if (targetLang === 'hi') {
+      const hiVoice = voices.find(v => v.lang.toLowerCase().startsWith('hi'));
+      if (hiVoice) return { voice: hiVoice, langCode: 'hi-IN' };
+      const mrVoice = voices.find(v => v.lang.toLowerCase().startsWith('mr'));
+      if (mrVoice) return { voice: mrVoice, langCode: 'mr-IN' };
+      if (isNumeric) {
+        const enVoice = voices.find(v => v.lang.toLowerCase().startsWith('en-in') || v.lang.toLowerCase().startsWith('en'));
+        return { voice: enVoice, langCode: 'en-IN' };
+      }
+      return { langCode: 'hi-IN' };
+    } else {
+      const enVoice = voices.find(v => v.lang.toLowerCase().startsWith('en-in') || v.lang.toLowerCase().startsWith('en'));
+      return { voice: enVoice, langCode: 'en-IN' };
+    }
+  }
+
+  /**
    * Speaks a custom sentence or formatted transaction receipt
    */
   public speakTransaction(memberName: string, memberRegional: string, amount: number, type: string) {
     if (!this.enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-    // Cancel ongoing speech
     window.speechSynthesis.cancel();
 
     let textToSpeak = "";
-    let langCode = "en-IN";
 
     if (this.currentLang === 'mr') {
-      langCode = "mr-IN";
       if (type === 'SAVINGS') {
         textToSpeak = `${memberRegional}: ₹${amount} बचत जमा झाली.`;
       } else if (type === 'EMI_REPAYMENT') {
@@ -51,7 +85,6 @@ class TTSService {
         textToSpeak = `${memberRegional}: ₹${amount} व्यवहार पूर्ण झाला.`;
       }
     } else if (this.currentLang === 'hi') {
-      langCode = "hi-IN";
       if (type === 'SAVINGS') {
         textToSpeak = `${memberRegional}: ₹${amount} बचत जमा की गई।`;
       } else if (type === 'EMI_REPAYMENT') {
@@ -62,59 +95,37 @@ class TTSService {
         textToSpeak = `${memberRegional}: ₹${amount} लेन-देन दर्ज हुआ।`;
       }
     } else {
-      langCode = "en-IN";
       textToSpeak = `${memberName}: Rupees ${amount} ${type.toLowerCase().replace('_', ' ')} recorded successfully.`;
     }
 
+    const voices = window.speechSynthesis.getVoices();
+    const { voice, langCode } = this.getBestVoice(voices, this.currentLang, false);
+
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
     utterance.lang = langCode;
-    utterance.rate = 0.9; // Slightly slower for clear rural voice feedback
+    utterance.rate = 0.88; // Spec: 0.88 calibrated for rural comprehension
     utterance.pitch = 1.0;
-
-    // Find best voice match if available
-    const voices = window.speechSynthesis.getVoices();
-    const matchingVoice = voices.find(v => v.lang.startsWith(langCode.split('-')[0]));
-    if (matchingVoice) {
-      utterance.voice = matchingVoice;
-    }
+    if (voice) utterance.voice = voice;
 
     window.speechSynthesis.speak(utterance);
   }
 
-  public speak(message: string) {
+  /**
+   * Speak arbitrary text with Devanagari fallback and optional numeric voice targeting
+   */
+  public speak(message: string, isNumeric: boolean = false) {
     if (!this.enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(message);
     const voices = window.speechSynthesis.getVoices();
+    const { voice, langCode } = this.getBestVoice(voices, this.currentLang, isNumeric);
 
-    let targetLang = this.currentLang === 'mr' ? 'mr-IN' : this.currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = langCode;
+    utterance.rate = 0.88; // Spec: 0.88 rate
+    utterance.pitch = 1.0;
+    if (voice) utterance.voice = voice;
 
-    // Devanagari Voice Fallback Hierarchy: mr-IN -> hi-IN -> en-IN
-    if (this.currentLang === 'mr') {
-      const mrVoice = voices.find(v => v.lang.startsWith('mr'));
-      const hiVoice = voices.find(v => v.lang.startsWith('hi'));
-      if (mrVoice) {
-        utterance.voice = mrVoice;
-        targetLang = 'mr-IN';
-      } else if (hiVoice) {
-        utterance.voice = hiVoice;
-        targetLang = 'hi-IN'; // Fall back to Hindi voice for Devanagari script
-      } else {
-        targetLang = 'en-IN';
-      }
-    } else if (this.currentLang === 'hi') {
-      const hiVoice = voices.find(v => v.lang.startsWith('hi'));
-      if (hiVoice) {
-        utterance.voice = hiVoice;
-        targetLang = 'hi-IN';
-      } else {
-        targetLang = 'en-IN';
-      }
-    }
-
-    utterance.lang = targetLang;
-    utterance.rate = 0.9;
     window.speechSynthesis.speak(utterance);
   }
 }

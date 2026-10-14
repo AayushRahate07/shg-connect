@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SupportedLanguage } from '../types/shg';
 import { sound } from '../services/sound';
-import { calculateSHA256 } from '../services/hashChain';
-import { ShieldCheck, Lock, CheckCircle2, X, RefreshCw, Smartphone } from 'lucide-react';
+import { generateMeetingOtp, verifyMeetingOtp } from '../services/otpHandshake';
+import { ShieldCheck, CheckCircle2, X } from 'lucide-react';
 
 interface OtpAttendanceModalProps {
   memberId: string;
@@ -20,30 +20,27 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
   onVerified
 }) => {
   const isMr = language === 'mr';
-  const isHi = language === 'hi';
-
-  // Generate deterministic time-salted 4-digit OTP locally for offline handshake
-  const generateOfflineOtp = (id: string): string => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    let num = 0;
-    for (let i = 0; i < id.length; i++) {
-      num += id.charCodeAt(i);
-    }
-    for (let i = 0; i < todayStr.length; i++) {
-      num += todayStr.charCodeAt(i);
-    }
-    const otp = (num % 9000 + 1000).toString();
-    return otp;
-  };
-
-  const expectedOtp = generateOfflineOtp(memberId);
+  const [expectedOtp, setExpectedOtp] = useState<string>('----');
   const [enteredOtp, setEnteredOtp] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [verified, setVerified] = useState<boolean>(false);
 
-  const handleVerify = async (e: React.FormEvent) => {
+  useEffect(() => {
+    let isMounted = true;
+    const todayStr = new Date().toISOString().split('T')[0];
+    generateMeetingOtp(memberId, todayStr).then((otp) => {
+      if (isMounted) {
+        setExpectedOtp(otp);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [memberId]);
+
+  const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    if (enteredOtp.trim() === expectedOtp) {
+    if (verifyMeetingOtp(enteredOtp, expectedOtp)) {
       sound.playStampSound();
       setVerified(true);
       setTimeout(() => {
@@ -65,7 +62,7 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
               {isMr ? 'ऑफलाइन OTP प्रमाणीकरण' : 'Offline Two-OTP Handshake'}
             </h3>
           </div>
-          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+          <button onClick={onClose} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200 transition">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -122,7 +119,7 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
             <button
               type="submit"
               disabled={enteredOtp.length !== 4}
-              className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 shadow transition"
+              className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 shadow transition min-h-[48px]"
             >
               <ShieldCheck className="w-4 h-4 text-amber-400" />
               <span>{isMr ? 'हजेरी प्रमाणित करा (Verify)' : 'Verify Presence Offline'}</span>

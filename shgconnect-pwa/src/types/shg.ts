@@ -36,6 +36,17 @@ export interface SHGGroupInfo {
   updatedAt: string;
 }
 
+export interface GroupInfo {
+  name: string;
+  nameRegional: string;
+  shgCode: string;
+  village: string;
+  district: string;
+  monthlyPoolRate: number; // e.g. 500
+  totalGroupFund: number;
+  federation?: FederationScope;
+}
+
 export interface Member {
   id: string;
   shgId?: string;

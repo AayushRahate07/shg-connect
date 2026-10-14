@@ -14,6 +14,7 @@ import { LoanCalculator } from '../components/LoanCalculator';
 import { PanchasutraVisualizer } from '../components/panchasutra/PanchasutraVisualizer';
 import { SettingsView } from '../components/settings/SettingsView';
 import { MemberDossierModal } from '../components/MemberDossierModal';
+import { SavingsGoal } from '../components/member/SavingsGoal';
 
 interface MemberDashboardProps {
   members: Member[];
@@ -149,6 +150,13 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
       {/* 7. Savings Goal / Calculator Page */}
       {activeTab === 'calculator' && (
         <LoanCalculator language={language} />
+      )}
+
+      {activeTab === 'goals' && (
+        <div className="space-y-6 max-w-2xl mx-auto">
+          <SavingsGoal currentSavings={currentMember.totalSavings} targetAmount={25000} goalName="Emergency & Medical Fund" />
+          <LoanCalculator language={language} />
+        </div>
       )}
 
       {/* 8. SHG Operational Health / Panchasutra Page */}

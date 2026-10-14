@@ -25,6 +25,7 @@ interface AppShellProps {
   onOpenConflictModal?: () => void;
   onGoBack?: () => void;
   parentTabLabel?: string;
+  demoMode?: boolean;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -45,7 +46,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   onSwitchShgGroup,
   onOpenConflictModal,
   onGoBack,
-  parentTabLabel
+  parentTabLabel,
+  demoMode = true
 }) => {
   return (
     <div className="min-h-screen w-full flex font-sans relative" style={{ background: '#F4F6FA', color: '#111827' }}>
@@ -60,6 +62,11 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
+        {demoMode && (
+          <div className="bg-amber-500 text-stone-900 text-[11px] font-black py-1.5 px-4 text-center tracking-wide flex items-center justify-center gap-2 border-b border-amber-600/20 shadow-xs">
+            <span>✨ Demo Mode Active • Sample Data (16 Members) • No Internet Required</span>
+          </div>
+        )}
         <OfflineBanner language={language} />
         {/* Sticky Header */}
         <Header
