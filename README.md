@@ -13,6 +13,12 @@
 [![Web Crypto](https://img.shields.io/badge/Security-Web_Crypto_API-E8720C?style=for-the-badge&logo=shield&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 [![NABARD Aligned](https://img.shields.io/badge/Domain-NABARD_%2F_DAY--NRLM-145739?style=for-the-badge&logo=target&logoColor=white)](https://nrlm.gov.in/)
 
+<p align="center">
+  <b>Digitizing India's 8M+ Self-Help Groups without internet dependency, cloud vendor lock-in, or blockchain gas fees.</b>
+</p>
+
+</div>
+
 ---
 
 ## 📖 Table of Contents
