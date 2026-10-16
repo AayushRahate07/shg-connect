@@ -24,7 +24,7 @@
 ## 📖 Table of Contents
 
 - [📌 The Problem: Why SHGConnect?](#-the-problem-why-shgconnect)
-- [✨ The "WOW!" Factors (Niche Engineering & Domain Depth)](#-the-wow-factors-niche-engineering--domain-depth)
+- [✨ Domain Requirements](#-the-wow-factors-niche-engineering--domain-depth)
 - [👥 4-Tier Role-Based Operational Access (RBAC)](#-4-tier-role-based-operational-access-rbac)
 - [🏛️ Architectural Overview](#️-architectural-overview)
 - [🔄 Offline Synchronization Protocol](#-offline-synchronization-protocol)
@@ -56,7 +56,7 @@ Yet, they face a severe digital trilemma:
 
 ---
 
-## ✨ The "WOW!" Factors (Niche Engineering & Domain Depth)
+## ✨ Domain Requirements
 
 Here are the distinctive engineering decisions and domain nuances that elevate SHGConnect beyond a standard CRUD app:
 
