@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Member, SupportedLanguage, Resolution, OfficerRole, OfficerSignature } from '../types/shg';
-import { verifyOfficerPin, DEFAULT_OFFICERS } from '../services/db';
+import { verifyOfficerPin, DEFAULT_OFFICERS, getDeferredRemoteOps } from '../services/db';
 import { calculateSHA256 } from '../services/hashChain';
-import { UserCheck, Check, DollarSign, HandCoins, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Volume2, Key, ShieldCheck, Share2, MessageSquare, AlertCircle, FileText, Lock } from 'lucide-react';
+import { UserCheck, Check, DollarSign, HandCoins, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Volume2, Key, ShieldCheck, Share2, MessageSquare, AlertCircle, FileText, Lock, Fingerprint, ShieldAlert } from 'lucide-react';
 import { tts } from '../services/tts';
 import { sound } from '../services/sound';
 import { CashBoxReconciliation } from './CashBoxReconciliation';
 import { OtpAttendanceModal } from './OtpAttendanceModal';
 import { eventBus } from '../services/eventBus';
+import { biometricService } from '../services/biometrics';
+import { masterLeaseService } from '../services/masterLease';
 
 interface MeetingWizardProps {
   members: Member[];
@@ -32,6 +34,18 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   onCancel
 }) => {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [hasConflictFreeze, setHasConflictFreeze] = useState<boolean>(false);
+  const [conflictCount, setConflictCount] = useState<number>(0);
+
+  useEffect(() => {
+    getDeferredRemoteOps().then(ops => {
+      if (ops.length > 0) {
+        setHasConflictFreeze(true);
+        setConflictCount(ops.length);
+        sound.playWarningTone();
+      }
+    });
+  }, []);
 
   // Step 1 state: Attendance
   const [attendance, setAttendance] = useState<Record<string, boolean>>(() => {
@@ -221,6 +235,12 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
       }
     );
 
+    if (loanData) {
+      sound.playLoanApprovalFanfare();
+    } else {
+      sound.playCashDepositChime();
+    }
+
     onCompleteMeeting(attendance, savingsList, loanData, sessionResolutions, confirmedSigs, proofHash);
     setIsCommitted(true);
   };
@@ -244,6 +264,30 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
       window.open(`sms:?body=${encodeURIComponent(sampleReceipts)}`, '_self');
     }
   };
+
+  if (hasConflictFreeze) {
+    return (
+      <div className="bg-white rounded-3xl p-8 max-w-xl mx-auto border-2 border-rose-300 shadow-2xl text-center space-y-4 animate-fadeIn">
+        <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-black text-stone-900">
+          {language === 'mr' ? 'नोंद फरक लॉक (Operation Freeze Active)' : 'Operation Freeze Active'}
+        </h3>
+        <p className="text-xs text-stone-600 font-medium">
+          {language === 'mr'
+            ? `डिव्हाइसवर ${conflictCount} अनिर्णित नोंद फरक (Unresolved Conflicts) आहेत. पुढील बैठक सुरू करण्यापूर्वी Sync Center मध्ये जाऊन हे फरक सोडवणे बंधनकारक आहे.`
+            : `There are ${conflictCount} unresolved synchronization conflicts. To preserve ledger integrity, resolve pending conflicts in Sync Center before conducting a new meeting.`}
+        </p>
+        <button
+          onClick={onCancel}
+          className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow transition"
+        >
+          {language === 'mr' ? 'मागे जा (Go Back)' : 'Go Back'}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#FDFBF7] rounded-3xl shadow-2xl border-2 border-[#14532D] overflow-hidden">
@@ -354,6 +398,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
               <OtpAttendanceModal
                 memberId={otpMember.id}
                 memberName={otpMember.nameRegional || otpMember.name}
+                memberPhone={otpMember.phone}
                 language={language}
                 onClose={() => setOtpMember(null)}
                 onVerified={(mId) => {
@@ -518,9 +563,26 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
             {/* Loan Disbursal Form */}
             <div className="bg-white border border-[#E2DDD3] p-4 rounded-2xl">
-              <label className="flex items-center space-x-3 cursor-pointer mb-3">
+              {!masterLeaseService.isMasterDevice() && (
+                <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl text-xs text-amber-950 font-bold mb-3 flex items-start gap-2 shadow-xs">
+                  <span className="text-base">⚠️</span>
+                  <div>
+                    <span className="block font-black">
+                      {language === 'mr' ? 'गौण (Secondary) डिव्हाइस - कर्ज वाटप मर्यादा' : 'Secondary Device: Read-Only Cash Box'}
+                    </span>
+                    <span className="font-medium text-amber-900 block mt-0.5">
+                      {language === 'mr'
+                        ? `रोख कर्ज वाटप केवळ मुख्य नोंदवही डिव्हाइसवरून (${masterLeaseService.getMasterDeviceName()}) करता येऊ शकते.`
+                        : `Cash disbursals are locked to the Master Device (${masterLeaseService.getMasterDeviceName()}) to prevent offline double-spending.`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <label className={`flex items-center space-x-3 mb-3 ${masterLeaseService.isMasterDevice() ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
                 <input
                   type="checkbox"
+                  disabled={!masterLeaseService.isMasterDevice()}
                   checked={disburseLoan}
                   onChange={(e) => setDisburseLoan(e.target.checked)}
                   className="w-5 h-5 text-[#14532D] rounded focus:ring-[#14532D]"
@@ -686,19 +748,39 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
                       <div className="text-xs font-bold text-[#1C1917] mb-2">{officer.nameRegional}</div>
 
-                      {isSelected && (
-                        <div>
-                          <label className="block text-[10px] font-bold text-stone-500 mb-1">
-                            {language === 'mr' ? `4-अंकी PIN (Default: ${officer.defaultPin})` : `Enter 4-Digit PIN (${officer.defaultPin})`}
-                          </label>
-                          <input
-                            type="password"
-                            maxLength={4}
-                            placeholder="****"
-                            value={pinInputs[officer.role]}
-                            onChange={(e) => handleVerifyPin(officer.role, e.target.value)}
-                            className="w-full bg-white border border-[#E2DDD3] rounded-xl px-2.5 py-1.5 text-center font-mono text-base font-black tracking-widest outline-none focus:ring-2 focus:ring-[#14532D]"
-                          />
+                      {isSelected && !isVerified && (
+                        <div className="space-y-2 mt-1">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const res = await biometricService.authenticateOfficer(officer.role, officer.name);
+                              if (res.success) {
+                                sound.playStampSound();
+                                setVerifiedSignatures(v => ({ ...v, [officer.role]: true }));
+                                setPinErrorMsg('');
+                              }
+                            }}
+                            className="w-full py-2 px-2 bg-[#14532D] hover:bg-emerald-900 text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 shadow-xs transition"
+                          >
+                            <Fingerprint className="w-3.5 h-3.5 text-amber-400" />
+                            <span>{language === 'mr' ? 'बायोमेट्रिक / फिंगरप्रिंट स्वाक्षरी' : 'Biometric Fingerprint Sign'}</span>
+                          </button>
+
+                          <div className="text-center text-[10px] text-stone-400 font-bold uppercase">— किंवा (or) —</div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-stone-500 mb-1">
+                              {language === 'mr' ? `४-अंकी PIN (${officer.defaultPin})` : `Enter 4-Digit PIN (${officer.defaultPin})`}
+                            </label>
+                            <input
+                              type="password"
+                              maxLength={4}
+                              placeholder="****"
+                              value={pinInputs[officer.role]}
+                              onChange={(e) => handleVerifyPin(officer.role, e.target.value)}
+                              className="w-full bg-white border border-[#E2DDD3] rounded-xl px-2.5 py-1.5 text-center font-mono text-base font-black tracking-widest outline-none focus:ring-2 focus:ring-[#14532D]"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

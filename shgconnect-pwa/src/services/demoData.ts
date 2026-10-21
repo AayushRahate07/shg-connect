@@ -66,7 +66,7 @@ export const DEMO_CASH_BOX_DENOMINATIONS = [
 ];
 
 export const DEMO_MEMBERS: Member[] = [
-  { id: "mem-1", shgId: "SHG-MH-SAT-2024-0089", name: "Kamal-tai Patil", nameRegional: "कमलताई पाटील", phone: "9823011223", role: "OFFICE_BEARER", occupation: "Dairy Farming", totalSavings: 18500, activeLoanBalance: 0, trustScore: 98, avatarColor: "bg-amber-500", entityVersion: 1 },
+  { id: "mem-1", shgId: "SHG-MH-SAT-2024-0089", name: "Kamal-tai Patil", nameRegional: "कमलताई पाटील", phone: "8767993248", role: "OFFICE_BEARER", occupation: "Dairy Farming", totalSavings: 18500, activeLoanBalance: 0, trustScore: 98, avatarColor: "bg-amber-500", entityVersion: 1 },
   { id: "mem-2", shgId: "SHG-MH-SAT-2024-0089", name: "Sunita-bai Deshmukh", nameRegional: "सुनिताबाई देशमुख", phone: "9422033445", role: "OFFICE_BEARER", occupation: "Tailoring & Textile", totalSavings: 21000, activeLoanBalance: 12000, trustScore: 96, avatarColor: "bg-emerald-600", entityVersion: 1 },
   { id: "mem-3", shgId: "SHG-MH-SAT-2024-0089", name: "Anita-tai Shinde", nameRegional: "अनिताताई शिंदे", phone: "9765088990", role: "OFFICE_BEARER", occupation: "Retail Grocery", totalSavings: 14500, activeLoanBalance: 5000, trustScore: 94, avatarColor: "bg-blue-600", entityVersion: 1 },
   { id: "mem-4", shgId: "SHG-MH-SAT-2024-0089", name: "Meena-bai Jadhav", nameRegional: "मीनाबाई जाधव", phone: "9890122334", role: "MEMBER", occupation: "Goat Farming", totalSavings: 16000, activeLoanBalance: 0, trustScore: 92, avatarColor: "bg-purple-600", entityVersion: 1 },

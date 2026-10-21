@@ -140,3 +140,40 @@ export async function verifyLedgerIntegrity(chain: Transaction[]): Promise<Chain
     blocks: results
   };
 }
+
+/**
+ * Causal Defense & Monotonic Time Clamping (Phase 8 Rural Hardening)
+ * 
+ * Prevents clock tampering, dead-battery resets (1970), and future skews (2028).
+ * Ensures that the local ledger ordering is causally sound and strictly monotonic.
+ */
+export function validateAndClampTimestamp(
+  rawPhysicalTimestampMs: number,
+  prevBlockTimestampMs: number
+): { validTimestampMs: number; wasClamped: boolean; reason?: string } {
+  // 1. Clock wound backward protection (dead battery / manual change)
+  if (rawPhysicalTimestampMs < prevBlockTimestampMs) {
+    return {
+      validTimestampMs: prevBlockTimestampMs + 1000,
+      wasClamped: true,
+      reason: 'Physical clock was earlier than previous block. Monotonically clamped forward by +1s.'
+    };
+  }
+
+  // 2. Clock wound >48 hours into the future while offline
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : false;
+  const maxAllowedFuture = prevBlockTimestampMs + (48 * 60 * 60 * 1000);
+
+  if (rawPhysicalTimestampMs > maxAllowedFuture && !isOnline) {
+    return {
+      validTimestampMs: prevBlockTimestampMs + (60 * 1000), // 1-minute forward advance
+      wasClamped: true,
+      reason: 'Physical clock skewed >48h into future while offline. Clamped to +1min after previous block.'
+    };
+  }
+
+  return {
+    validTimestampMs: rawPhysicalTimestampMs,
+    wasClamped: false
+  };
+}

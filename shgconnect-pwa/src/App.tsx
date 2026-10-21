@@ -48,6 +48,13 @@ export default function App() {
 
   useEffect(() => {
     reloadAllData();
+
+    // Prevent Android OS storage eviction on budget devices
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().then(granted => {
+        if (granted) console.log('[Storage] Persistent storage granted by OS');
+      });
+    }
   }, []);
 
   useEffect(() => {
