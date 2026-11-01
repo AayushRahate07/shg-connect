@@ -15,11 +15,11 @@ import {
   Building2,
   User,
   ShieldCheck,
+  ClipboardCheck,
   Zap,
   Lock,
   Phone,
   BookOpen,
-  Sparkles,
   AlertCircle
 } from 'lucide-react';
 
@@ -30,8 +30,81 @@ interface LoginViewProps {
   onLoginSuccess: (session: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => void;
 }
 
+interface TierConfig {
+  key: string;
+  labelMr: string;
+  labelEn: string;
+  icon: React.ComponentType<{ className?: string }>;
+  pin: string;
+  nameMr: string;
+  nameEn: string;
+  role: Role;
+  descMr: string;
+  descEn: string;
+  actionMr: string;
+  actionEn: string;
+}
+
+const TIERS: TierConfig[] = [
+  {
+    key: 'MEMBER',
+    labelMr: 'सभासद',
+    labelEn: 'Member',
+    icon: User,
+    pin: '1002',
+    nameMr: 'अनिता पाटील',
+    nameEn: 'Anita Patil',
+    role: 'MEMBER',
+    descMr: 'वैयक्तिक बचत, कर्ज व पासबुक',
+    descEn: 'Personal savings, loans & passbook',
+    actionMr: 'सभासद म्हणून प्रवेश करा',
+    actionEn: 'Enter as Member'
+  },
+  {
+    key: 'LEAD',
+    labelMr: 'गट प्रमुख',
+    labelEn: 'Lead',
+    icon: Building2,
+    pin: '1001',
+    nameMr: 'मीनाताई राऊत',
+    nameEn: 'Meena Tai Raut',
+    role: 'OFFICE_BEARER',
+    descMr: 'गट संचालन, मासिक बैठक व कर्ज वाटप',
+    descEn: 'Group operations, meetings & loans',
+    actionMr: 'गट प्रमुख म्हणून प्रवेश करा',
+    actionEn: 'Enter as Lead'
+  },
+  {
+    key: 'OFFICER',
+    labelMr: 'अधिकारी',
+    labelEn: 'Officer',
+    icon: ClipboardCheck,
+    pin: '0001',
+    nameMr: 'सुरेखा मोरे',
+    nameEn: 'Surekha More',
+    role: 'ANIMATOR',
+    descMr: 'प्रभाग समन्वय, बहु-गट संनियंत्रण',
+    descEn: 'Cluster federation & multi-SHG supervision',
+    actionMr: 'अधिकारी म्हणून प्रवेश करा',
+    actionEn: 'Enter as Officer'
+  },
+  {
+    key: 'AUDITOR',
+    labelMr: 'लेखापरीक्षक',
+    labelEn: 'Auditor',
+    icon: ShieldCheck,
+    pin: '0000',
+    nameMr: 'प्रिया देशमुख',
+    nameEn: 'Priya Deshmukh',
+    role: 'AUDITOR',
+    descMr: 'शासकीय तपासणी व वित्तीय अहवाल',
+    descEn: 'Statutory audit & compliance inspection',
+    actionMr: 'लेखापरीक्षक म्हणून प्रवेश करा',
+    actionEn: 'Enter as Auditor'
+  }
+];
+
 export const LoginView: React.FC<LoginViewProps> = ({
-  members,
   language,
   onLanguageChange,
   onLoginSuccess
@@ -39,9 +112,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
   const isMr = language === 'mr';
   const t = (mr: string, en: string) => isMr ? mr : en;
 
-  // Universal phone number: 9876543210
-  const [phone, setPhone] = useState<string>(UNIVERSAL_PHONE);
-  const [pin, setPin] = useState<string>('');
+  const [selectedTierKey, setSelectedTierKey] = useState<string>('MEMBER');
+  const currentTier = TIERS.find(t => t.key === selectedTierKey) || TIERS[0];
+
+  // Custom PIN Entry modal / directory
+  const [showCustomPinModal, setShowCustomPinModal] = useState<boolean>(false);
+  const [customPin, setCustomPin] = useState<string>('');
+  const [customPhone] = useState<string>(UNIVERSAL_PHONE);
   const [error, setError] = useState<string>('');
   const [matchedUser, setMatchedUser] = useState<any | null>(null);
   const [showDirectory, setShowDirectory] = useState<boolean>(false);
@@ -78,10 +155,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
     };
   }, []);
 
-  // Live PIN matcher
+  // Live custom PIN matcher
   useEffect(() => {
-    if (pin.length === 4) {
-      const match = findUserByCredentials(phone, pin);
+    if (customPin.length === 4) {
+      const match = findUserByCredentials(customPhone, customPin);
       if (match) {
         setMatchedUser(match);
         setError('');
@@ -93,14 +170,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
       setMatchedUser(null);
       setError('');
     }
-  }, [pin, phone, isMr]);
+  }, [customPin, customPhone, isMr]);
 
-  const handleLogin = (userSession = matchedUser) => {
-    if (!userSession) {
-      setError(t('कृपया ४-अंकी वैध पिन टाका.', 'Please enter a valid 4-digit PIN.'));
-      return;
-    }
-
+  const executeLogin = (userSession: any) => {
+    if (!userSession) return;
     sound.playStampSound();
     const displayName = isMr
       ? userSession.user.nameRegional || userSession.user.name
@@ -117,13 +190,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
     });
   };
 
-  // Quick 1-tap chip selector for evaluation
-  const handleQuickPinSelect = (quickPin: string) => {
-    setPin(quickPin);
-    const match = findUserByCredentials(UNIVERSAL_PHONE, quickPin);
+  // Direct 1-tap login for current selected tier or specific PIN
+  const handleOneTapLogin = (pinToUse = currentTier.pin) => {
+    const match = findUserByCredentials(UNIVERSAL_PHONE, pinToUse);
     if (match) {
-      setMatchedUser(match);
-      handleLogin(match);
+      executeLogin(match);
     }
   };
 
@@ -152,229 +223,224 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
   return (
     <div
-      className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col justify-between p-2.5 sm:p-4 font-sans select-none text-stone-900 bg-cover bg-center bg-no-repeat z-40 touch-none"
+      className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col justify-between p-4 sm:p-6 font-sans select-none text-stone-900 bg-cover bg-center bg-no-repeat z-40 touch-none"
       style={{
         backgroundImage: `url(${loginBg})`,
         backgroundColor: '#F5E6D3'
       }}
     >
-      {/* ── Top Bar: Language Selector ── */}
-      <div className="max-w-xs w-full mx-auto flex items-center justify-end shrink-0 pt-0.5 relative z-10">
-        <div className="inline-flex bg-white/90 backdrop-blur-xs rounded-lg p-0.5 border border-stone-200/80 text-[11px] font-bold shadow-xs">
+      {/* ── Top Bar: Language Selector (Top Right) ── */}
+      <div className="max-w-sm w-full mx-auto flex items-center justify-end shrink-0 pt-1 relative z-10">
+        <div className="inline-flex bg-white/95 rounded-xl p-1 border border-stone-200/90 text-xs font-bold shadow-sm">
           <button
             type="button"
             onClick={() => onLanguageChange('mr')}
-            className={`px-2 py-0.5 rounded transition ${language === 'mr' ? 'bg-[#14532D] text-white font-black' : 'text-stone-600'}`}
+            className={`px-3 py-1 rounded-lg transition ${language === 'mr' ? 'bg-[#14532D] text-white font-black' : 'text-stone-600'}`}
           >
             मराठी
           </button>
           <button
             type="button"
             onClick={() => onLanguageChange('en')}
-            className={`px-2 py-0.5 rounded transition ${language === 'en' ? 'bg-[#14532D] text-white font-black' : 'text-stone-600'}`}
+            className={`px-3 py-1 rounded-lg transition ${language === 'en' ? 'bg-[#14532D] text-white font-black' : 'text-stone-600'}`}
           >
             EN
           </button>
         </div>
       </div>
 
-      {/* ── Center Login Card (Strictly viewport bounded) ── */}
-      <div className="max-w-xs w-full mx-auto bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/80 shadow-2xl p-4 space-y-2.5 my-auto shrink-0 relative z-10">
-        {/* Brand */}
-        <div className="text-center space-y-0.5">
-          <ShgLogo size={32} className="mx-auto" />
-          <h1 className="text-sm font-black tracking-tight text-stone-900 leading-tight">
+      {/* ── Center Login Card (Pixel-perfect match to screenshot) ── */}
+      <div className="max-w-sm w-full mx-auto bg-white rounded-[28px] border border-stone-100 shadow-2xl p-6 sm:p-7 space-y-4 my-auto relative z-10">
+        {/* Brand: Circular Logo Seal, Title, Subtitle */}
+        <div className="text-center space-y-1">
+          <ShgLogo size={46} className="mx-auto" />
+          <h1 className="text-xl font-black tracking-tight text-stone-900 leading-tight mt-1.5">
             SHGConnect
           </h1>
-          <p className="text-[10px] text-stone-500 font-bold leading-tight">
-            {t('डिजिटल स्वयंसहाय्यता गट प्रणाली', 'Self-Help Group Digital Ledger')}
+          <p className="text-xs text-stone-500 font-medium leading-tight">
+            {isMr ? 'डिजिटल नोंदवही प्रणाली' : 'Digital Ledger System'}
           </p>
         </div>
 
-        {/* Mobile & 4-Digit Security PIN Form */}
-        <div className="space-y-2 pt-0.5">
-          {/* Mobile Display */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-600 mb-1">
-              {t('नोंदणीकृत मोबाईल', 'Mobile Number')}
-            </label>
-            <div className="relative">
-              <Phone className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                readOnly
-                value={phone}
-                className="w-full text-xs font-bold pl-8 pr-3 py-1.5 bg-stone-100 border border-stone-200 rounded-xl text-stone-700 select-all outline-none"
-              />
-            </div>
-          </div>
-
-          {/* 4-Digit Security PIN Input */}
-          <div>
-            <label className="block text-[10px] font-bold text-stone-700 mb-1 flex items-center justify-between">
-              <span>{t('४-अंकी सुरक्षा पिन', '4-Digit Security PIN')}</span>
-              <Lock className="w-3 h-3 text-stone-400" />
-            </label>
-            <input
-              type="password"
-              inputMode="numeric"
-              maxLength={4}
-              value={pin}
-              onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              placeholder="• • • •"
-              autoFocus
-              className="w-full text-center text-xl font-black tracking-[0.4em] py-2 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-xl outline-none text-stone-900 transition"
-            />
-          </div>
-
-          {/* Error Banner */}
-          {error && (
-            <div className="bg-rose-50 border border-rose-200 rounded-lg p-1.5 flex items-center gap-1.5 text-rose-700 text-[10px] font-bold">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* User Identification Preview Badge */}
-          {matchedUser && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 animate-in fade-in space-y-0.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black text-emerald-900 truncate">
-                  {isMr ? matchedUser.user.nameRegional || matchedUser.user.name : matchedUser.user.name}
+        {/* 4-Tier Segmented Control */}
+        <div className="grid grid-cols-4 bg-stone-50/90 p-1 rounded-2xl border border-stone-200 gap-1">
+          {TIERS.map((tier) => {
+            const isSelected = selectedTierKey === tier.key;
+            const Icon = tier.icon;
+            return (
+              <button
+                key={tier.key}
+                type="button"
+                onClick={() => setSelectedTierKey(tier.key)}
+                className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all ${
+                  isSelected
+                    ? 'bg-[#14532D] text-white shadow-xs'
+                    : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100/60'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-stone-400'}`} />
+                <span className="text-[11px] font-bold leading-none truncate w-full text-center">
+                  {isMr ? tier.labelMr : tier.labelEn}
                 </span>
-                <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded-md">
-                  {matchedUser.role === 'AUDITOR'
-                    ? (isMr ? 'लेखापरीक्षक (Tier 4)' : 'Auditor (Tier 4)')
-                    : (matchedUser.role === 'ANIMATOR' || matchedUser.role === 'OFFICER')
-                    ? (isMr ? 'अधिकारी (Tier 3)' : 'Officer (Tier 3)')
-                    : (matchedUser.role === 'OFFICE_BEARER' || matchedUser.role === 'SHG_LEAD')
-                    ? (isMr ? 'गट प्रमुख (Tier 2)' : 'Lead (Tier 2)')
-                    : (isMr ? 'सभासद (Tier 1)' : 'Member (Tier 1)')
-                  }
-                </span>
-              </div>
-              <p className="text-[9.5px] text-emerald-700 font-semibold truncate">
-                {matchedUser.role === 'AUDITOR' || matchedUser.role === 'ANIMATOR' || matchedUser.role === 'OFFICER'
-                  ? (isMr ? 'महाराष्ट्र राज्य ग्रामीण जीवनोन्नती अभियान (UMED)' : 'MSRLM / UMED Maharashtra')
-                  : `${isMr ? matchedUser.group.nameRegional : matchedUser.group.name} • ${matchedUser.group.district}`}
-              </p>
-            </div>
-          )}
-
-          {/* LOGIN SUBMIT BUTTON */}
-          <button
-            type="button"
-            onClick={() => handleLogin()}
-            disabled={!matchedUser}
-            className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 active:scale-[0.98] text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-            <span>
-              {matchedUser
-                ? t('प्रवेश करा (Enter Dashboard)', 'Enter Dashboard')
-                : t('पिन टाका (Enter 4-Digit PIN)', 'Enter 4-Digit PIN')}
-            </span>
-            <ArrowRight className="w-3.5 h-3.5 text-emerald-300" />
-          </button>
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── 4 ONE TAP ACCESS ── */}
-        <div className="space-y-1.5 pt-2 border-t border-stone-100">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">
-              {t('१-टॅप प्रवेश', '1-Tap Access')}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowDirectory(true)}
-              className="text-[10px] font-bold text-emerald-800 hover:underline flex items-center gap-1"
-            >
-              <BookOpen className="w-3 h-3 text-emerald-700" />
-              <span>{t('सर्व पिन', 'PIN Directory')}</span>
-            </button>
-          </div>
+        {/* Sleek Full-Length Button Containing One Tap Login Info */}
+        <button
+          type="button"
+          onClick={() => handleOneTapLogin(currentTier.pin)}
+          className="w-full bg-stone-50 hover:bg-emerald-50/80 active:scale-[0.99] border border-stone-200/90 rounded-xl py-2 px-3 text-center transition flex items-center justify-between text-xs group cursor-pointer shadow-2xs"
+          title={isMr ? '१-टॅप थेट प्रवेश' : '1-Tap Direct Login'}
+        >
+          <span className="font-semibold text-stone-600 group-hover:text-emerald-950 truncate">
+            {isMr ? currentTier.descMr : currentTier.descEn}
+          </span>
+          <span className="text-[10px] font-mono font-bold bg-white text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md shrink-0 ml-1.5 shadow-2xs">
+            {isMr ? currentTier.nameMr : currentTier.nameEn} · {currentTier.pin}
+          </span>
+        </button>
 
-          <div className="grid grid-cols-2 gap-1.5">
-            {/* 1. MEMBER */}
-            <button
-              type="button"
-              onClick={() => handleQuickPinSelect('1002')}
-              className="p-2 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-600 active:scale-[0.98] rounded-xl border border-stone-200 text-left transition shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[10.5px] font-black text-stone-900 tracking-tight">MEMBER</span>
-                <span className="text-[9px] font-mono font-bold text-stone-400">1002</span>
-              </div>
-              <span className="text-[9.5px] font-semibold text-stone-500 truncate mt-0.5">
-                {isMr ? 'अनिता पाटील' : 'Anita Patil'}
-              </span>
-            </button>
+        {/* Sleek Full-Length Main Login Action Button */}
+        <button
+          type="button"
+          onClick={() => handleOneTapLogin(currentTier.pin)}
+          className="w-full bg-[#14532D] hover:bg-emerald-900 active:scale-[0.98] text-white font-bold py-3.5 px-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
+        >
+          <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+          <span>{isMr ? currentTier.actionMr : currentTier.actionEn}</span>
+          <ArrowRight className="w-4 h-4 text-emerald-300" />
+        </button>
 
-            {/* 2. LEAD TIER 2 */}
-            <button
-              type="button"
-              onClick={() => handleQuickPinSelect('1001')}
-              className="p-2 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-600 active:scale-[0.98] rounded-xl border border-stone-200 text-left transition shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[10.5px] font-black text-stone-900 tracking-tight">LEAD TIER 2</span>
-                <span className="text-[9px] font-mono font-bold text-stone-400">1001</span>
-              </div>
-              <span className="text-[9.5px] font-semibold text-stone-500 truncate mt-0.5">
-                {isMr ? 'मीनाताई राऊत' : 'Meena Tai'}
-              </span>
-            </button>
-
-            {/* 3. OFFICER TIER 3 */}
-            <button
-              type="button"
-              onClick={() => handleQuickPinSelect('0001')}
-              className="p-2 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-600 active:scale-[0.98] rounded-xl border border-stone-200 text-left transition shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[10.5px] font-black text-stone-900 tracking-tight">OFFICER TIER 3</span>
-                <span className="text-[9px] font-mono font-bold text-stone-400">0001</span>
-              </div>
-              <span className="text-[9.5px] font-semibold text-stone-500 truncate mt-0.5">
-                {isMr ? 'सुरेखा मोरे' : 'Surekha More'}
-              </span>
-            </button>
-
-            {/* 4. AUDITOR TIER 4 */}
-            <button
-              type="button"
-              onClick={() => handleQuickPinSelect('0000')}
-              className="p-2 bg-stone-50 hover:bg-emerald-50 hover:border-emerald-600 active:scale-[0.98] rounded-xl border border-stone-200 text-left transition shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between w-full">
-                <span className="text-[10.5px] font-black text-stone-900 tracking-tight">AUDITOR TIER 4</span>
-                <span className="text-[9px] font-mono font-bold text-stone-400">0000</span>
-              </div>
-              <span className="text-[9.5px] font-semibold text-stone-500 truncate mt-0.5">
-                {isMr ? 'प्रिया देशमुख' : 'Priya Deshmukh'}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* ── Join SHG Link (Non-members) ── */}
-        <div className="text-center pt-0.5">
+        {/* Below Button: Join SHG & Optional Custom PIN Access */}
+        <div className="flex flex-col items-center gap-1.5 pt-1 text-center">
           <button
             type="button"
             onClick={() => {
               setJoinSubmitted(false);
               setShowJoinModal(true);
             }}
-            className="text-[9.5px] font-bold text-emerald-800 hover:underline inline-flex items-center gap-1"
+            className="text-xs font-bold text-emerald-800 hover:underline inline-flex items-center gap-1.5"
           >
-            <UserPlus className="w-3 h-3" />
-            <span>{t('नवीन सभासद? बचत गटात सामील व्हा', 'New? Apply to Join an SHG')}</span>
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>{isMr ? 'नवीन सभासद? बचत गटात सामील व्हा' : 'New? Apply to Join an SHG'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCustomPinModal(true)}
+            className="text-[10px] font-semibold text-stone-400 hover:text-stone-600 transition"
+          >
+            {isMr ? 'इतर पिन द्वारे लॉगिन / निर्देशिका' : 'Enter Custom PIN / Directory'}
           </button>
         </div>
       </div>
 
-      {/* ── Bottom Anchor ── */}
+      {/* ── Bottom Spacer ── */}
       <div className="w-full shrink-0 h-1"></div>
+
+      {/* ── Custom PIN Modal (For any of the 88 members) ── */}
+      {showCustomPinModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 z-50 animate-fadeIn touch-auto">
+          <div className="bg-white rounded-3xl max-w-xs w-full p-5 border border-stone-200 shadow-2xl space-y-3.5">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+              <span className="text-xs font-black text-stone-900">
+                {isMr ? 'सुरक्षा पिन द्वारे लॉगिन' : 'Login with PIN'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCustomPinModal(false)}
+                className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-stone-600 mb-1">
+                {isMr ? 'नोंदणीकृत मोबाईल' : 'Mobile Number'}
+              </label>
+              <div className="relative">
+                <Phone className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  readOnly
+                  value={customPhone}
+                  className="w-full text-xs font-bold pl-8 pr-3 py-1.5 bg-stone-100 border border-stone-200 rounded-xl text-stone-700 select-all outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-stone-700 mb-1 flex items-center justify-between">
+                <span>{isMr ? '४-अंकी सुरक्षा पिन' : '4-Digit Security PIN'}</span>
+                <Lock className="w-3 h-3 text-stone-400" />
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={customPin}
+                onChange={e => setCustomPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="• • • •"
+                autoFocus
+                className="w-full text-center text-xl font-black tracking-[0.4em] py-2 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-xl outline-none text-stone-900 transition"
+              />
+            </div>
+
+            {error && (
+              <div className="bg-rose-50 border border-rose-200 rounded-lg p-1.5 flex items-center gap-1.5 text-rose-700 text-[10px] font-bold">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {matchedUser && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2 space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-emerald-900 truncate">
+                    {isMr ? matchedUser.user.nameRegional || matchedUser.user.name : matchedUser.user.name}
+                  </span>
+                  <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-200 text-emerald-900 px-1.5 py-0.5 rounded-md">
+                    {matchedUser.role}
+                  </span>
+                </div>
+                <p className="text-[9.5px] text-emerald-700 font-semibold truncate">
+                  {matchedUser.group.name}
+                </p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (matchedUser) {
+                  setShowCustomPinModal(false);
+                  executeLogin(matchedUser);
+                }
+              }}
+              disabled={!matchedUser}
+              className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition"
+            >
+              <span>{isMr ? 'प्रवेश करा' : 'Enter Dashboard'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomPinModal(false);
+                setShowDirectory(true);
+              }}
+              className="w-full text-[10px] font-bold text-emerald-800 hover:underline flex items-center justify-center gap-1"
+            >
+              <BookOpen className="w-3 h-3 text-emerald-700" />
+              <span>{isMr ? 'सर्व ८८ सभासद पिन निर्देशिका' : 'View 88 Users PIN Directory'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 88 Users PIN Directory Modal ── */}
       {showDirectory && (
@@ -384,7 +450,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <div className="flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-emerald-800" />
                 <h3 className="text-xs font-black text-stone-900">
-                  {t('सर्व ८८ युजर्स पिन निर्देशिका', '88 Users PIN Directory')}
+                  {isMr ? 'सर्व ८८ युजर्स पिन निर्देशिका' : '88 Users PIN Directory'}
                 </h3>
               </div>
               <button
@@ -397,7 +463,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
             </div>
 
             <p className="text-[10px] text-stone-500 font-semibold shrink-0">
-              {t('मोबाईल: 9876543210 · कोणत्याही पिनवर क्लिक करून थेट लॉगिन करा:', 'Mobile: 9876543210 · Tap any PIN to auto-login:')}
+              {isMr ? 'मोबाईल: 9876543210 · कोणत्याही पिनवर क्लिक करून थेट लॉगिन करा:' : 'Mobile: 9876543210 · Tap any PIN to auto-login:'}
             </p>
 
             <div className="overflow-y-auto space-y-2.5 pr-1 text-xs">
@@ -405,7 +471,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <div
                 onClick={() => {
                   setShowDirectory(false);
-                  handleQuickPinSelect('0000');
+                  handleOneTapLogin('0000');
                 }}
                 className="bg-purple-50 border border-purple-200 rounded-xl p-2.5 cursor-pointer hover:bg-purple-100 transition space-y-1"
               >
@@ -422,7 +488,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <div
                 onClick={() => {
                   setShowDirectory(false);
-                  handleQuickPinSelect('0001');
+                  handleOneTapLogin('0001');
                 }}
                 className="bg-blue-50 border border-blue-200 rounded-xl p-2.5 cursor-pointer hover:bg-blue-100 transition space-y-1"
               >
@@ -442,23 +508,21 @@ export const LoginView: React.FC<LoginViewProps> = ({
                     <span className="text-[11px] font-black text-stone-900">{idx + 1}. {g.district} — {isMr ? g.nameRegional : g.name}</span>
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
-                    {/* Leader PIN */}
                     <button
                       type="button"
                       onClick={() => {
                         setShowDirectory(false);
-                        handleQuickPinSelect(`${(idx + 1) * 1000 + 1}`);
+                        handleOneTapLogin(`${(idx + 1) * 1000 + 1}`);
                       }}
                       className="text-[10px] font-black bg-amber-200 text-amber-950 px-2 py-0.5 rounded-md hover:bg-amber-300 transition"
                     >
                       👑 Leader: {(idx + 1) * 1000 + 1}
                     </button>
-                    {/* Member PIN range */}
                     <button
                       type="button"
                       onClick={() => {
                         setShowDirectory(false);
-                        handleQuickPinSelect(`${(idx + 1) * 1000 + 2}`);
+                        handleOneTapLogin(`${(idx + 1) * 1000 + 2}`);
                       }}
                       className="text-[10px] font-bold bg-white text-stone-700 border border-stone-200 px-2 py-0.5 rounded-md hover:bg-stone-100 transition"
                     >
@@ -478,7 +542,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
           <div className="bg-white rounded-2xl max-w-xs w-full p-4 border border-stone-200 shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-stone-100 pb-2">
               <span className="text-xs font-black text-stone-900">
-                {t('बचत गटात सामील व्हा', 'Join SHG')}
+                {isMr ? 'बचत गटात सामील व्हा' : 'Join SHG'}
               </span>
               <button
                 type="button"
@@ -491,68 +555,65 @@ export const LoginView: React.FC<LoginViewProps> = ({
 
             {joinSubmitted ? (
               <div className="text-center py-4 space-y-2">
-                <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-                <p className="text-xs font-black text-stone-800">
-                  {t('अर्ज यशस्वीपणे सादर झाला!', 'Application Submitted!')}
+                <CheckCircle2 className="w-10 h-10 text-emerald-800 mx-auto" />
+                <p className="text-xs font-bold text-stone-800">
+                  {isMr ? 'तुमचा अर्ज नोंदवला गेला आहे!' : 'Application Submitted!'}
                 </p>
-                <p className="text-[10px] text-stone-500 font-semibold">
-                  {t('गट प्रमुख पुढील बैठकीत मंजुरी देतील.', 'SHG Lead will review at next meeting.')}
+                <p className="text-[11px] text-stone-500">
+                  {isMr ? 'गट प्रमुख लवकरच मंजुरी देतील.' : 'Group Head will review and approve.'}
                 </p>
                 <button
                   type="button"
                   onClick={() => setShowJoinModal(false)}
-                  className="w-full py-1.5 bg-stone-100 text-stone-700 rounded-lg text-xs font-bold"
+                  className="mt-2 w-full bg-[#14532D] text-white text-xs font-bold py-2 rounded-xl"
                 >
-                  {t('बंद करा', 'Close')}
+                  {isMr ? 'ठीक आहे' : 'Done'}
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleJoinSubmit} className="space-y-2.5">
+              <form onSubmit={handleJoinSubmit} className="space-y-2.5 text-xs">
                 <div>
                   <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {t('पूर्ण नाव', 'Full Name')}
+                    {isMr ? 'पूर्ण नाव' : 'Full Name'} *
                   </label>
                   <input
                     type="text"
                     required
                     value={joinName}
                     onChange={e => setJoinName(e.target.value)}
-                    placeholder="उदा. सुनिता कांबळे"
-                    className="w-full text-xs py-1.5 px-2 bg-stone-50 border border-stone-200 rounded-lg outline-none font-semibold text-stone-900"
+                    placeholder={isMr ? 'उदा. सुनिता पवार' : 'e.g. Sunita Pawar'}
+                    className="w-full border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-emerald-800"
                   />
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {t('मोबाईल नंबर', 'Mobile Number')}
+                    {isMr ? 'मोबाईल क्रमांक' : 'Phone'} *
                   </label>
                   <input
                     type="tel"
                     required
                     value={joinPhone}
                     onChange={e => setJoinPhone(e.target.value)}
-                    className="w-full text-xs py-1.5 px-2 bg-stone-50 border border-stone-200 rounded-lg outline-none font-semibold text-stone-900"
+                    className="w-full border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-emerald-800 font-mono text-xs"
                   />
                 </div>
-
                 <div>
                   <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {t('व्यवसाय', 'Occupation')}
+                    {isMr ? 'व्यवसाय' : 'Occupation'}
                   </label>
                   <input
                     type="text"
                     value={joinOccupation}
                     onChange={e => setJoinOccupation(e.target.value)}
-                    placeholder="उदा. शिलाई काम, शेती"
-                    className="w-full text-xs py-1.5 px-2 bg-stone-50 border border-stone-200 rounded-lg outline-none font-semibold text-stone-900"
+                    placeholder={isMr ? 'उदा. दुग्ध व्यवसाय' : 'e.g. Farming / Dairy'}
+                    className="w-full border border-stone-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-emerald-800"
                   />
                 </div>
-
                 <button
                   type="submit"
-                  className="w-full bg-[#14532D] text-white py-2 rounded-xl text-xs font-black shadow transition active:scale-95"
+                  className="w-full bg-[#14532D] text-white font-bold py-2 rounded-xl text-xs mt-1"
                 >
-                  {t('अर्ज सादर करा', 'Submit Application')}
+                  {isMr ? 'अर्ज पाठवा' : 'Submit Application'}
                 </button>
               </form>
             )}
