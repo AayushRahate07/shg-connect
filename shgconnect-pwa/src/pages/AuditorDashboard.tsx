@@ -7,7 +7,7 @@ import { LedgerVerifier } from '../components/LedgerVerifier';
 import { ReportsView } from '../components/reports/ReportsView';
 import { SettingsView } from '../components/settings/SettingsView';
 import { formatINR } from '../theme/tokens';
-import { ShieldCheck, Award, FileSpreadsheet, Search, Download, Building2, Users, FileText, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Award, FileSpreadsheet, Search, Download, Building2, Users, FileText, CheckCircle2, ChevronRight, Calendar, UserPlus } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
 
 interface AuditorDashboardProps {
@@ -19,6 +19,9 @@ interface AuditorDashboardProps {
   onLanguageChange?: (lang: SupportedLanguage) => void;
   onToggleTts?: () => void;
   ttsEnabled?: boolean;
+  onOpenAddMember?: () => void;
+  onOpenScheduleMeeting?: () => void;
+  onSwitchShg?: (shgId: string) => void;
 }
 
 export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
@@ -30,6 +33,9 @@ export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
   onLanguageChange = () => {},
   onToggleTts = () => {},
   ttsEnabled = true,
+  onOpenAddMember,
+  onOpenScheduleMeeting,
+  onSwitchShg,
 }) => {
   const isMr = language === 'mr';
 
@@ -125,13 +131,35 @@ export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleExportGovtReport}
-          className="relative z-10 bg-amber-400 hover:bg-amber-300 text-stone-900 font-black px-4 py-3 rounded-2xl text-xs flex items-center gap-2 shadow-lg transition active:scale-95"
-        >
-          <Download className="w-4 h-4 text-stone-900" />
-          <span>{isMr ? 'शासकीय अहवाल डाउनलोड करा (MIS Export)' : 'Export Govt MIS Report'}</span>
-        </button>
+        <div className="relative z-10 flex flex-wrap items-center gap-2">
+          {onOpenScheduleMeeting && (
+            <button
+              onClick={onOpenScheduleMeeting}
+              className="bg-white hover:bg-purple-50 text-purple-900 font-black px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-md border border-purple-200 transition active:scale-95"
+            >
+              <Calendar className="w-4 h-4 text-purple-800" />
+              <span>{isMr ? '📅 बैठक नियोजन' : '📅 Schedule Meeting'}</span>
+            </button>
+          )}
+
+          {onOpenAddMember && (
+            <button
+              onClick={onOpenAddMember}
+              className="bg-white hover:bg-purple-50 text-purple-900 font-black px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 shadow-md border border-purple-200 transition active:scale-95"
+            >
+              <UserPlus className="w-4 h-4 text-purple-800" />
+              <span>{isMr ? '+ नवीन सदस्य' : '+ Add Member'}</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleExportGovtReport}
+            className="bg-amber-400 hover:bg-amber-300 text-stone-900 font-black px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-md transition active:scale-95"
+          >
+            <Download className="w-4 h-4 text-stone-900" />
+            <span>{isMr ? 'शासकीय अहवाल (MIS Export)' : 'Export Govt MIS Report'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Aggregate Government Metrics */}

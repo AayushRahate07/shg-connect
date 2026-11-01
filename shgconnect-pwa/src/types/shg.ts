@@ -43,6 +43,17 @@ export interface SHGGroupInfo {
   updatedAt: string;
 }
 
+export interface ScheduledMeeting {
+  id: string;
+  shgId: string;
+  date: string;
+  time: string;
+  venue: string;
+  agenda: string;
+  scheduledBy: string;
+  scheduledAt: string;
+}
+
 export interface GroupInfo {
   name: string;
   nameRegional: string;
@@ -51,6 +62,21 @@ export interface GroupInfo {
   district: string;
   monthlyPoolRate: number; // e.g. 500
   totalGroupFund: number;
+  cashBoxBalance?: number;
+  panchasutraScore?: number;
+  bankDetails?: {
+    bankName: string;
+    accountMasked: string;
+    ifsc: string;
+    branch: string;
+  };
+  nextMeeting?: {
+    date: string;
+    time: string;
+    venue: string;
+    agenda: string;
+    scheduledBy?: string;
+  };
   federation?: FederationScope;
 }
 
@@ -60,6 +86,7 @@ export interface Member {
   name: string;
   nameRegional: string;
   phone: string;
+  pin?: string;
   role: Role;
   totalSavings: number;
   activeLoanBalance: number;

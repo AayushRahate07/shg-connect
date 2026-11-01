@@ -24,25 +24,28 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
   const t = translations[language] || translations.en;
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
 
-  const monthlyRate = group?.monthlyPoolRate || 500;
-  const locationLabel = group?.village
-    ? (language === 'mr' ? `${group.village} ग्रामपंचायत सभागृह` : `${group.village} Gram Panchayat Hall`)
-    : (language === 'mr' ? 'ग्रामपंचायत सभागृह' : 'Gram Panchayat Hall');
+  const scheduled = group?.nextMeeting;
+  const locationLabel = scheduled?.venue
+    ? scheduled.venue
+    : (group?.village
+        ? (language === 'mr' ? `${group.village} ग्रामपंचायत सभागृह` : `${group.village} Gram Panchayat Hall`)
+        : (language === 'mr' ? 'ग्रामपंचायत सभागृह' : 'Gram Panchayat Hall'));
 
-  const nextMeetingDate = (() => {
-    if (meetings && meetings.length > 0) {
-      const last = new Date(meetings[meetings.length - 1].date);
-      if (!isNaN(last.getTime())) {
-        const next = new Date(last);
-        next.setMonth(next.getMonth() + 1);
-        return next.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
-      }
-    }
-    const d = new Date();
-    d.setDate(18);
-    if (d < new Date()) d.setMonth(d.getMonth() + 1);
-    return d.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
-  })();
+  const nextMeetingDate = scheduled
+    ? `${new Date(scheduled.date).toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · ${scheduled.time || '४:०० वा.'}`
+    : (() => {
+        if (meetings && meetings.length > 0) {
+          const last = new Date(meetings[meetings.length - 1].date);
+          if (!isNaN(last.getTime())) {
+            const next = new Date(last);
+            next.setMonth(next.getMonth() + 1);
+            return next.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
+          }
+        }
+        return '18 नोव्हेंबर 2026 · ४:०० वा.';
+      })();
+
+  const monthlyRate = group?.monthlyPoolRate || 200;
 
   // If a meeting detail is selected, render the dedicated Detail Screen
   if (selectedMeeting) {
@@ -234,9 +237,15 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
               <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
               <span>{locationLabel}</span>
             </div>
+            {scheduled?.agenda && (
+              <div className="text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 mt-2 inline-flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{language === 'mr' ? 'विषय:' : 'Agenda:'} {scheduled.agenda}</span>
+              </div>
+            )}
           </div>
           <span className="bg-[#FFEDD5] text-[#C2410C] font-extrabold text-xs px-3 py-1.5 rounded-full">
-            {language === 'mr' ? '७ दिवसांत' : 'In 7 Days'}
+            {language === 'mr' ? 'नियोजित' : 'Scheduled'}
           </span>
         </div>
       </div>

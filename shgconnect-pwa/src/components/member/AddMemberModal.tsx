@@ -11,6 +11,7 @@ interface AddMemberModalProps {
     name: string;
     nameRegional: string;
     phone: string;
+    pin?: string;
     role: Role;
     occupation?: string;
     initialSavings: number;
@@ -24,7 +25,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [nameRegional, setNameRegional] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('9876543210');
+  const [pin, setPin] = useState(Math.floor(1000 + Math.random() * 9000).toString());
   const [role, setRole] = useState<Role>('MEMBER');
   const [occupation, setOccupation] = useState('');
   const [initialSavings, setInitialSavings] = useState('');
@@ -44,6 +46,10 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       setError(isMr ? 'कृपया वैध १०-अंकी फोन नंबर प्रविष्ट करा' : 'Please enter a valid 10-digit phone number');
       return;
     }
+    if (!pin.trim() || pin.length !== 4) {
+      setError(isMr ? 'कृपया ४-अंकी सुरक्षा पिन प्रविष्ट करा' : 'Please enter a 4-digit security PIN');
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -53,6 +59,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         name: name.trim(),
         nameRegional: nameRegional.trim() || name.trim(),
         phone: phone.trim(),
+        pin: pin.trim(),
         role,
         occupation: occupation.trim() || undefined,
         initialSavings: parseFloat(initialSavings) || 0
@@ -71,42 +78,42 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 space-y-5">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div className="flex items-center justify-between border-b border-stone-100 pb-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-              <UserPlus className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold border border-emerald-100">
+              <UserPlus className="w-5 h-5 text-emerald-700" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-gray-900 tracking-tight">
+              <h2 className="text-base font-black text-stone-900 tracking-tight">
                 {isMr ? 'नवीन सदस्य नोंदणी' : isHi ? 'नया सदस्य पंजीकरण' : 'Add New Member'}
               </h2>
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-[11px] text-stone-500 font-medium">
                 {isMr ? 'बचत गटात नवीन सदस्याची भर घाला' : 'Register a new SHG member into ledger'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center transition"
+            className="w-8 h-8 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 inline" />
+          <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-2.5 rounded-xl font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name (English) */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Full Name */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-emerald-700" />
               <span>{isMr ? 'पूर्ण नाव (इंग्रजी)' : 'Full Name (English)'} *</span>
             </label>
@@ -116,13 +123,13 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sunita Suresh Patil"
               required
-              className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
+              className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
             />
           </div>
 
           {/* Regional Name */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-emerald-700" />
               <span>{isMr ? 'स्थानिक नाव (मराठी/हिंदी)' : 'Regional Name (Marathi/Hindi)'}</span>
             </label>
@@ -131,64 +138,66 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
               value={nameRegional}
               onChange={(e) => setNameRegional(e.target.value)}
               placeholder="उदा. सुनिता सुरेश पाटील"
-              className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
+              className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {/* Phone */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-emerald-700" />
-                <span>{isMr ? 'फोन नंबर' : 'Phone Number'} *</span>
+                <span>{isMr ? 'फोन नंबर' : 'Phone'} *</span>
               </label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="98230XXXXX"
+                placeholder="9876543210"
                 required
-                className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-bold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
               />
             </div>
 
+            {/* 4-Digit Security PIN */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{isMr ? 'सुरक्षा पिन' : 'PIN (4-digit)'} *</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="1015"
+                required
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-black tracking-widest text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             {/* Role */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
                 <Shield className="w-3.5 h-3.5 text-emerald-700" />
                 <span>{isMr ? 'पद / भूमिका' : 'Role'}</span>
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
-                className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
               >
                 <option value="MEMBER">{isMr ? 'सदस्य (Member)' : 'Member'}</option>
-                <option value="OFFICE_BEARER">{isMr ? 'पदाधिकारी (Office Bearer)' : 'Office Bearer'}</option>
-                <option value="ANIMATOR">{isMr ? 'प्रेरक / CRP (Animator)' : 'Animator / CRP'}</option>
+                <option value="OFFICE_BEARER">{isMr ? 'पदाधिकारी (Leader)' : 'Office Bearer'}</option>
               </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {/* Occupation */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-emerald-700" />
-                <span>{isMr ? 'व्यवसाय' : 'Occupation'}</span>
-              </label>
-              <input
-                type="text"
-                value={occupation}
-                onChange={(e) => setOccupation(e.target.value)}
-                placeholder="e.g. Tailoring / Farming"
-                className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
-              />
             </div>
 
             {/* Initial Savings Deposit */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
+              <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
                 <IndianRupee className="w-3.5 h-3.5 text-emerald-700" />
                 <span>{isMr ? 'आरंभिक बचत (₹)' : 'Initial Deposit (₹)'}</span>
               </label>
@@ -198,21 +207,36 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
                 onChange={(e) => setInitialSavings(e.target.value)}
                 placeholder="500"
                 min="0"
-                className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 outline-none focus:border-emerald-600 transition"
+                className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
               />
             </div>
+          </div>
+
+          {/* Occupation */}
+          <div>
+            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1.5">
+              <Briefcase className="w-3.5 h-3.5 text-emerald-700" />
+              <span>{isMr ? 'व्यवसाय' : 'Occupation'}</span>
+            </label>
+            <input
+              type="text"
+              value={occupation}
+              onChange={(e) => setOccupation(e.target.value)}
+              placeholder="उदा. शिलाई काम, दुग्ध व्यवसाय, शेती"
+              className="w-full bg-stone-50 border border-stone-300 rounded-xl px-3 py-2 text-xs font-semibold text-stone-900 outline-none focus:border-emerald-600 focus:bg-white transition"
+            />
           </div>
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full mt-4 bg-[#14532D] hover:bg-emerald-900 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-lg transition active:scale-[0.99]"
+            className="w-full mt-2 bg-[#14532D] hover:bg-emerald-900 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 shadow-md transition active:scale-[0.98]"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : (
               <>
-                <Check className="w-4 h-4 text-amber-400" />
+                <Check className="w-4 h-4 text-amber-300" />
                 <span>{isMr ? 'सदस्य नोंदणी करा (Register Member)' : 'Register Member into SHG'}</span>
               </>
             )}

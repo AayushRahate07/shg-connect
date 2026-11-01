@@ -73,18 +73,18 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
     })
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Dynamic next meeting date
-  const nextMeetingLabel = (() => {
-    if (meetings && meetings.length > 0) {
-      const latest = new Date(meetings[0].date);
-      const next = new Date(latest);
-      next.setMonth(next.getMonth() + 1);
-      return next.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' }) + ' · ४ वा.';
-    }
-    const d = new Date();
-    d.setDate(18);
-    return d.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' }) + ' · ४ वा.';
-  })();
+  // Dynamic next meeting date from actual scheduled meeting data
+  const nextMeeting = group?.nextMeeting;
+  const nextMeetingLabel = nextMeeting
+    ? `${new Date(nextMeeting.date).toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · ${nextMeeting.time || '४:०० वा.'}`
+    : (meetings && meetings.length > 0
+        ? (() => {
+            const latest = new Date(meetings[0].date);
+            const next = new Date(latest);
+            next.setMonth(next.getMonth() + 1);
+            return next.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
+          })()
+        : '18 नोव्हें 2026 · ४:०० वा.');
 
   // Dynamic group health score
   const healthScore = Math.min(100, Math.round(88 + (member.trustScore ? member.trustScore * 0.1 : 6)));
@@ -213,7 +213,10 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
         </div>
 
         {/* Next Meeting Card */}
-        <div className="bg-teal-50/30 p-3.5 rounded-2xl border border-teal-200 shadow-xs text-left">
+        <div
+          onClick={() => onNavigateTab('meetings')}
+          className="bg-teal-50/30 p-3.5 rounded-2xl border border-teal-200 shadow-xs text-left cursor-pointer hover:bg-teal-50/50 transition"
+        >
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
               {isMr ? 'पुढील बैठक' : 'Next Meeting'}
@@ -225,8 +228,8 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
           <span className="text-xs sm:text-sm font-black text-stone-900 mt-0.5 block truncate">
             {nextMeetingLabel}
           </span>
-          <span className="text-[10px] text-teal-700 font-bold block mt-0.5">
-            {isMr ? 'उपस्थिती अनिवार्य' : 'Mandatory'}
+          <span className="text-[10px] text-teal-700 font-bold block mt-0.5 truncate">
+            {nextMeeting?.venue ? `${nextMeeting.venue}` : (isMr ? 'उपस्थिती अनिवार्य' : 'Mandatory')}
           </span>
         </div>
 

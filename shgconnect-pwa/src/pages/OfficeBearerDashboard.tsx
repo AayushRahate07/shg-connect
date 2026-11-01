@@ -22,7 +22,7 @@ import { verifyLedgerIntegrity } from '../services/hashChain';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Users, Building2, HandCoins, ShieldCheck, Sparkles, BookOpen, Calculator, Lock, FileText, Award, Calendar, Landmark, Settings, Check, Banknote, Radio } from 'lucide-react';
+import { Users, Building2, HandCoins, ShieldCheck, Sparkles, BookOpen, Calculator, Lock, FileText, Award, Calendar, Landmark, Settings, Check, Banknote, Radio, UserPlus } from 'lucide-react';
 import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
 import { LiveMeetingRoom } from '../services/liveMeeting';
 
@@ -54,6 +54,7 @@ interface OfficeBearerDashboardProps {
   onOpenSyncCenter?: () => void;
   onResetData?: () => void;
   onOpenAddMember?: () => void;
+  onOpenScheduleMeeting?: () => void;
   onMemberAdded?: (newMember: Member) => void;
   onRecordTransaction?: (
     memberId: string,
@@ -88,6 +89,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
   onOpenSyncCenter = () => {},
   onResetData = () => {},
   onOpenAddMember,
+  onOpenScheduleMeeting,
   onMemberAdded,
   onRecordTransaction
 }) => {
@@ -346,6 +348,28 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           >
             {language === 'mr' ? '📡 थेट बैठक सुरू करा' : '📡 Start Live Meeting'}
           </Button>
+          {onOpenScheduleMeeting && (
+            <Button
+              variant="secondary"
+              size="lg"
+              icon={<Calendar className="w-5 h-5 text-emerald-950" />}
+              onClick={onOpenScheduleMeeting}
+              className="flex-shrink-0 bg-white hover:bg-emerald-50 text-emerald-900 font-black shadow-md border border-emerald-200"
+            >
+              {language === 'mr' ? '📅 बैठक नियोजन' : '📅 Schedule Meeting'}
+            </Button>
+          )}
+          {onOpenAddMember && (
+            <Button
+              variant="secondary"
+              size="lg"
+              icon={<UserPlus className="w-5 h-5 text-emerald-950" />}
+              onClick={onOpenAddMember}
+              className="flex-shrink-0 bg-white hover:bg-emerald-50 text-emerald-900 font-black shadow-md border border-emerald-200"
+            >
+              {language === 'mr' ? '+ नवीन सभासद' : '+ Add Member'}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Member, Role, SupportedLanguage, MembershipRequest } from '../../types/shg';
 import { saveMembershipRequest } from '../../services/db';
-import { DEMO_MEMBERS, DEMO_ASSIGNED_GROUPS } from '../../services/demoData';
+import { UNIVERSAL_PHONE, findUserByCredentials, SEED_GROUPS } from '../../data/seedData';
 import { sound } from '../../services/sound';
 import { tts } from '../../services/tts';
 import { ShgLogo } from '../common/ShgLogo';
@@ -12,19 +12,22 @@ import {
   UserPlus,
   X,
   CheckCircle2,
-  Building2,
-  User,
-  ClipboardCheck,
-  ShieldCheck,
-  Zap
+  AlertCircle
 } from 'lucide-react';
 
 interface LoginViewProps {
   members: Member[];
   language: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
-  onLoginSuccess: (session: { memberId: string; phone: string; role: Role; memberName?: string }) => void;
+  onLoginSuccess: (session: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => void;
 }
+
+const TIERS = [
+  { pin: '1002', label: 'Member',        labelMr: 'सभासद',        name: 'Anita Patil',       nameMr: 'अनिता पाटील'    },
+  { pin: '1001', label: 'Lead',          labelMr: 'गट प्रमुख',    name: 'Meena Tai Raut',    nameMr: 'मीनाताई राऊत'   },
+  { pin: '0001', label: 'Officer',       labelMr: 'अधिकारी',      name: 'Surekha More',      nameMr: 'सुरेखा मोरे'    },
+  { pin: '0000', label: 'Auditor',       labelMr: 'लेखापरीक्षक',  name: 'Priya Deshmukh',    nameMr: 'प्रिया देशमुख'  },
+];
 
 export const LoginView: React.FC<LoginViewProps> = ({
   members,
@@ -33,19 +36,20 @@ export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess
 }) => {
   const isMr = language === 'mr';
-  const activeMembers: Member[] = (members && members.length > 0) ? members : DEMO_MEMBERS;
+  const t = (mr: string, en: string) => isMr ? mr : en;
 
-  // Selected Role defaults to 'MEMBER'
-  const [role, setRole] = useState<Role>('MEMBER');
-
-  // Join SHG Modal
+  const [phone] = useState<string>(UNIVERSAL_PHONE);
+  const [pin, setPin] = useState<string>('');
+  const [error, setError] = useState<string>('');
+  const [matchedUser, setMatchedUser] = useState<any | null>(null);
+  const [showDirectory, setShowDirectory] = useState<boolean>(false);
   const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
   const [joinSubmitted, setJoinSubmitted] = useState<boolean>(false);
   const [joinName, setJoinName] = useState<string>('');
-  const [joinPhone, setJoinPhone] = useState<string>('8767993248');
+  const [joinPhone, setJoinPhone] = useState<string>(UNIVERSAL_PHONE);
   const [joinOccupation, setJoinOccupation] = useState<string>('');
 
-  // Strictly lock viewport and body scrolling while on the Login screen
+  // Lock viewport — no scroll on login screen
   useEffect(() => {
     const prevHtmlOverflow = document.documentElement.style.overflow;
     const prevBodyOverflow = document.body.style.overflow;
@@ -70,308 +74,329 @@ export const LoginView: React.FC<LoginViewProps> = ({
     };
   }, []);
 
-  // Quick 1-Tap Login Handler
-  const handleQuickLogin = (selectedRole: Role = role) => {
-    let memberId = 'mem-1';
-    let memberName = 'Member';
-    let memberNameRegional = 'सभासद';
-    let phone = '8767993248';
-
-    if (selectedRole === 'OFFICE_BEARER') {
-      memberId = 'mem-1';
-      memberName = 'Lead';
-      memberNameRegional = 'गट प्रमुख';
-      phone = '8767993248';
-    } else if (selectedRole === 'ANIMATOR') {
-      memberId = 'animator-1';
-      memberName = 'Officer';
-      memberNameRegional = 'अधिकारी';
-      phone = '9822011223';
-    } else if (selectedRole === 'AUDITOR') {
-      memberId = 'auditor-1';
-      memberName = 'Auditor';
-      memberNameRegional = 'लेखापरीक्षक';
-      phone = '9999999999';
-    } else if (selectedRole === 'MEMBER') {
-      const defaultMember = activeMembers.find(m => m.id === 'mem-4') || activeMembers[0];
-      if (defaultMember) {
-        memberId = defaultMember.id;
-        memberName = defaultMember.name;
-        memberNameRegional = defaultMember.nameRegional || defaultMember.name;
-        phone = defaultMember.phone?.replace(/\D/g, '').slice(-10) || '8767993248';
+  // Live PIN matcher
+  useEffect(() => {
+    if (pin.length === 4) {
+      const match = findUserByCredentials(phone, pin);
+      if (match) {
+        setMatchedUser(match);
+        setError('');
+      } else {
+        setMatchedUser(null);
+        setError(t('चुकीचा पिन', 'Wrong PIN'));
       }
+    } else {
+      setMatchedUser(null);
+      setError('');
     }
+  }, [pin, phone, isMr]);
 
+  const handleLogin = (userSession = matchedUser) => {
+    if (!userSession) return;
     sound.playStampSound();
-    tts.speak(isMr ? 'प्रवेश यशस्वी' : 'Login successful');
+    const displayName = isMr
+      ? userSession.user.nameRegional || userSession.user.name
+      : userSession.user.name;
+    tts.speak(isMr ? `${displayName}, स्वागत आहे.` : `Welcome, ${displayName}.`);
     onLoginSuccess({
-      memberId,
-      phone,
-      role: selectedRole,
-      memberName: memberNameRegional || memberName
+      memberId: userSession.user.id,
+      phone: UNIVERSAL_PHONE,
+      role: userSession.role,
+      memberName: displayName,
+      shgId: userSession.shgId
     });
   };
 
-  // Join Request submit
+  const handleQuickPinSelect = (quickPin: string) => {
+    setPin(quickPin);
+    const match = findUserByCredentials(UNIVERSAL_PHONE, quickPin);
+    if (match) {
+      setMatchedUser(match);
+      handleLogin(match);
+    }
+  };
+
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!joinName.trim()) return;
-
-    const group = DEMO_ASSIGNED_GROUPS[0];
+    const group = SEED_GROUPS[1] || SEED_GROUPS[0];
     const req: MembershipRequest = {
       id: `req-${Date.now()}`,
       shgId: group.shgCode,
       shgName: isMr ? group.nameRegional : group.name,
       name: joinName.trim(),
       nameRegional: joinName.trim(),
-      phone: joinPhone.replace(/\D/g, '').slice(-10) || '8767993248',
+      phone: joinPhone.replace(/\D/g, '').slice(-10) || UNIVERSAL_PHONE,
       occupation: joinOccupation,
       status: 'PENDING',
       requestedAt: new Date().toISOString()
     };
-
     saveMembershipRequest(req);
     sound.playStampSound();
     setJoinSubmitted(true);
   };
 
-  const roleTabs = [
-    {
-      id: 'MEMBER' as Role,
-      mr: 'सभासद',
-      en: 'Member',
-      icon: User,
-      descMr: 'वैयक्तिक बचत, कर्ज व पासबुक',
-      descEn: 'Personal savings, loans & passbook'
-    },
-    {
-      id: 'OFFICE_BEARER' as Role,
-      mr: 'गट प्रमुख',
-      en: 'Lead',
-      icon: Building2,
-      descMr: 'बैठक संचालन व वित्तीय व्यवहार',
-      descEn: 'Meeting operations & finance'
-    },
-    {
-      id: 'ANIMATOR' as Role,
-      mr: 'अधिकारी',
-      en: 'Officer',
-      icon: ClipboardCheck,
-      descMr: 'गटांचे व्यवस्थापन व समन्वयक',
-      descEn: 'Group management & coordinator'
-    },
-    {
-      id: 'AUDITOR' as Role,
-      mr: 'लेखापरीक्षक',
-      en: 'Auditor',
-      icon: ShieldCheck,
-      descMr: 'माहिती व लेजर तपासणी',
-      descEn: 'Data & ledger inspection'
-    }
-  ];
-
-  const currentRoleTab = roleTabs.find(t => t.id === role) || roleTabs[0];
+  const getRoleLabel = (role: string) => {
+    if (role === 'AUDITOR') return isMr ? 'लेखापरीक्षक' : 'Auditor';
+    if (role === 'ANIMATOR' || role === 'OFFICER') return isMr ? 'क्षेत्र अधिकारी' : 'Field Officer';
+    if (role === 'OFFICE_BEARER' || role === 'SHG_LEAD') return isMr ? 'गट प्रमुख' : 'SHG Lead';
+    return isMr ? 'सभासद' : 'Member';
+  };
 
   return (
     <div
-      className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col justify-between p-2.5 sm:p-4 font-sans select-none text-stone-900 bg-cover bg-center bg-no-repeat z-40 touch-none"
-      style={{
-        backgroundImage: `url(${loginBg})`,
-        backgroundColor: '#F5E6D3'
-      }}
+      className="fixed inset-0 w-full h-[100dvh] overflow-hidden flex flex-col font-sans select-none text-stone-900 bg-cover bg-center bg-no-repeat z-40 touch-none"
+      style={{ backgroundImage: `url(${loginBg})`, backgroundColor: '#F5E6D3' }}
     >
-      
-      {/* ── Top Bar: Language Selector Only ── */}
-      <div className="max-w-xs w-full mx-auto flex justify-end shrink-0 pt-0.5 relative z-10">
-        <div className="inline-flex bg-white/90 backdrop-blur-xs rounded-lg p-0.5 border border-stone-200/80 text-[11px] font-bold shadow-xs">
+      {/* Language toggle — top right, unobtrusive */}
+      <div className="absolute top-3 right-3 z-20">
+        <div className="inline-flex bg-white/80 backdrop-blur-sm rounded-lg p-0.5 border border-white/60 text-[11px] font-semibold shadow-sm">
           <button
             type="button"
             onClick={() => onLanguageChange('mr')}
-            className={`px-2 py-0.5 rounded transition ${language === 'mr' ? 'bg-[#14532D] text-white' : 'text-stone-600'}`}
+            className={`px-2.5 py-1 rounded-md transition ${language === 'mr' ? 'bg-stone-800 text-white' : 'text-stone-500'}`}
           >
-            मराठी
+            म
           </button>
           <button
             type="button"
             onClick={() => onLanguageChange('en')}
-            className={`px-2 py-0.5 rounded transition ${language === 'en' ? 'bg-[#14532D] text-white' : 'text-stone-600'}`}
+            className={`px-2.5 py-1 rounded-md transition ${language === 'en' ? 'bg-stone-800 text-white' : 'text-stone-500'}`}
           >
-            EN
+            A
           </button>
         </div>
       </div>
 
-      {/* ── Center Login Card (Strictly viewport bounded) ── */}
-      <div className="max-w-xs w-full mx-auto bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/80 shadow-2xl p-4 space-y-3 my-auto shrink-0 relative z-10">
-        
-        {/* Brand */}
-        <div className="text-center space-y-0.5">
-          <ShgLogo size={32} className="mx-auto" />
-          <h1 className="text-sm font-black tracking-tight text-stone-900 leading-tight">
-            SHGConnect
-          </h1>
-          <p className="text-[10px] text-stone-500 font-bold leading-tight">
-            {isMr ? 'डिजिटल नोंदवही प्रणाली' : 'Digital Ledger System'}
-          </p>
-        </div>
+      {/* ── Main card — centered, single focal point ── */}
+      <div className="flex-1 flex items-center justify-center px-4">
+        <div className="w-full max-w-[320px] bg-white/96 backdrop-blur-md rounded-3xl shadow-2xl border border-white/80 overflow-hidden">
 
-        {/* 4 Role Selector Chips */}
-        <div className="space-y-1.5">
-          <div className="grid grid-cols-4 gap-1 p-0.5 bg-stone-100 rounded-xl border border-stone-200 text-center">
-            {roleTabs.map(t => {
-              const Icon = t.icon;
-              const isActive = role === t.id;
-              return (
+          {/* Brand header */}
+          <div className="px-6 pt-7 pb-5 text-center border-b border-stone-100">
+            <ShgLogo size={36} className="mx-auto mb-2.5" />
+            <h1 className="text-base font-black text-stone-900 tracking-tight leading-none">SHGConnect</h1>
+            <p className="text-[11px] text-stone-400 font-medium mt-1">
+              {t('स्वयंसहाय्यता गट डिजिटल खातेवही', 'Self-Help Group Ledger')}
+            </p>
+          </div>
+
+          {/* PIN entry */}
+          <div className="px-6 pt-5 pb-4 space-y-3">
+            <div>
+              <p className="text-[11px] font-semibold text-stone-500 mb-2 text-center">
+                {t('तुमचा ४-अंकी पिन टाका', 'Enter your 4-digit PIN')}
+              </p>
+              <input
+                type="password"
+                inputMode="numeric"
+                maxLength={4}
+                value={pin}
+                onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="• • • •"
+                autoFocus
+                className="w-full text-center text-2xl font-black tracking-[0.5em] py-3 bg-stone-50 border-2 border-stone-200 focus:border-stone-800 rounded-2xl outline-none text-stone-900 transition placeholder:text-stone-300"
+              />
+            </div>
+
+            {/* Error — inline, small */}
+            {error && (
+              <div className="flex items-center justify-center gap-1.5 text-rose-600 text-[11px] font-semibold">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Matched user preview — clean pill */}
+            {matchedUser && !error && (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-black text-emerald-900 truncate leading-none">
+                    {isMr ? matchedUser.user.nameRegional || matchedUser.user.name : matchedUser.user.name}
+                  </p>
+                  <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                    {getRoleLabel(matchedUser.role)}
+                    {matchedUser.group?.district ? ` · ${matchedUser.group.district}` : ''}
+                  </p>
+                </div>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 ml-2" />
+              </div>
+            )}
+
+            {/* Login button */}
+            <button
+              type="button"
+              onClick={() => handleLogin()}
+              disabled={!matchedUser}
+              className="w-full bg-stone-900 hover:bg-stone-800 disabled:bg-stone-200 disabled:text-stone-400 active:scale-[0.98] text-white font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 transition"
+            >
+              <span>{matchedUser ? t('आत प्रवेश करा', 'Sign In') : t('पिन टाका', 'Enter PIN')}</span>
+              {matchedUser && <ArrowRight className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {/* Demo access — demarcated, secondary */}
+          <div className="px-6 pb-6 space-y-2.5">
+            <p className="text-[10px] font-semibold text-stone-400 text-center uppercase tracking-widest">
+              {t('त्वरित प्रवेश (Demo)', 'Quick Demo Access')}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {TIERS.map(tier => (
                 <button
-                  key={t.id}
+                  key={tier.pin}
                   type="button"
-                  onClick={() => setRole(t.id)}
-                  className={`py-1.5 px-0.5 rounded-lg text-[9.5px] font-bold transition flex flex-col items-center justify-center ${
-                    isActive
-                      ? 'bg-[#14532D] text-white shadow-xs font-black'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
+                  onClick={() => handleQuickPinSelect(tier.pin)}
+                  className="group flex flex-col items-start px-3 py-2.5 bg-stone-50 hover:bg-stone-100 active:scale-[0.97] rounded-xl border border-stone-200 transition text-left"
                 >
-                  <Icon className={`w-3.5 h-3.5 mb-0.5 ${isActive ? 'text-amber-400' : 'text-stone-400'}`} />
-                  <span className="truncate w-full">{isMr ? t.mr : t.en}</span>
+                  <span className="text-[11px] font-bold text-stone-800 leading-none">
+                    {isMr ? tier.labelMr : tier.label}
+                  </span>
+                  <span className="text-[10px] text-stone-400 font-medium mt-0.5 truncate w-full">
+                    {isMr ? tier.nameMr : tier.name}
+                  </span>
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
 
-          {/* Role Description Scope Pill */}
-          <div className="bg-stone-50 border border-stone-200 rounded-lg py-1 px-1.5 text-center text-[9.5px] text-stone-600 font-semibold leading-tight">
-            {currentRoleTab[isMr ? 'descMr' : 'descEn']}
-          </div>
-        </div>
-
-        {/* ONE-TAP INSTANT LOGIN BUTTON */}
-        <button
-          type="button"
-          onClick={() => handleQuickLogin()}
-          className="w-full bg-[#14532D] hover:bg-emerald-900 active:scale-[0.98] text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition"
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-          <span>
-            {isMr
-              ? `${currentRoleTab.mr} म्हणून प्रवेश करा`
-              : `Enter as ${currentRoleTab.en}`}
-          </span>
-          <ArrowRight className="w-3.5 h-3.5 text-emerald-300" />
-        </button>
-
-        {/* ── Join SHG Link (Non-members) ── */}
-        <div className="text-center pt-1 border-t border-stone-100">
-          <button
-            type="button"
-            onClick={() => {
-              setJoinSubmitted(false);
-              setShowJoinModal(true);
-            }}
-            className="text-[10px] font-bold text-emerald-800 hover:underline inline-flex items-center gap-1"
-          >
-            <UserPlus className="w-3 h-3" />
-            <span>{isMr ? 'नवीन सभासद? बचत गटात सामील व्हा' : 'New? Apply to Join an SHG'}</span>
-          </button>
-        </div>
-
-      </div>
-
-      {/* ── Bottom Anchor (Ensures perfect vertical center for flex-col justify-between) ── */}
-      <div className="w-full shrink-0 h-1"></div>
-
-      {/* ── Join Modal ── */}
-      {showJoinModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 z-50 animate-fadeIn touch-auto">
-          <div className="bg-white rounded-2xl max-w-xs w-full p-4 border border-stone-200 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-2">
-              <span className="text-xs font-black text-stone-900">
-                {isMr ? 'बचत गटात सामील व्हा' : 'Join SHG'}
-              </span>
+            <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
-                onClick={() => setShowJoinModal(false)}
-                className="text-stone-400 hover:text-stone-700"
+                onClick={() => { setJoinSubmitted(false); setShowJoinModal(true); }}
+                className="text-[10px] font-medium text-stone-400 hover:text-stone-600 flex items-center gap-1 transition"
               >
-                <X className="w-4 h-4" />
+                <UserPlus className="w-3 h-3" />
+                {t('सामील व्हा', 'Join SHG')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDirectory(true)}
+                className="text-[10px] font-medium text-stone-400 hover:text-stone-600 transition"
+              >
+                {t('सर्व पिन पाहा', 'All PINs')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PIN Directory Modal ── */}
+      {showDirectory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 z-50 touch-auto">
+          <div className="bg-white rounded-3xl w-full max-w-sm border border-stone-100 shadow-2xl max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
+              <div>
+                <h3 className="text-sm font-black text-stone-900">{t('पिन निर्देशिका', 'PIN Directory')}</h3>
+                <p className="text-[10px] text-stone-400 font-medium mt-0.5">
+                  {t('कोणत्याही पिनवर टॅप करा — थेट लॉगिन', 'Tap any PIN to sign in instantly')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDirectory(false)}
+                className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center transition"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto px-4 py-3 space-y-2">
+              {/* Special tiers */}
+              {[
+                { pin: '0000', role: 'Auditor (Tier 4)', roleMr: 'लेखापरीक्षक (Tier 4)', name: 'Priya Deshmukh', nameMr: 'प्रिया देशमुख', desc: 'MSRLM / UMED — Maharashtra', bg: 'bg-violet-50 border-violet-200' },
+                { pin: '0001', role: 'Officer (Tier 3)', roleMr: 'अधिकारी (Tier 3)', name: 'Surekha More', nameMr: 'सुरेखा मोरे', desc: 'UMED Cluster Coordinator', bg: 'bg-blue-50 border-blue-200' },
+              ].map(item => (
+                <button
+                  key={item.pin}
+                  type="button"
+                  onClick={() => { setShowDirectory(false); handleQuickPinSelect(item.pin); }}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 ${item.bg} border rounded-xl hover:brightness-95 transition text-left`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold text-stone-900 leading-none">{isMr ? item.nameMr : item.name}</p>
+                    <p className="text-[10px] text-stone-500 font-medium mt-0.5">{isMr ? item.roleMr : item.role} · {item.desc}</p>
+                  </div>
+                  <span className="font-mono text-xs font-black text-stone-600 bg-white/80 px-2 py-0.5 rounded-lg border border-stone-200 shrink-0 ml-3">{item.pin}</span>
+                </button>
+              ))}
+
+              {/* 6 SHGs */}
+              {SEED_GROUPS.map((g, idx) => (
+                <div key={g.shgCode} className="border border-stone-100 rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 bg-stone-50">
+                    <p className="text-[11px] font-bold text-stone-700 leading-tight">
+                      {g.district} · {isMr ? g.nameRegional : g.name}
+                    </p>
+                  </div>
+                  <div className="flex px-3 py-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowDirectory(false); handleQuickPinSelect(`${(idx + 1) * 1000 + 1}`); }}
+                      className="flex-1 text-[10px] font-bold py-1 bg-amber-100 text-amber-900 rounded-lg hover:bg-amber-200 transition"
+                    >
+                      Lead · {(idx + 1) * 1000 + 1}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowDirectory(false); handleQuickPinSelect(`${(idx + 1) * 1000 + 2}`); }}
+                      className="flex-1 text-[10px] font-medium py-1 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition"
+                    >
+                      Member · {(idx + 1) * 1000 + 2}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Join SHG Modal ── */}
+      {showJoinModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 z-50 touch-auto">
+          <div className="bg-white rounded-3xl w-full max-w-xs border border-stone-100 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+              <h3 className="text-sm font-black text-stone-900">{t('गटात सामील व्हा', 'Join an SHG')}</h3>
+              <button type="button" onClick={() => setShowJoinModal(false)} className="w-7 h-7 rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 flex items-center justify-center">
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {joinSubmitted ? (
-              <div className="text-center space-y-2 py-3">
-                <CheckCircle2 className="w-10 h-10 text-emerald-700 mx-auto" />
-                <p className="text-xs font-bold text-stone-800">
-                  {isMr ? 'विनंती पाठवली! पुढील बैठकीत मंजुरी मिळेल.' : 'Request registered! Approval in meeting.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowJoinModal(false)}
-                  className="w-full bg-[#14532D] text-white font-bold py-2 rounded-xl text-xs mt-2"
-                >
-                  {isMr ? 'बंद करा' : 'Close'}
+              <div className="text-center px-6 py-8 space-y-3">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+                <p className="text-sm font-black text-stone-800">{t('अर्ज सादर झाला!', 'Application Sent!')}</p>
+                <p className="text-[11px] text-stone-400 font-medium">{t('गट प्रमुख पुढील बैठकीत आढावा घेतील.', 'The SHG Lead will review at the next meeting.')}</p>
+                <button type="button" onClick={() => setShowJoinModal(false)} className="w-full py-2 bg-stone-100 text-stone-700 rounded-xl text-xs font-semibold mt-1">
+                  {t('बंद करा', 'Close')}
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleJoinSubmit} className="space-y-2.5">
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {isMr ? 'नाव' : 'Name'}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={joinName}
-                    onChange={(e) => setJoinName(e.target.value)}
-                    placeholder={isMr ? 'नाव प्रविष्ट करा' : 'Enter name'}
-                    className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {isMr ? 'मोबाईल' : 'Phone'}
-                  </label>
-                  <input
-                    type="tel"
-                    value={joinPhone}
-                    onChange={(e) => setJoinPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-600 mb-0.5">
-                    {isMr ? 'व्यवसाय' : 'Occupation'}
-                  </label>
-                  <input
-                    type="text"
-                    value={joinOccupation}
-                    onChange={(e) => setJoinOccupation(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-stone-50 border border-stone-300 rounded-lg text-xs font-bold outline-none"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowJoinModal(false)}
-                    className="flex-1 py-1.5 border border-stone-200 text-xs font-bold text-stone-600 rounded-lg"
-                  >
-                    {isMr ? 'रद्द करा' : 'Cancel'}
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 bg-[#14532D] text-white font-bold py-1.5 rounded-lg text-xs"
-                  >
-                    {isMr ? 'विनंती पाठवा' : 'Send'}
-                  </button>
-                </div>
+              <form onSubmit={handleJoinSubmit} className="px-5 py-4 space-y-3">
+                {[
+                  { label: t('पूर्ण नाव', 'Full Name'), value: joinName, onChange: (v: string) => setJoinName(v), placeholder: isMr ? 'सुनिता कांबळे' : 'Sunita Kamble', type: 'text', required: true },
+                  { label: t('मोबाईल', 'Mobile'), value: joinPhone, onChange: (v: string) => setJoinPhone(v), placeholder: '9876543210', type: 'tel', required: true },
+                  { label: t('व्यवसाय', 'Occupation'), value: joinOccupation, onChange: (v: string) => setJoinOccupation(v), placeholder: isMr ? 'शिलाई, शेती...' : 'Tailoring, Farming...', type: 'text', required: false },
+                ].map(field => (
+                  <div key={field.label}>
+                    <label className="block text-[10px] font-semibold text-stone-500 mb-1">{field.label}</label>
+                    <input
+                      type={field.type}
+                      required={field.required}
+                      value={field.value}
+                      onChange={e => field.onChange(e.target.value)}
+                      placeholder={field.placeholder}
+                      className="w-full text-xs py-2 px-3 bg-stone-50 border border-stone-200 rounded-xl outline-none font-medium text-stone-900 focus:border-stone-400 transition"
+                    />
+                  </div>
+                ))}
+                <button type="submit" className="w-full bg-stone-900 text-white py-2.5 rounded-xl text-xs font-bold shadow transition active:scale-95 mt-1">
+                  {t('अर्ज सादर करा', 'Submit Application')}
+                </button>
               </form>
             )}
           </div>
         </div>
       )}
-
     </div>
   );
 };

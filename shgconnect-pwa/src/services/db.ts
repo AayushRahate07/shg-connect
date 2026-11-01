@@ -19,6 +19,13 @@ import {
 } from '../types/shg';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 import { DEMO_ASSIGNED_GROUPS, DEMO_MEMBERS, DEMO_LOANS, DEMO_MEETINGS } from './demoData';
+import {
+  SEED_GROUPS,
+  ALL_SEED_USERS,
+  SEED_MEMBERS_BY_SHG,
+  SEED_LOANS_BY_SHG,
+  SEED_MEETINGS_BY_SHG
+} from '../data/seedData';
 
 const DB_NAME = 'SHGConnectDB';
 const DB_VERSION = 4;
@@ -423,26 +430,28 @@ export async function seedInitialDataIfNeeded(): Promise<{
     }
   }
 
-  // Verify that all 7 groups and all 70 members are seeded in IndexedDB
-  const groupsSeedV2 = typeof localStorage !== 'undefined' ? localStorage.getItem('shg_7groups_seeded_v2') : null;
-  if (groupList.length < 7 || members.length < 70 || groupsSeedV2 !== 'COMPLETED') {
+  // Verify that all 6 groups, members, Officer Tier 3, and Auditor Tier 4 are seeded in IndexedDB
+  const seedKey = typeof localStorage !== 'undefined' ? localStorage.getItem('shg_seed_v5_4tiers') : null;
+  if (seedKey !== 'COMPLETED' || groupList.length < 6 || members.length < 80) {
     try {
-      const tx = db.transaction(['group_info', 'members', 'loans'], 'readwrite');
-      DEMO_ASSIGNED_GROUPS.forEach(g => tx.objectStore('group_info').put(g));
-      DEMO_MEMBERS.forEach(m => tx.objectStore('members').put(m));
-      DEMO_LOANS.forEach(l => tx.objectStore('loans').put(l));
+      const tx = db.transaction(['group_info', 'members', 'loans', 'meetings'], 'readwrite');
+      SEED_GROUPS.forEach(g => tx.objectStore('group_info').put(g));
+      ALL_SEED_USERS.forEach(m => tx.objectStore('members').put(m));
+      Object.values(SEED_LOANS_BY_SHG).flat().forEach(l => tx.objectStore('loans').put(l));
+      Object.values(SEED_MEETINGS_BY_SHG).flat().forEach(m => tx.objectStore('meetings').put(m));
       await new Promise<void>((res, rej) => {
         tx.oncomplete = () => res();
         tx.onerror = () => rej(tx.error);
       });
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('shg_7groups_seeded_v2', 'COMPLETED');
+        localStorage.setItem('shg_seed_v5_4tiers', 'COMPLETED');
       }
       groupList = await getAllFromStore<GroupInfo>('group_info');
       members = await getAllFromStore<Member>('members');
       loans = await getAllFromStore<Loan>('loans');
+      meetings = await getAllFromStore<Meeting>('meetings');
     } catch (e) {
-      console.error('Failed to seed 7 SHG groups into IndexedDB:', e);
+      console.error('Failed to seed 6 SHG groups & 88 users into IndexedDB:', e);
     }
   }
 
@@ -659,6 +668,8 @@ export async function resetToDemoData(): Promise<void> {
   tx.objectStore('ledger_blocks').clear();
 
   localStorage.removeItem('shg_migration_status');
+  localStorage.removeItem('shg_seed_v4_88users');
+  localStorage.removeItem('shg_7groups_seeded_v2');
 
   await new Promise<void>((resolve, reject) => {
     tx.oncomplete = () => resolve();
@@ -873,6 +884,45 @@ export async function saveGroupInfo(group: GroupInfo): Promise<void> {
     const store = tx.objectStore('group_info');
     store.put(group);
     tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+export async function saveScheduledMeeting(scheduled: {
+  shgId: string;
+  date: string;
+  time: string;
+  venue: string;
+  agenda: string;
+  scheduledBy?: string;
+}): Promise<GroupInfo | null> {
+  const db = await openDatabase();
+  const tx = db.transaction(['group_info'], 'readwrite');
+  const store = tx.objectStore('group_info');
+
+  return new Promise((resolve, reject) => {
+    const req = store.get(scheduled.shgId);
+    req.onsuccess = () => {
+      const group: GroupInfo = req.result;
+      if (group) {
+        group.nextMeeting = {
+          date: scheduled.date,
+          time: scheduled.time,
+          venue: scheduled.venue,
+          agenda: scheduled.agenda,
+          scheduledBy: scheduled.scheduledBy
+        };
+        store.put(group);
+      }
+    };
+    tx.oncomplete = async () => {
+      try {
+        localStorage.setItem(`shg_next_meeting_${scheduled.shgId}`, JSON.stringify(scheduled));
+      } catch {}
+      const groups = await getAllFromStore<GroupInfo>('group_info');
+      const updated = groups.find(g => g.shgCode === scheduled.shgId) || null;
+      resolve(updated);
+    };
     tx.onerror = () => reject(tx.error);
   });
 }

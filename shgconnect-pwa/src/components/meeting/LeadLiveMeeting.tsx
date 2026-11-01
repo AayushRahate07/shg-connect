@@ -6,7 +6,8 @@ import { tts } from '../../services/tts';
 import { sound } from '../../services/sound';
 import {
   Radio, Users, IndianRupee, CheckCircle2, Loader2,
-  Copy, Check, AlertCircle, Flag, ShieldCheck, KeyRound, Sparkles
+  Copy, Check, AlertCircle, Flag, ShieldCheck, KeyRound, Sparkles,
+  ArrowRight, X, Clock
 } from 'lucide-react';
 
 interface Props {
@@ -155,6 +156,10 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     setSavingsInputs(prev => ({ ...prev, [memberId]: val.replace(/\D/g, '') }));
   };
 
+  const setPresetAmount = (memberId: string, amt: number) => {
+    setSavingsInputs(prev => ({ ...prev, [memberId]: amt.toString() }));
+  };
+
   // Step 1: Leader enters amount and initiates handshake
   const handleInitiateSavings = async (memberId: string) => {
     if (!room) return;
@@ -199,7 +204,6 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       if (res.ok) {
         sound.playStampSound();
         setVerifyModal(prev => ({ ...prev, open: false, loading: false }));
-        // Clear input for this member
         setSavingsInputs(prev => ({ ...prev, [verifyModal.memberId]: '' }));
       } else {
         setVerifyModal(prev => ({ ...prev, loading: false, error: res.error || t('चुकीचा कोड. पुन्हा तपासा.', 'Invalid code. Check again.') }));
@@ -230,10 +234,10 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   if (error) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-        <div className="max-w-sm w-full bg-white rounded-2xl p-6 border border-rose-200 space-y-4">
+        <div className="max-w-sm w-full bg-white rounded-3xl p-6 border border-rose-200 shadow-xl space-y-4">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
           <p className="text-sm text-rose-700 font-bold text-center">{error}</p>
-          <button onClick={onCancel} className="w-full py-2 bg-stone-100 text-stone-700 rounded-xl text-sm font-bold">
+          <button onClick={onCancel} className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold transition">
             {t('परत जा', 'Go Back')}
           </button>
         </div>
@@ -244,36 +248,49 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   if (phase === 'STARTING' || !room) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-700" />
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-800" />
       </div>
     );
   }
 
   const members = Object.values(room.members);
+  const verifiedCount = members.filter(m => m.verified).length;
 
   return (
-    <div className="min-h-screen bg-stone-50 pb-8 relative">
+    <div className="min-h-screen bg-stone-50 text-stone-900 pb-8 relative select-none">
 
-      {/* 🛡️ LEADER HANDSHAKE VERIFICATION MODAL */}
+      {/* 🛡️ LEADER HANDSHAKE VERIFICATION MODAL (MINIMAL CLEAN PHONE UI) */}
       {verifyModal.open && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border-2 border-emerald-500 space-y-4">
-            <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto ring-4 ring-emerald-50">
-              <KeyRound className="w-6 h-6 text-emerald-700" />
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 bg-emerald-50 text-emerald-800 rounded-xl flex items-center justify-center border border-emerald-100">
+                  <KeyRound className="w-4 h-4 text-emerald-800" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-stone-900">{t('रक्कम पडताळणी कोड', 'Verify Handshake OTP')}</h3>
+                  <p className="text-[10px] text-stone-500 font-semibold">{verifyModal.memberName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelHandshake}
+                className="w-7 h-7 rounded-full bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
 
             <div className="text-center space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
-                {t('🛡️ रक्कम पडताळणी कोड (Mutual Handshake)', '🛡️ Mutual Amount Verification')}
+              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+                {t('नोंदवलेली बचत रक्कम', 'Recorded Amount')}
               </span>
-              <h3 className="text-base font-black text-stone-900 mt-2">
-                {verifyModal.memberName}
-              </h3>
-              <div className="text-3xl font-black text-emerald-700">
+              <div className="text-3xl font-black text-stone-900">
                 ₹{verifyModal.amount.toLocaleString('en-IN')}
               </div>
               <p className="text-xs text-stone-600 font-medium">
-                {t('सभासदांच्या मोबाईल स्क्रीनवर दिसणारा ४-अंकी कोड विचारा आणि येथे टाका:', 'Ask member for the 4-digit code shown on their screen:')}
+                {t('सभासदांच्या फोनवर दिसणारा ४-अंकी कोड विचारा:', 'Ask member for 4-digit code shown on screen:')}
               </p>
             </div>
 
@@ -289,7 +306,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                   setVerifyModal(prev => ({ ...prev, otpInput: val, error: '' }));
                 }}
                 placeholder="• • • •"
-                className="w-full text-center text-3xl font-black tracking-[0.5em] py-3 bg-stone-50 border-2 border-emerald-500 rounded-xl outline-none text-stone-900 focus:ring-4 focus:ring-emerald-100"
+                className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-2xl outline-none text-stone-900 transition"
                 autoFocus
               />
 
@@ -298,10 +315,10 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setVerifyModal(prev => ({ ...prev, otpInput: prev.expectedOtp }))}
-                  className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1 transition"
+                  className="text-[10px] font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1 transition"
                 >
                   <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>{t(`सभासद कोड: ${verifyModal.expectedOtp} (येथे भरा)`, `Member Code: ${verifyModal.expectedOtp} (Auto-fill)`)}</span>
+                  <span>{t(`सभासद कोड: ${verifyModal.expectedOtp} (येथे भरा)`, `Auto-fill: ${verifyModal.expectedOtp}`)}</span>
                 </button>
               </div>
 
@@ -317,7 +334,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
               <button
                 onClick={handleConfirmOtp}
                 disabled={verifyModal.otpInput.length !== 4 || verifyModal.loading}
-                className="w-full bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition"
+                className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
               >
                 {verifyModal.loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /><span>{t('पडताळत आहे...', 'Verifying...')}</span></>
@@ -328,7 +345,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
               <button
                 onClick={handleCancelHandshake}
-                className="w-full text-xs text-stone-500 hover:text-stone-700 font-bold py-2"
+                className="w-full text-xs text-stone-500 hover:text-stone-800 font-bold py-1 text-center"
               >
                 {t('रद्द करा', 'Cancel')}
               </button>
@@ -337,74 +354,113 @@ export const LeadLiveMeeting: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-emerald-800 px-4 pt-6 pb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          <span className="text-green-300 text-xs font-black uppercase tracking-wide">{t('थेट बैठक', 'Live Meeting')}</span>
+      {/* ── Top Bar ── */}
+      <div className="max-w-md mx-auto px-4 pt-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
+          </span>
+          <span className="text-xs font-black text-emerald-900 uppercase tracking-wider">
+            {t('थेट बैठक संचालन', 'Lead Meeting Control')}
+          </span>
         </div>
-        <h1 className="text-white text-lg font-black">{shgName}</h1>
-        <p className="text-emerald-300 text-xs font-medium mt-0.5">{t('प्रमुख', 'Led by')}: {leadName}</p>
 
-        {/* Big Code Display */}
-        <div className="mt-5 bg-white/10 border border-white/20 rounded-2xl p-5 text-center space-y-2">
-          <p className="text-emerald-200 text-[11px] font-black uppercase tracking-widest">{t('बैठक कोड — सभासदांना सांगा', 'Meeting Code — Share with members')}</p>
-          <div className="text-5xl font-black text-white tracking-[0.3em]">{room.code}</div>
-          <button
-            onClick={copyCode}
-            className="inline-flex items-center gap-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
-          >
-            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {copied ? t('कॉपी झाले!', 'Copied!') : t('कोड कॉपी करा', 'Copy Code')}
-          </button>
-        </div>
+        <button
+          onClick={onCancel}
+          className="text-xs font-bold text-stone-500 hover:text-stone-800"
+        >
+          {t('बाहेर पडा', 'Exit')}
+        </button>
       </div>
 
-      <div className="px-4 -mt-4 space-y-4">
-        {/* Stats Bar */}
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 grid grid-cols-2 divide-x divide-stone-100">
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Users className="w-4 h-4 text-blue-500" />
-            </div>
-            <p className="text-2xl font-black text-stone-900">{members.length}</p>
-            <p className="text-[10px] text-stone-500 font-bold">{t('सामील', 'Joined')}</p>
+      <div className="max-w-md mx-auto px-4 pt-3 space-y-3.5">
+        {/* ── Meeting Code Sharing Card (Prominent & Minimal) ── */}
+        <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs space-y-2 text-center">
+          <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
+            {t('बैठक कोड — सभासदांना सांगा', 'Meeting Code — Share with Members')}
+          </p>
+          <div className="text-4xl sm:text-5xl font-black text-stone-900 tracking-[0.35em] font-mono">
+            {room.code}
           </div>
-          <div className="p-4 text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <IndianRupee className="w-4 h-4 text-amber-500" />
-            </div>
-            <p className="text-2xl font-black text-stone-900">₹{room.totalPool.toLocaleString('en-IN')}</p>
-            <p className="text-[10px] text-stone-500 font-bold">{t('एकूण जमा', 'Pool')}</p>
+          <button
+            onClick={copyCode}
+            className="inline-flex items-center gap-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-stone-200 transition"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-700" /> : <Copy className="w-3.5 h-3.5 text-stone-600" />}
+            <span>{copied ? t('कॉपी झाले!', 'Copied!') : t('कोड कॉपी करा', 'Copy Code')}</span>
+          </button>
+        </div>
+
+        {/* ── Metrics Summary Card ── */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+              {t('उपस्थित सभासद', 'Present Members')}
+            </span>
+            <span className="text-2xl font-black text-stone-900 mt-1 block">
+              {members.length}
+            </span>
+            <span className="text-[10px] font-bold text-emerald-700 block mt-0.5">
+              {verifiedCount} {t('पडताळणी पूर्ण', 'Verified')}
+            </span>
+          </div>
+
+          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+              {t('एकूण जमा निधी', 'Pool Total')}
+            </span>
+            <span className="text-2xl font-black text-emerald-800 mt-1 block">
+              ₹{room.totalPool.toLocaleString('en-IN')}
+            </span>
+            <span className="text-[10px] font-bold text-stone-500 block mt-0.5">
+              {t('थेट लेजर नोंद', 'Live committed')}
+            </span>
           </div>
         </div>
 
-        {/* Members Waiting / Savings Entry */}
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm">
-          <div className="p-4 border-b border-stone-100">
-            <p className="text-xs font-black text-stone-700 uppercase tracking-wider">{t('उपस्थित सभासद', 'Present Members')}</p>
-            <p className="text-[10px] text-stone-400 mt-0.5">{t('रक्कम नोंदवून सभासदाच्या स्क्रीनवरील कोडने पडताळा', 'Enter amount & verify with code from member phone')}</p>
+        {/* ── Members Savings Entry Roster ── */}
+        <div className="bg-white rounded-3xl border border-stone-200 shadow-2xs overflow-hidden">
+          <div className="p-4 border-b border-stone-100 flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider">
+                {t('सभासद बचत संकलन', 'Member Savings Entry')}
+              </h3>
+              <p className="text-[10px] text-stone-400 font-semibold mt-0.5">
+                {t('रक्कम नोंदवून सभासदाच्या फोनवरील कोड विचारा', 'Enter amount & ask member for code')}
+              </p>
+            </div>
+            <span className="text-xs font-black text-stone-600 bg-stone-100 px-2 py-0.5 rounded-lg">
+              {members.length} {t('सभासद', 'Members')}
+            </span>
           </div>
 
           {members.length === 0 ? (
             <div className="p-8 text-center space-y-2">
               <Radio className="w-8 h-8 text-stone-300 mx-auto animate-pulse" />
-              <p className="text-sm text-stone-400 font-medium">{t('सभासदांची प्रतीक्षा आहे...', 'Waiting for members to join...')}</p>
-              <p className="text-xs text-stone-300">{t('कोड शेअर करा: ' + room.code, 'Share code: ' + room.code)}</p>
+              <p className="text-xs text-stone-500 font-bold">
+                {t('सभासदांची प्रतीक्षा आहे...', 'Waiting for members to join...')}
+              </p>
+              <p className="text-[11px] text-stone-400 font-medium">
+                {t(`सभासदांच्या फोनमध्ये '#${room.code}' कोड टाकायला सांगा.`, `Ask members to enter '#${room.code}' on their phones.`)}
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-stone-50">
+            <div className="divide-y divide-stone-100">
               {members.map(m => (
-                <div key={m.memberId} className="p-4 space-y-2">
+                <div key={m.memberId} className="p-3.5 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span className="text-sm font-bold text-stone-800">{m.memberName}</span>
+                      <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center text-xs font-black">
+                        {m.memberName.slice(0, 1)}
+                      </div>
+                      <span className="text-xs font-bold text-stone-800">{m.memberName}</span>
                     </div>
+
                     {m.verified ? (
-                      <span className="text-xs bg-emerald-100 text-emerald-800 font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-300">
+                      <span className="text-xs bg-emerald-50 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                         <Check className="w-3 h-3 text-emerald-700" />
-                        ₹{m.savings.toLocaleString('en-IN')} {t('पडताळले', 'verified')}
+                        <span>₹{m.savings.toLocaleString('en-IN')} {t('पडताळले', 'Verified')}</span>
                       </span>
                     ) : m.savings > 0 ? (
                       <span className="text-xs bg-stone-100 text-stone-700 font-bold px-2 py-0.5 rounded-full">
@@ -413,10 +469,10 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                     ) : null}
                   </div>
 
-                  {/* Savings Input & Handshake Trigger */}
-                  <div className="flex gap-2">
+                  {/* Savings Input & Presets */}
+                  <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-bold">₹</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-black">₹</span>
                       <input
                         type="tel"
                         inputMode="numeric"
@@ -425,9 +481,23 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                         onKeyDown={e => {
                           if (e.key === 'Enter') handleInitiateSavings(m.memberId);
                         }}
-                        placeholder={t('बचत रक्कम (उदा. ५००)', 'Amount (e.g. 500)')}
-                        className="w-full pl-7 pr-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-sm font-bold outline-none focus:border-emerald-500"
+                        placeholder={t('रक्कम (उदा. ५००)', 'Amount (e.g. 500)')}
+                        className="w-full pl-7 pr-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-black outline-none focus:border-emerald-600 focus:bg-white transition"
                       />
+                    </div>
+
+                    {/* Quick presets */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {[200, 300, 500].map(amt => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => setPresetAmount(m.memberId, amt)}
+                          className="px-2 py-1.5 text-[10px] font-black text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition"
+                        >
+                          ₹{amt}
+                        </button>
+                      ))}
                     </div>
 
                     {m.pendingSavings ? (
@@ -444,16 +514,16 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                             loading: false
                           });
                         }}
-                        className="px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition flex items-center gap-1 animate-pulse"
+                        className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
-                        <span>{t('कोड टाका', 'Enter OTP')}</span>
+                        <span>{t('कोड टाका', 'OTP')}</span>
                       </button>
                     ) : (
                       <button
                         onClick={() => handleInitiateSavings(m.memberId)}
                         disabled={!savingsInputs[m.memberId]}
-                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1"
+                        className="px-3.5 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
                         <span>{t('नोंदवा', 'Save')}</span>
@@ -466,22 +536,20 @@ export const LeadLiveMeeting: React.FC<Props> = ({
           )}
         </div>
 
-        {/* Complete Meeting */}
+        {/* ── Complete Meeting Button ── */}
         {members.length > 0 && (
           <button
             onClick={handleComplete}
             disabled={phase === 'COMPLETING'}
-            className="w-full bg-emerald-800 hover:bg-emerald-900 disabled:opacity-60 text-white font-black py-4 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg transition"
+            className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.98]"
           >
-            {phase === 'COMPLETING'
-              ? <><Loader2 className="w-4 h-4 animate-spin" />{t('पूर्ण करत आहे...', 'Completing...')}</>
-              : <><Flag className="w-4 h-4 text-amber-300" />{t('बैठक पूर्ण करा', 'Complete Meeting')}</>}
+            {phase === 'COMPLETING' ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /><span>{t('पूर्ण करत आहे...', 'Completing...')}</span></>
+            ) : (
+              <><Flag className="w-4 h-4 text-amber-300" /><span>{t('बैठक पूर्ण करा (Complete Meeting)', 'Complete Meeting')}</span></>
+            )}
           </button>
         )}
-
-        <button onClick={onCancel} className="w-full text-xs text-stone-400 font-semibold text-center py-2">
-          {t('रद्द करा', 'Cancel')}
-        </button>
       </div>
     </div>
   );

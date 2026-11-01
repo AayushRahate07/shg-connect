@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution, PaymentMode, SettlementStatus, OfficerSignature } from './types/shg';
-import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, saveResolutions, saveGroupInfo, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
+import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, saveResolutions, saveGroupInfo, saveScheduledMeeting, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
 import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
@@ -14,15 +14,20 @@ import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
 import { SyncCenterModal } from './components/sync/SyncCenterModal';
 import { AddMemberModal } from './components/member/AddMemberModal';
+import { ScheduleMeetingModal } from './components/meeting/ScheduleMeetingModal';
 import { LoginView } from './components/auth/LoginView';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<Role>('MEMBER');
   // Privacy & Banking Security: Session is memory-only. Refreshing or reopening lands securely on Login screen.
-  const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string } | null>(null);
+  const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string; shgId?: string } | null>(null);
 
-  const handleLoginSuccess = (newSession: { memberId: string; phone: string; role: Role; memberName?: string }) => {
+  const handleLoginSuccess = async (newSession: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => {
+    if (newSession.shgId) {
+      setCurrentShgId(newSession.shgId);
+      await reloadAllData();
+    }
     setSession(newSession);
     setCurrentRole(newSession.role);
     setActiveTab('home');
@@ -54,6 +59,7 @@ export default function App() {
   const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
   const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
+  const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState<boolean>(false);
 
   // App state
   const [group, setGroup] = useState<GroupInfo | null>(null);
@@ -364,6 +370,29 @@ export default function App() {
   };
 
   /**
+   * Schedules a future meeting in advance for Tier 2 and Tier 3
+   */
+  const handleScheduleMeeting = async (meetingData: {
+    date: string;
+    time: string;
+    venue: string;
+    agenda: string;
+  }) => {
+    if (!group) return;
+    const updated = await saveScheduledMeeting({
+      shgId: group.shgCode,
+      date: meetingData.date,
+      time: meetingData.time,
+      venue: meetingData.venue,
+      agenda: meetingData.agenda,
+      scheduledBy: session?.memberName || (currentRole === 'AUDITOR' ? 'प्रिया देशमुख (लेखापरीक्षक)' : 'गट प्रमुख')
+    });
+    if (updated) {
+      setGroup(updated);
+    }
+  };
+
+  /**
    * Complete a full Meeting Session (Attendance + Savings + Disbursals + Resolutions)
    */
   const handleCompleteMeetingSession = async (
@@ -661,7 +690,7 @@ export default function App() {
           onResetData={handleResetData}
           loggedInMemberId={session?.memberId}
         />
-      ) : currentRole === 'OFFICE_BEARER' ? (
+      ) : (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD') ? (
         <OfficeBearerDashboard
           group={group}
           members={members}
@@ -683,10 +712,11 @@ export default function App() {
           onOpenSyncCenter={() => setShowSyncModal(true)}
           onResetData={handleResetData}
           onOpenAddMember={() => setShowAddMemberModal(true)}
+          onOpenScheduleMeeting={() => setShowScheduleMeetingModal(true)}
           onMemberAdded={(newMem) => setMembers(prev => [...prev, newMem])}
           onRecordTransaction={handleRecordTransaction}
         />
-      ) : currentRole === 'ANIMATOR' ? (
+      ) : (currentRole === 'ANIMATOR' || currentRole === 'OFFICER') ? (
         <AnimatorDashboard
           group={group}
           members={members}
@@ -713,6 +743,9 @@ export default function App() {
           onLanguageChange={handleLanguageChange}
           onToggleTts={handleToggleTts}
           ttsEnabled={ttsEnabled}
+          onOpenAddMember={() => setShowAddMemberModal(true)}
+          onOpenScheduleMeeting={() => setShowScheduleMeetingModal(true)}
+          onSwitchShg={handleSwitchShgGroup}
         />
       )}
 
@@ -722,6 +755,18 @@ export default function App() {
           language={language}
           onClose={() => setShowAddMemberModal(false)}
           onAddMember={handleAddMember}
+        />
+      )}
+
+      {/* Schedule Future Meeting in Advance Modal */}
+      {showScheduleMeetingModal && group && (
+        <ScheduleMeetingModal
+          shgId={group.shgCode}
+          shgName={language === 'mr' ? group.nameRegional : group.name}
+          defaultVenue={group.nextMeeting?.venue || (language === 'mr' ? `${group.village} सभागृह` : `${group.village} Hall`)}
+          language={language}
+          onClose={() => setShowScheduleMeetingModal(false)}
+          onSchedule={handleScheduleMeeting}
         />
       )}
 
