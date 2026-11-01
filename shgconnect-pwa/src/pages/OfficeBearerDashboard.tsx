@@ -299,49 +299,56 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     <div className="space-y-6">
       {/* ── Group Hero Banner ── */}
       <div
-        className="rounded-2xl p-5 sm:p-6 relative overflow-hidden flex flex-wrap items-center justify-between gap-4"
-        style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 55%, #0F4230 100%)' }}
+        className="rounded-2xl p-4 sm:p-5 relative overflow-hidden text-white shadow-sm"
+        style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 60%, #0F4230 100%)' }}
       >
         <div className="relative z-10">
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-green-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">
+              {language === 'mr' ? 'गट प्रमुख डॅशबोर्ड' : 'SHG Lead'}
+            </span>
+            <span className="text-xs text-green-200 font-semibold">
+              {members.length} {language === 'mr' ? 'सदस्य' : 'Members'}
+            </span>
+          </div>
+
+          <h1 className="text-lg sm:text-2xl font-black tracking-tight leading-snug">
             {language === 'mr' ? group.nameRegional : group.name}
           </h1>
-          <p className="text-sm text-green-200 mt-1.5 font-medium">
+          <p className="text-xs text-green-200 mt-0.5 font-medium">
             {group.village}, {group.district}
-            <span className="mx-2 opacity-40">·</span>
-            {language === 'mr' ? `${members.length} सदस्य` : `${members.length} Members`}
           </p>
         </div>
 
-        <div className="relative z-10 flex flex-wrap items-center gap-2.5">
-          <Button
-            variant="secondary"
-            size="lg"
-            icon={<Sparkles className="w-5 h-5" />}
+        {/* ── 3 Action Buttons in a Clean Equal Grid (NO ORANGE!) ── */}
+        <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15 relative z-10">
+          <button
+            type="button"
             onClick={() => setShowWizard(true)}
-            className="flex-shrink-0"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
           >
-            {language === 'mr' ? 'बैठक सुरू करा' : 'Start Meeting'}
-          </Button>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={<Radio className="w-5 h-5" />}
+            <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+            <span className="truncate">{language === 'mr' ? 'बैठक घ्या' : 'Start Meeting'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setShowLiveMeeting(true)}
-            className="flex-shrink-0 bg-white/20 hover:bg-white/30 border border-white/30 text-white"
+            className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
           >
-            {language === 'mr' ? 'थेट बैठक' : 'Live Meeting'}
-          </Button>
+            <Radio className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <span className="truncate">{language === 'mr' ? 'थेट बैठक' : 'Live Meeting'}</span>
+          </button>
+
           {onOpenScheduleMeeting && (
-            <Button
-              variant="secondary"
-              size="lg"
-              icon={<Calendar className="w-5 h-5 text-emerald-950" />}
+            <button
+              type="button"
               onClick={onOpenScheduleMeeting}
-              className="flex-shrink-0 bg-white hover:bg-emerald-50 text-emerald-900 font-black shadow-md border border-emerald-200"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
             >
-              {language === 'mr' ? 'नियोजन' : 'Schedule'}
-            </Button>
+              <Calendar className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+              <span className="truncate">{language === 'mr' ? 'नियोजन' : 'Schedule'}</span>
+            </button>
           )}
         </div>
       </div>
@@ -350,88 +357,100 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
       <>
           {/* Dynamic Tab Body */}
           {(activeTab === 'home' || activeTab === 'overview') && (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {renderPendingRequestsCard()}
 
-              {/* ── 3 Stat Cards ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
+              {/* ── 3 Stat Cards in 3-Columns (fits on mobile without vertical stacking!) ── */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 {/* Total Savings */}
-                <div className="rounded-2xl p-5 bg-emerald-50 border border-emerald-200 shadow-xs">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#14532D]">
-                      <Banknote className="w-4 h-4 text-white" />
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800">
-                      {language === 'mr' ? 'एकूण गट बचत' : 'Total Savings'}
+                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
+                      <Banknote className="w-3 h-3" />
+                    </div>
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                      {language === 'mr' ? 'एकूण बचत' : 'Savings'}
                     </span>
                   </div>
-                  <div className="text-3xl font-black amount-display text-[#0F4230]">
+                  <div className="text-sm sm:text-xl font-black amount-display text-[#0F4230]">
                     {formatINR(totalGroupSavings)}
                   </div>
-                  <p className="text-xs font-medium mt-1.5 text-emerald-700">
-                    {language === 'mr' ? `मासिक हप्ता: ₹${group.monthlyPoolRate}/सदस्य` : `Monthly: ₹${group.monthlyPoolRate}/member`}
+                  <p className="text-[9.5px] font-medium mt-0.5 text-stone-400 truncate">
+                    ₹{group.monthlyPoolRate || 300}/सदस्य
                   </p>
                 </div>
 
                 {/* Active Loans */}
-                <div className="rounded-2xl p-5 bg-stone-50 border border-stone-200 shadow-xs">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-8 h-8 rounded-xl flex items-center justify-center bg-stone-700">
-                      <HandCoins className="w-4 h-4 text-white" />
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-stone-600">
-                      {language === 'mr' ? 'सक्रिय कर्जे' : 'Active Loans'}
+                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-stone-100 text-stone-700">
+                      <HandCoins className="w-3 h-3" />
+                    </div>
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                      {language === 'mr' ? 'कर्ज शिल्लक' : 'Loan Due'}
                     </span>
                   </div>
-                  <div className="text-3xl font-black amount-display text-stone-900">
+                  <div className="text-sm sm:text-xl font-black amount-display text-stone-900">
                     {formatINR(totalActiveLoansAmount)}
                   </div>
-                  <p className="text-xs font-medium mt-1.5 text-stone-500">
-                    {loans.length} {language === 'mr' ? 'सक्रिय कर्ज खाती' : 'active loan accounts'}
+                  <p className="text-[9.5px] font-medium mt-0.5 text-stone-400 truncate">
+                    {loans.length} {language === 'mr' ? 'खाती' : 'loans'}
                   </p>
                 </div>
 
                 {/* Panchasutra Score */}
-                <div className="rounded-2xl p-5 bg-amber-50 border border-amber-200 shadow-xs">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="w-8 h-8 rounded-xl flex items-center justify-center bg-amber-600">
-                      <Award className="w-4 h-4 text-white" />
-                    </span>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-amber-800">
-                      {language === 'mr' ? 'पंचसूत्र गुण' : 'Panchasutra Score'}
+                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
+                      <Award className="w-3 h-3" />
+                    </div>
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                      {language === 'mr' ? 'पंचसूत्र' : 'Score'}
                     </span>
                   </div>
-                  <div className="text-3xl font-black text-amber-900">
+                  <div className="text-sm sm:text-xl font-black text-emerald-800">
                     {mockPanchasutraScore.totalScore}/100
                   </div>
-                  <p className="text-xs font-medium mt-1.5 text-amber-700">
-                    {mockPanchasutraScore.bankGrade} · {language === 'mr' ? 'बँक पात्र' : 'Bank Eligible'}
+                  <p className="text-[9.5px] font-bold mt-0.5 text-emerald-700 truncate">
+                    {mockPanchasutraScore.bankGrade}
                   </p>
                 </div>
               </div>
 
-              {/* ── Quick Nav Grid ── */}
-              <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-xs">
-                <p className="text-xs font-bold text-stone-500 uppercase tracking-wider mb-3">
-                  {language === 'mr' ? 'गट व्यवस्थापन' : 'Group Management'}
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* ── Quick Nav Grid (4 compact tiles) ── */}
+              <div className="bg-white rounded-2xl p-3.5 border border-stone-200/90 shadow-2xs">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    {language === 'mr' ? 'गट व्यवस्थापन' : 'Group Management'}
+                  </span>
+                  {onOpenAddMember && (
+                    <button
+                      type="button"
+                      onClick={onOpenAddMember}
+                      className="text-[10.5px] font-bold text-emerald-800 hover:underline flex items-center gap-1"
+                    >
+                      <UserPlus className="w-3 h-3 text-emerald-700" />
+                      <span>{language === 'mr' ? '+ नवीन सदस्य' : '+ Add Member'}</span>
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-4 gap-2">
                   {[
                     { id: 'members', labelEn: `Members (${members.length})`, labelMr: `सदस्य (${members.length})`, icon: Users },
                     { id: 'loans', labelEn: 'Loans', labelMr: 'कर्जे', icon: Landmark },
                     { id: 'panchasutra', labelEn: 'Panchasutra', labelMr: 'पंचसूत्र', icon: Award },
-                    { id: 'resolutions', labelEn: 'Register', labelMr: 'नोंदणी', icon: FileText },
+                    { id: 'resolutions', labelEn: 'Register', labelMr: 'नोंदवही', icon: FileText },
                   ].map(item => {
                     const Icon = item.icon;
                     return (
                       <button
                         key={item.id}
+                        type="button"
                         onClick={() => handleNavigate(item.id)}
-                        className="flex flex-col items-start gap-2 p-3.5 rounded-xl bg-stone-50 hover:bg-emerald-50 border border-stone-200 hover:border-emerald-200 transition-all active:scale-[0.97] text-left"
+                        className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 active:scale-[0.97] border border-stone-200/80 transition text-center"
                       >
-                        <Icon className="w-5 h-5 text-[#14532D]" />
-                        <span className="text-xs font-semibold text-stone-700">
+                        <Icon className="w-4 h-4 text-[#14532D]" />
+                        <span className="text-[10.5px] font-bold text-stone-700 truncate w-full">
                           {language === 'mr' ? item.labelMr : item.labelEn}
                         </span>
                       </button>
@@ -441,9 +460,9 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
               </div>
 
               {/* Ledger integrity note (plain language) */}
-              <div className={`rounded-2xl px-4 py-3 flex items-center gap-3 border ${isChainValid ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-300'}`}>
+              <div className={`rounded-xl px-3.5 py-2.5 flex items-center gap-2 border text-xs font-semibold ${isChainValid ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
                 <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${isChainValid ? 'text-emerald-700' : 'text-amber-700'}`} />
-                <p className="text-xs font-semibold text-stone-700">
+                <p className="text-[11px] truncate">
                   {isChainValid
                     ? (language === 'mr' ? 'लेजर सुरक्षित आहे — सर्व नोंदी अखंड आहेत.' : 'Ledger is secure — all records are intact.')
                     : (language === 'mr' ? 'लेजरमध्ये त्रुटी आढळली — कृपया तपासा.' : 'Ledger issue detected — please review.')}

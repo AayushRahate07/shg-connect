@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLanguageChange,
   shgName,
   shgNameRegional,
+  federation,
   activeTab = 'home',
   onGoBack,
   parentTabLabel,
@@ -77,7 +78,8 @@ export const Header: React.FC<HeaderProps> = ({
   const getRoleBadgeStyle = () => {
     switch (currentRole) {
       case 'OFFICE_BEARER':
-        return 'bg-amber-100 text-amber-900 border-amber-300';
+      case 'SHG_LEAD' as any:
+        return 'bg-emerald-50 text-emerald-900 border-emerald-200';
       case 'MEMBER':
         return 'bg-emerald-100 text-emerald-900 border-emerald-300';
       case 'ANIMATOR':
@@ -115,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {shgNameRegional || shgName}
                 </h1>
                 <p className="text-[10px] text-stone-500 font-bold truncate leading-none mt-0.5">
-                  {isMr ? 'शिरवळ, सातारा' : 'Shirwal, Satara'}
+                  {federation?.district ? (federation.block ? federation.block + ', ' : '') + federation.district : (isMr ? 'महाराष्ट्र' : 'Maharashtra')}
                 </p>
               </div>
             </div>
