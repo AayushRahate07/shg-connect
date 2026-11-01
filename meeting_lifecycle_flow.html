@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slide 6: Meeting Lifecycle & Operational Flow (Exact 16:9 · Montserrat)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: #c8e4fa;
+      color: #0b253a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+    .topbar {
+      width: 100%;
+      max-width: 1600px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .title-area h1 {
+      font-size: 22px;
+      font-weight: 900;
+      color: #0b253a;
+      letter-spacing: -0.5px;
+    }
+    .title-area p {
+      font-size: 13.5px;
+      color: #1e5373;
+      font-weight: 700;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+    }
+    button, a.btn-link {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 13.5px;
+      font-weight: 800;
+      padding: 11px 20px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #2d8bba;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(45, 139, 186, 0.4);
+    }
+    .btn-primary:hover {
+      background: #237299;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #ffffff;
+      color: #0b253a;
+      border: 2px solid #2d8bba;
+    }
+    .btn-secondary:hover {
+      background: #def1ff;
+    }
+    /* 16:9 Slide Canvas */
+    .slide-wrapper {
+      width: 100%;
+      max-width: 1600px;
+      aspect-ratio: 16 / 9;
+      background: #def1ff;
+      border-radius: 18px;
+      box-shadow: 0 25px 50px -12px rgba(45, 139, 186, 0.35);
+      border: 3px solid #2d8bba;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .slide-wrapper object, .slide-wrapper svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="title-area">
+      <h1>Slide 6: Meeting Lifecycle &amp; Operational Flow</h1>
+      <p>16:9 Widescreen (1920 × 1080) · Font: Montserrat (Size 40 Titles) · BG: #def1ff · Outlines: #2d8bba</p>
+    </div>
+    <div class="btn-group">
+      <a href="meeting_lifecycle_flow.svg" download="Slide6_Meeting_Lifecycle_16x9.svg" class="btn-link btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download Vector SVG (For PowerPoint)
+      </a>
+      <button class="btn-secondary" onclick="exportPNG()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Download High-Res 4K PNG
+      </button>
+    </div>
+  </div>
+
+  <div class="slide-wrapper">
+    <object id="svgObject" data="meeting_lifecycle_flow.svg" type="image/svg+xml"></object>
+  </div>
+
+  <script>
+    function exportPNG() {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = function() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1920;
+        canvas.height = 1080;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#def1ff";
+        ctx.fillRect(0, 0, 1920, 1080);
+        ctx.drawImage(img, 0, 0, 1920, 1080);
+        const a = document.createElement("a");
+        a.download = "Slide6_Meeting_Lifecycle_16x9_LargeFont.png";
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+      };
+      img.src = "meeting_lifecycle_flow.svg";
+    }
+  </script>
+</body>
+</html>

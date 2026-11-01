@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" style="background:#def1ff; font-family:'Montserrat',sans-serif;">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@700&amp;display=swap');
+      text {
+        font-family: 'Montserrat', sans-serif;
+      }
+      .mono {
+        font-family: 'JetBrains Mono', monospace;
+      }
+    </style>
+
+    <!-- Filters -->
+    <filter id="softShadow" x="-5%" y="-5%" width="110%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#2d8bba" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- Arrow Markers in #2d8bba -->
+    <marker id="arrow" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#2d8bba"/>
+    </marker>
+  </defs>
+
+  <!-- ================= 16:9 FULL BACKGROUND ================= -->
+  <rect width="1920" height="1080" fill="#def1ff"/>
+
+  <!-- ================= HEADER SECTION ================= -->
+  <g transform="translate(40, 25)">
+    <rect width="1840" height="100" rx="18" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Tag -->
+    <rect x="30" y="22" width="160" height="34" rx="17" fill="#2d8bba"/>
+    <text x="110" y="45" fill="#ffffff" font-size="16" font-weight="900" text-anchor="middle" letter-spacing="1">SLIDE 6</text>
+
+    <!-- Main Title (Size 40px) -->
+    <text x="215" y="47" fill="#0b253a" font-size="40" font-weight="900" letter-spacing="-0.5">Meeting Lifecycle &amp; Operational Flow</text>
+    <text x="30" y="85" fill="#1e5373" font-size="22" font-weight="700">100% Offline Field Enforcement · Hard Governance Gates · Idempotent PostgreSQL Concurrency</text>
+  </g>
+
+  <!-- ================= CONNECTING ARROWS ================= -->
+  <!-- Arrow Card 1 -> 2 -->
+  <line x1="620" y1="365" x2="665" y2="365" stroke="#2d8bba" stroke-width="4.5" marker-end="url(#arrow)"/>
+
+  <!-- Arrow Card 2 -> 3 -->
+  <line x1="1250" y1="365" x2="1295" y2="365" stroke="#2d8bba" stroke-width="4.5" marker-end="url(#arrow)"/>
+
+  <!-- Curved Wrap Arrow Card 3 -> Card 4 -->
+  <path d="M 1590 560 L 1590 585 Q 1590 600 1570 600 L 70 600 Q 50 600 50 615 L 50 620" stroke="#2d8bba" stroke-width="4" stroke-dasharray="8,6" fill="none"/>
+
+  <!-- Arrow Card 4 -> 5 -->
+  <line x1="620" y1="825" x2="665" y2="825" stroke="#2d8bba" stroke-width="4.5" marker-end="url(#arrow)"/>
+
+  <!-- Arrow Card 5 -> 6 -->
+  <line x1="1250" y1="825" x2="1295" y2="825" stroke="#2d8bba" stroke-width="4.5" marker-end="url(#arrow)"/>
+
+
+  <!-- ================= ROW 1 (Cards 1, 2, 3) ================= -->
+
+  <!-- ──────────────── CARD 1: ATTENDANCE ──────────────── -->
+  <g transform="translate(40, 150)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">01</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Attendance</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">Fast Roster Roll-Call</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• Fast single-tap roll-call roster</tspan>
+      <tspan x="32" dy="30">• Member status: Present or Absent</tspan>
+      <tspan x="32" dy="30">• Tactile acoustic stamp confirmation</tspan>
+    </text>
+
+    <!-- Governance Rule Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="38" fill="#0b253a" font-size="24" font-weight="900">⚡ 80% QUORUM THRESHOLD</text>
+      <text x="22" y="74" fill="#1e5373" font-size="21" font-weight="700">Validates minimum attendance requirement.</text>
+      <text x="22" y="104" fill="#1a3b50" font-size="19" font-weight="600">Prevents unbacked resolutions and illicit proxy votes.</text>
+    </g>
+  </g>
+
+  <!-- ──────────────── CARD 2: COLLECTIONS ──────────────── -->
+  <g transform="translate(670, 150)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">02</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Collections</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">Dual Financial Intake</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• Monthly group pool savings quota</tspan>
+      <tspan x="32" dy="30">• Loan EMI repayments: Principal + Interest</tspan>
+      <tspan x="32" dy="30">• Auto-calculated per member with voice TTS</tspan>
+    </text>
+
+    <!-- Formula Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="38" fill="#0b253a" font-size="24" font-weight="900">💰 AUTO CASH POOL TALLY</text>
+      <text x="22" y="74" fill="#2d8bba" font-size="24" font-weight="900">Expected = ∑ Savings + ∑ Loan EMIs</text>
+      <text x="22" y="104" fill="#1a3b50" font-size="19" font-weight="600">Establishes exact liquid cash target before loan disbursal.</text>
+    </g>
+  </g>
+
+  <!-- ──────────────── CARD 3: LOAN DISBURSAL ──────────────── -->
+  <g transform="translate(1300, 150)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">03</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Loan Disbursal</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">Internal Micro-Credit</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• Purpose: Agriculture, business, medical</tspan>
+      <tspan x="32" dy="30">• Fair 1%–2% monthly reducing balance</tspan>
+      <tspan x="32" dy="30">• Diminishing interest calculation schedule</tspan>
+    </text>
+
+    <!-- Cash Cap Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="38" fill="#0b253a" font-size="24" font-weight="900">🛡️ CASH-CAPPED LIQUIDITY GUARD</text>
+      <text x="22" y="74" fill="#0b253a" font-size="24" font-weight="900">Loans Disbursed ≤ Cash Collected</text>
+      <text x="22" y="104" fill="#1a3b50" font-size="19" font-weight="600">Strictly prohibited from disbursing unbacked ledger debt!</text>
+    </g>
+  </g>
+
+
+  <!-- ================= ROW 2 (Cards 4, 5, 6) ================= -->
+
+  <!-- ──────────────── CARD 4: CASH BOX TALLY ──────────────── -->
+  <g transform="translate(40, 620)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">04</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Cash Box Tally</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">Denomination Reconciliation</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• Count physical notes: ₹500, ₹200, ₹100, ₹50, ₹20, ₹10</tspan>
+      <tspan x="32" dy="30">• Real-time variance comparison: Δ</tspan>
+      <tspan x="32" dy="30">• Eliminates unaccounted cash leakage</tspan>
+    </text>
+
+    <!-- Strict Gate Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="38" fill="#0b253a" font-size="24" font-weight="900">⚖️ HARD GATE: MUST BALANCE (Δ = 0)</text>
+      <text x="22" y="74" fill="#c026d3" font-size="22" font-weight="900">If Δ ≠ 0: MEETING CANNOT CLOSE</text>
+      <text x="22" y="104" fill="#1a3b50" font-size="19" font-weight="600">Physical counted rupee notes must match digital target!</text>
+    </g>
+  </g>
+
+  <!-- ──────────────── CARD 5: QUORUM SEAL ──────────────── -->
+  <g transform="translate(670, 620)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">05</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Quorum Seal</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">Cryptographic Commit</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• 2-of-3 Multi-Sig: President, Secretary, Treasurer</tspan>
+      <tspan x="32" dy="30">• Salted PIN authorization hashes</tspan>
+      <tspan x="32" dy="30">• Web Crypto SHA-256 block hash &amp; Merkle root</tspan>
+    </text>
+
+    <!-- Proof Code Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="38" fill="#0b253a" font-size="24" font-weight="900">🔐 HUMAN CHECKPOINT CODE</text>
+      <text x="22" y="76" fill="#0b253a" font-size="28" font-family="'JetBrains Mono', monospace" font-weight="900">CHK-7F3A-9B21-4E80</text>
+      <text x="22" y="106" fill="#1a3b50" font-size="19" font-weight="600">100% Offline Finality. Written in passbooks &amp; SMS.</text>
+    </g>
+  </g>
+
+  <!-- ──────────────── CARD 6: CLOUD SYNC ──────────────── -->
+  <g transform="translate(1300, 620)">
+    <rect width="580" height="420" rx="20" fill="#ffffff" stroke="#2d8bba" stroke-width="3.5" filter="url(#softShadow)"/>
+    
+    <!-- Step Badge Circle -->
+    <circle cx="55" cy="55" r="28" fill="#2d8bba"/>
+    <text x="55" y="65" fill="#ffffff" font-size="28" font-weight="900" text-anchor="middle">06</text>
+    
+    <!-- Title (40px) -->
+    <text x="98" y="66" fill="#0b253a" font-size="40" font-weight="900">Cloud Sync</text>
+    <text x="32" y="118" fill="#1e5373" font-size="24" font-weight="700">PostgreSQL Concurrency</text>
+
+    <!-- Bullets (22px) -->
+    <text x="32" y="156" fill="#1a3b50" font-size="22" font-weight="600">
+      <tspan x="32" dy="0">• Triggers automatically when network returns</tspan>
+      <tspan x="32" dy="30">• Streams client outbox mutations to backend</tspan>
+      <tspan x="32" dy="30">• Multi-tenant isolation per SHG group</tspan>
+    </text>
+
+    <!-- Database Box -->
+    <g transform="translate(24, 260)">
+      <rect width="532" height="135" rx="14" fill="#def1ff" stroke="#2d8bba" stroke-width="2.5"/>
+      <text x="22" y="36" fill="#0b253a" font-size="22" font-weight="900">1. opId Idempotency: Zero duplicate writes</text>
+      <text x="22" y="70" fill="#0b253a" font-size="22" font-weight="900">2. Row Locks: SELECT ... FOR UPDATE</text>
+      <text x="22" y="104" fill="#0b253a" font-size="22" font-weight="900">3. Monotonic Sequence: Canonical ordering</text>
+    </g>
+  </g>
+</svg>

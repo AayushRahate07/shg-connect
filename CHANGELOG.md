@@ -12,6 +12,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+
+---
+
+## [2.3.0] - 2026-10-30
+### Added
+- **Live Multi-Device Meeting Room Engine (`meetingRoomPlugin` in `vite.config.ts`)**:
+  - In-memory meeting room coordinator with REST endpoints (`/api/meeting/start`, `/api/meeting/:code/join`, `/api/meeting/:code/complete`, `/api/meeting/:code/stream`).
+  - High-performance Server-Sent Events (SSE) push streaming enabling zero-delay state synchronization across multiple simultaneous devices (Leader phone + Member phones).
+  - Auto-expiring room architecture (6-hour TTL).
+- **Dynamic Mutual Handshake OTP Protocol (`/savings/initiate` & `/savings/verify`)**:
+  - Solves the rural microfinance physical reality: software OCC cannot roll back physical rupee notes handed out of a metal cash box.
+  - Leader enters savings contribution for a member $\rightarrow$ Server generates a dynamic 4-digit Handshake OTP pushed directly to that member's device.
+  - Member receives a fullscreen verification sheet displaying the exact entered amount (`₹500`) and the prominent Handshake OTP.
+  - Member visually verifies the amount and provides the code to the Leader.
+  - Leader enters the member's OTP $\rightarrow$ Server verifies match $\rightarrow$ Transaction locked into group pool with dual-device celebratory stamp sounds.
+- **Member Dashboard Live Meeting Integration (`MemberDashboard.tsx` & `MeetingsView.tsx`)**:
+  - Added dedicated **"📡 थेट बैठक कक्ष (Live Meeting Room)"** card in the Meetings tab (`MeetingsView.tsx`) and quick-action banner on the Home tab.
+  - Interactive 4-digit PIN keypad join flow (`MemberLiveMeeting.tsx`).
+  - Live status view confirming attendance, real-time savings counter, shared group cash box pool, and finalized digital receipt.
+- **Leader Dashboard Live Meeting Conductor (`OfficeBearerDashboard.tsx` & `LeadLiveMeeting.tsx`)**:
+  - Blue action button **"📡 थेट बैठक सुरू करा"** in the Office Bearer dashboard.
+  - Real-time roster tracking member joins, savings entry, Handshake Verification modal, and meeting finalization.
+
+---
+
+## [2.2.0] - 2026-10-30
+### Added
+- **Strict Login Viewport Lock (LoginView.tsx)**:
+  - Bound initial login screen to ixed inset-0 w-full h-[100dvh] overflow-hidden touch-none with active document-level scroll locking (position: fixed, overflow: hidden) during mount, resetting safely on unmount upon login.
+  - Streamlined vertical spacing across logo, 4-tier role selector tabs, OTP form, and SHG join modal to guarantee zero vertical scrolling on any mobile or desktop screen.
+  - High-resolution custom rural village illustration background (loginBg).
+- **OTP Security & Rate Limiting**:
+  - Rate-limited OTP generation and resend intake strictly to 1 request per minute (60-second cooldown timer enforced in LoginView.tsx, otpService.ts, and OtpAttendanceModal.tsx).
+  - Fixed pre-filled mobile number strictly as 8767993248 across roles with clean numeric sanitization.
+  - Removed on-screen/voice OTP leak; simulator OTP codes output solely to browser developer console.
+- **Clean Form Initializations**:
+  - Stripped all default pre-filled sample amounts, names, and checkboxes across AddMemberModal, CentralSavingsModal, UpiPaymentModal, CashBoxReconciliation, MeetingWizard, ResolutionRegister, and LoanCalculator.
+- **PWA Service Worker Asset Caching**:
+  - Configured workbox.maximumFileSizeToCacheInBytes to 10 MB in ite.config.ts to cleanly precache high-res assets in dist/sw.js.
+
 ## [2.1.0] - 2026-09-23
 ### Added
 - **PWA Installation & Connectivity Prompts**:

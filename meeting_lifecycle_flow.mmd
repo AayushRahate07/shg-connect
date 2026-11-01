@@ -1,0 +1,47 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'fontFamily': 'Montserrat',
+    'fontSize': '22px',
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#2d8bba',
+    'primaryTextColor': '#0b253a',
+    'lineColor': '#2d8bba',
+    'edgeLabelBackground': '#def1ff',
+    'clusterBkg': '#def1ff',
+    'clusterBorder': '#2d8bba'
+  }
+}}%%
+
+flowchart LR
+    %% ─────────────────────────────────────────────────────────────
+    %% STYLING: MONTSERRAT FONT, BG #DEF1FF, OUTLINES #2D8BBA, 16:9
+    %% ─────────────────────────────────────────────────────────────
+    classDef card fill:#FFFFFF,stroke:#2D8BBA,stroke-width:3.5px,color:#0B253A;
+    classDef highlight fill:#DEF1FF,stroke:#2D8BBA,stroke-width:3.5px,color:#0B253A;
+
+    subgraph OFFLINE ["🟢 100% OFFLINE FIELD OPERATIONS (PWA)"]
+        direction LR
+
+        S1["<b>01 · ATTENDANCE</b><br/><br/>• Fast roll-call roster<br/>• Present / Absent<br/>• <b>⚡ Min. 80% Quorum</b>"]
+        
+        S2["<b>02 · COLLECTIONS</b><br/><br/>• Monthly savings quota<br/>• Loan EMI repayments<br/>• <b>💰 Auto Cash Pool Tally</b>"]
+        
+        S3["<b>03 · LOAN DISBURSAL</b><br/><br/>• Internal member credit<br/>• <b>🛡️ CASH-CAP GUARD:</b><br/>Loans &le; Cash Collected"]
+        
+        S4["<b>04 · CASH BOX TALLY</b><br/><br/>• Physical note/coin count<br/>• <b>⚖️ STRICT HARD GATE:</b><br/>Blocked until &Delta; = 0"]
+        
+        S5["<b>05 · QUORUM SEAL</b><br/><br/>• 2-of-3 Officer PINs<br/>• Web Crypto SHA-256<br/>• <b>🔐 CHK-XXXX Code</b>"]
+
+        S1 --> S2 --> S3 --> S4 --> S5
+    end
+
+    subgraph CLOUD ["🔵 POST-MEETING SYNC"]
+        direction TB
+
+        S6["<b>06 · CLOUD SYNC</b><br/><br/>• <b>1. opId Idempotency</b><br/>• <b>2. SELECT FOR UPDATE</b><br/>• <b>3. Monotonic Sequence</b>"]
+    end
+
+    S5 ==>|"Device Regains Network"| S6
+
+    class S1,S2,S3,S4,S5,S6 card;

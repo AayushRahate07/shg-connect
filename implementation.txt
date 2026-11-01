@@ -8,7 +8,7 @@ Tech Stack     : React 18, Vite 6, TypeScript 5, Tailwind CSS 3, Lucide Icons,
                  IndexedDB v3, Express 4, PostgreSQL 15, Web Crypto API, 
                  Web Speech API, Web Audio API, vite-plugin-pwa
 Status         : Fully Implemented & Verified
-Date Updated   : 2026-10-14
+Date Updated   : 2026-10-30
 ================================================================================
 
 ================================================================================
@@ -281,6 +281,58 @@ shgconnect/
      ✓ Invariant 12: Pull stream sequence consumption
      ✓ Atomic transactions (BEGIN ... COMMIT) with row-level locks (FOR UPDATE)
      ✓ Processed operations table idempotency enforcement
+
+
+================================================================================
+7. LOGIN VIEWPORT LOCK, FORM PURITY & PWA ASSET CACHING
+================================================================================
+1. Login Viewport Display & Scroll Lock:
+   - Fixed full-screen envelope: fixed inset-0 w-full h-[100dvh] overflow-hidden touch-none.
+   - Document body scroll lock: Active useEffect setting document.body.style.position = 'fixed',
+     document.body.style.overflow = 'hidden', and document.documentElement.style.overflow = 'hidden'
+     during login mount, with atomic teardown on authenticated session unmount.
+   - Content density: Strict vertical spacing across logo (32px), 4-tier role chips (9.5px),
+     and form controls (min 44px touch targets) ensures total height <= 380px, fitting comfortably
+     in all mobile viewports (>= 500px) with zero scrollbar trigger or rubber-banding.
+   - Background: Rural Indian village illustration (loginBg) applied as cover.
+
+2. Security, Rate Limiting & Zero Default Pre-Fills:
+   - Mobile number strictly pre-filled as 8767993248 across all roles.
+   - OTP generation rate-limited strictly to 1 request per minute (60s timer in LoginView.tsx,
+     otpService.ts, and OtpAttendanceModal.tsx).
+   - Removed sample defaults across modals (AddMemberModal, CentralSavingsModal, UpiPaymentModal,
+     CashBoxReconciliation, MeetingWizard, ResolutionRegister, LoanCalculator).
+   - Removed sensitive OTP displays and speech leaks; dev OTPs dispatched exclusively to console.
+
+3. Service Worker Asset Configuration:
+   - Configured workbox.maximumFileSizeToCacheInBytes = 10 * 1024 * 1024 (10 MB) in vite.config.ts.
+   - npm run build generates 100% offline-precached PWA service worker with zero warnings.
+
+================================================================================
+8. LIVE MULTI-DEVICE MEETING ROOM & DYNAMIC HANDSHAKE OTP PROTOCOL
+================================================================================
+1. Architecture & Real-Time Coordination:
+   - In-memory meeting room coordinator via meetingRoomPlugin in vite.config.ts.
+   - High-performance Server-Sent Events (SSE) push streaming over /api/meeting/:code/stream.
+   - Endpoints:
+     * POST /api/meeting/start               : Creates room with 4-digit code (e.g. 9757).
+     * POST /api/meeting/:code/join          : Member enters code, triggers member_joined SSE event.
+     * POST /api/meeting/:code/savings/initiate : Generates dynamic 4-digit OTP for specific member.
+     * POST /api/meeting/:code/savings/verify   : Leader inputs member's OTP, commits verified savings.
+     * POST /api/meeting/:code/savings/cancel   : Member rejects incorrect amount.
+     * POST /api/meeting/:code/complete        : Finalizes meeting and issues receipts.
+
+2. Physical Cash Handover Safeguard (Mutual Handshake OTP):
+   - Solves the rural microfinance vulnerability: software cannot roll back physical notes.
+   - When Leader enters savings (e.g. ₹500) and hits Save, a dynamic OTP (e.g. 7774) is pushed
+     to the Member's screen.
+   - Member inspects the exact amount on their phone and reads out the Handshake OTP.
+   - Leader inputs the OTP on their device to commit the cash into the group pool.
+   - Both devices trigger auditory confirmation and visual verified badges (पडताळले ✅).
+
+3. Dashboard Integrations:
+   - Leader: OfficeBearerDashboard action button '📡 थेट बैठक सुरू करा' opens LeadLiveMeeting.
+   - Member: MemberDashboard Home banner + Meetings tab card '📡 थेट बैठक कक्ष' opens MemberLiveMeeting.
 
 ================================================================================
                            END OF IMPLEMENTATION REPORT
