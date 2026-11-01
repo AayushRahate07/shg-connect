@@ -4,19 +4,18 @@
 
 ### Local-First Microfinance OS & Cryptographic Ledger for Rural SHGs
 
-[![React](https://img.shields.io/badge/REACT-18.3+-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![TypeScript](https://img.shields.io/badge/TYPESCRIPT-5.5+-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![IndexedDB](https://img.shields.io/badge/STORAGE-INDEXEDDB_V4-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-[![Web Crypto](https://img.shields.io/badge/SECURITY-WEB_CRYPTO_SHA256-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
-[![PostgreSQL](https://img.shields.io/badge/POSTGRESQL-16.4-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Node.js](https://img.shields.io/badge/NODE.JS-20+-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
-[![License](https://img.shields.io/badge/LICENSE-MIT-gray?style=for-the-badge)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_v4-success?style=for-the-badge&logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
+[![WebCrypto](https://img.shields.io/badge/Security-SHA--256_RFC6962-critical?style=for-the-badge&logo=open-access&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
 [Live Demo](https://shg-connect-nine.vercel.app/) • [Architecture](#4-technical-architecture) • [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
 
----
-
 </div>
+
+---
 
 ## What is SHGConnect?
 
@@ -35,69 +34,94 @@ Traditionally, one person (secretary or animator) writes everything in handwritt
 
 ## 1. 4-Tier Role-Based Dashboard Access
 
-SHGConnect structures permissions into 4 distinct tiers to ensure tamper-proof segregation of duties:
+SHGConnect structures access across 4 distinct functional tiers arranged side-by-side to guarantee strict segregation of duties:
 
 ```mermaid
-graph LR
-    Auth([Phone Login]) --> T1["<b>Tier 1: Member</b><br/>• Personal Passbook<br/>• Live Handshake OTP<br/>• Dynamic UPI QR"]
-    Auth --> T2["<b>Tier 2: Lead</b><br/>• Live Room Host<br/>• 4-Step Conductor<br/>• Cash Box Tally"]
-    Auth --> T3["<b>Tier 3: Animator</b><br/>• 5-20 SHG Portfolio<br/>• Offline .shgbk Sync<br/>• Member Onboarding"]
-    Auth --> T4["<b>Tier 4: Auditor</b><br/>• SHA-256 Ledger Audit<br/>• Panchasutra Score<br/>• CSV / PDF Export"]
+flowchart LR
+    subgraph Col1["Tier 1: Member (सभासद)"]
+        direction TB
+        M1["Personal Passbook"]
+        M2["Live Handshake OTP"]
+        M3["Dynamic UPI QR"]
+        M4["EMI Repayment Radar"]
+    end
+
+    subgraph Col2["Tier 2: Lead (गट प्रमुख)"]
+        direction TB
+        L1["Host Live Room"]
+        L2["4-Step Meeting Conductor"]
+        L3["Cash Box Note Counter"]
+        L4["Single-Writer Master Lease"]
+    end
+
+    subgraph Col3["Tier 3: Animator (अधिकारी)"]
+        direction TB
+        A1["Multi-SHG Portfolio"]
+        A2["Attendance Health Radar"]
+        A3["Offline .shgbk Backups"]
+        A4["Member Onboarding"]
+    end
+
+    subgraph Col4["Tier 4: Auditor (लेखापरीक्षक)"]
+        direction TB
+        U1["SHA-256 Chain Verifier"]
+        U2["Merkle Root Audit"]
+        U3["Panchasutra Score 0-100"]
+        U4["One-Click Compliance Export"]
+    end
+
+    Col1 --- Col2 --- Col3 --- Col4
 ```
 
-### Detailed Breakdown of the 4 Tiers
+### Role Breakdown
 
 | Tier & Role | Core View | Primary Capabilities |
 | :--- | :--- | :--- |
-| **Tier 1: Member**<br/>*(सभासद)* | `MemberDashboard.tsx` | **Read-Only Passbook & Live Verification.** Views personal savings, active EMI schedule, and Panchasutra health. Joins live meetings via 4-digit code and approves physical cash handoffs via Handshake OTP. |
-| **Tier 2: SHG Lead**<br/>*(गट प्रमुख)* | `OfficeBearerDashboard.tsx` | **Meeting & Financial Operations.** Hosts real-time meeting rooms, enters savings, executes 4-step offline meeting wizard, tallies cash box denominations, and records formal resolutions. |
-| **Tier 3: Cluster Animator**<br/>*(अधिकारी)* | `AnimatorDashboard.tsx` | **Multi-Village Oversight.** Tracks health metrics across 5–20 village SHGs from one device, manages offline encrypted `.shgbk` backups, and handles new member registrations. |
-| **Tier 4: Auditor**<br/>*(लेखापरीक्षक)* | `AuditorDashboard.tsx` | **Forensic Bank & NRLM Inspection.** Read-only audit portal. Validates SHA-256 cryptographic hash chains, evaluates 5 Panchasutra lending rules, and exports formal compliance reports. |
+| **Tier 1: Member** | `MemberDashboard.tsx` | **Read-Only Passbook & Meeting Client.** Individual savings balances, EMI schedules, 4-digit room join, and live cash OTP verification. |
+| **Tier 2: Lead** | `OfficeBearerDashboard.tsx` | **Operational Meeting Console.** Room broadcast, single-writer ledger write lease, physical note denomination counter, and dual PIN sign-off. |
+| **Tier 3: Animator** | `AnimatorDashboard.tsx` | **Village Cluster Oversight.** Cross-group portfolio monitoring (5–20 SHGs), `.shgbk` device backups, and health grading. |
+| **Tier 4: Auditor** | `AuditorDashboard.tsx` | **Institutional Compliance.** Read-only forensic ledger inspection, SHA-256 chain verification, and automated NABARD Panchasutra grading. |
 
 ---
 
 ## 2. How Physical Cash is Verified
 
-Software cannot roll back physical rupee notes once taken out of a metal box. SHGConnect uses a two-layer sequential verification pipeline:
+Software cannot roll back rupee notes once handed out of a cash box. SHGConnect uses a horizontal two-stage verification pipeline to reconcile physical cash against digital records:
 
 ```mermaid
 flowchart LR
-    subgraph L1["Layer 1: Mutual Handshake OTP"]
-        direction LR
-        A1["Leader enters ₹500"] --> A2["Member phone shows<br/>OTP: <b>7774</b>"]
-        A2 --> A3{"Member verifies?"}
-        A3 -->|Yes| A4["Leader enters 7774<br/><b>Locked ✅</b>"]
-        A3 -->|No| A5["Member rejects<br/><b>Cancelled ❌</b>"]
+    subgraph L1["Stage 1: Mutual Handshake OTP"]
+        direction TB
+        S1["Leader enters ₹500"] --> S2["Dynamic OTP pushed to Member"]
+        S2 --> S3["Member reads code to Leader"] --> S4["Leader enters code to lock"]
     end
 
-    subgraph L2["Layer 2: Metal Cash Box Counter"]
-        direction LR
-        B1["Count paper notes<br/>(₹500, ₹200, ₹100...)"] --> B2["Physical Cash Total<br/>vs Expected Total"]
-        B2 --> B3{"Variance?"}
-        B3 -->|0 Diff| B4["<b>Closed & Stamped ✅</b>"]
-        B3 -->|Mismatch| B5["<b>Warning: Halt Disbursal ⚠️</b>"]
+    subgraph L2["Stage 2: Cash Box Denomination Tally"]
+        direction TB
+        C1["Count physical currency notes"] --> C2["App computes: Expected vs Counted"]
+        C2 --> C3{"Variance = 0?"}
+        C3 -->|Yes| C4["Meeting Closed & Signed"]
+        C3 -->|No| C5["Shortfall Warning Block"]
     end
 
-    L1 --> L2
+    L1 ==>|Cash Verified| L2
 ```
 
 ### 1. The Mutual Handshake OTP (Preventing Typing Errors & Disputes)
-- When the leader enters an amount (e.g. ₹500) and hits Save, the app **does not** immediately commit it.
-- A dynamic 4-digit OTP is pushed directly to that specific member's phone over the local network.
+- When the leader enters an amount (e.g. ₹500) and hits Save, the app **does not** immediately save it.
+- A dynamic 4-digit OTP is pushed directly to that specific member's phone over the local connection.
 - The member's phone displays:
   > **बचत रक्कम पडताळणी (Savings Verification)**  
   > प्रमुखांनी तुमची बचत नोंदवली: **₹५००**  
   > रक्कम बरोबर असल्यास हा कोड प्रमुखाला सांगा: **`[ 7 7 7 4 ]`**
-- The member physically hands the cash and reads out the code.
-- Once the leader types `7774`, the transaction is locked and verified with an audible chime on both devices.
-- If the leader accidentally typed ₹5,000 instead of ₹500, the member taps **"रक्कम चुकीची आहे (Reject)"**, and nothing is saved.
+- The member physically hands the cash and reads out the code. Once typed by the leader, the transaction is permanently locked.
 
-### 2. Physical Cash Box Note Counter (Preventing Physical Missing Cash)
+### 2. Cash Box Note Counter (Preventing Physical Cash Loss)
 At the end of the meeting, the secretary enters the actual count of paper notes:
-- Number of ₹500, ₹200, ₹100, ₹50, ₹20, ₹10 notes and coins.
-- The app calculates:
+- Counts ₹500, ₹200, ₹100, ₹50, ₹20, ₹10 notes and coins.
+- Formula enforced:
   $$\text{Expected Total} = \text{Opening Balance} + \text{Savings Collected} + \text{Loan EMIs Collected} - \text{Loans Disbursed}$$
-- If physical cash is ₹11,200 but the ledger says ₹11,400, a clear warning banner shows a **₹200 shortfall** before anyone leaves the meeting room.
+- If physical cash is ₹11,200 but the ledger says ₹11,400, a warning banner highlights a **₹200 shortfall** before anyone can exit.
 
 ---
 
@@ -115,7 +139,7 @@ mindmap
       4-Step Meeting Wizard
       Attendance Checklist
       Cash Box<br/>Note Counter
-      Biometric / PIN Quorum Sign-off
+      Biometric / PIN Quorum
     Financial Ledger
       Member Passbooks
       Loan EMI Schedules
@@ -128,83 +152,40 @@ mindmap
       Operation Freeze on Conflict
 ```
 
-### 1. Live Multi-Device Meeting Room
-- Runs on local Wi-Fi or mobile data via lightweight Server-Sent Events (SSE).
-- Leader creates a room with one tap and shares a 4-digit code (e.g., `9757`).
-- Members join from their own phones without complicated passwords.
-- Real-time roster shows who is present with a green indicator.
-
-### 2. 4-Step Offline Meeting Wizard (Single-Phone Mode)
-When only one phone is available in the meeting, the leader uses the guided wizard:
-- **Step 1 (हजेरी / Attendance):** One-tap present/absent checklist.
-- **Step 2 (बचत व कर्ज / Savings & Loans):** Records monthly savings per member and approves new internal loan requests.
-- **Step 3 (रोकड पडताळणी / Cash Box):** Denomination counter for physical currency.
-- **Step 4 (स्वाक्षरी व शिक्कामोर्तब / Quorum Sign-off):** Both President and Secretary sign off using device fingerprint biometrics or secure PINs.
-
-### 3. Loan Eligibility & EMI Calculator
-- Sliders calculate monthly EMI schedules for internal loans (₹1,000 to ₹50,000).
-- Supports standard SHG monthly reducing balance interest (typically 1% to 2% per month).
-- Displays principal vs. interest breakdown for complete transparency.
-
-### 4. Meeting Resolution Book (ठराव नोंदवही)
-- Records formal resolutions passed by group consensus (e.g. approving an emergency loan for cattle feed or setting the next meeting date).
-- Saved in regional Marathi/Hindi formats aligned with government inspection registers.
-
-### 5. NPCI-Compliant UPI QR Intent Generator
-- Members who prefer paying digitally can generate a standard UPI QR code directly inside the app:
-  `upi://pay?pa=shgaccount@bank&pn=SavitriSHG&am=500&tn=MonthlySavings`
-- Can be scanned by PhonePe, Google Pay, or Paytm.
-
-### 6. Tamper-Check Hash Chain (Ledger Verifier)
-- Every transaction links cryptographically to the previous transaction using SHA-256.
-- If an unauthorized person modifies browser storage to change past payment records, the chain breaks.
-- The auditor tool flags the exact corrupted block index immediately.
-
-### 7. Single-Writer Master Lease (Double-Spend Protection)
-- Prevents two officers on separate phones from disbursing cash against the same metal cash box while offline.
-- Only the designated Master Device (Secretary's phone) can approve loan disbursals and cash withdrawals while disconnected.
-
-### 8. Offline Encrypted Backup & Restore (`.shgbk`)
-- One-click export of complete group records into an encrypted file on the phone.
-- Can be shared via WhatsApp or saved to an SD card for offsite safety.
-- Built-in fork protection: refuses to restore an older, out-of-date backup over newer data.
-
 ---
 
 ## 4. Technical Architecture
 
+A local-first architecture engineered for zero-connectivity environments with optional upstream reconciliation:
+
 ```mermaid
 flowchart LR
-    subgraph Client["Frontend Client (PWA)"]
+    subgraph Client["PWA Client Layer"]
         direction TB
-        ReactUI["React 18 + Tailwind"]
-        IDBStorage["IndexedDB v4 Storage"]
-        HashChain["SHA-256 Hash Chain"]
-        ReactUI <--> IDBStorage
-        IDBStorage <--> HashChain
+        P1["React 18 UI"]
+        P2["IndexedDB v4 Storage"]
+        P3["Web Crypto API"]
     end
 
-    subgraph LocalEngine["Local Broker (Port 3000)"]
+    subgraph Broker["Local Engine (Port 3000)"]
         direction TB
-        VitePlugin["meetingRoomPlugin"]
-        InMemStore["In-Memory State"]
-        SSEStream["SSE Stream"]
-        VitePlugin <--> InMemStore --> SSEStream
+        B1["meetingRoomPlugin"]
+        B2["SSE Real-Time Stream"]
+        B3["In-Memory State Map"]
     end
 
-    subgraph CloudSync["Optional Cloud (Port 4000)"]
+    subgraph Cloud["Cloud Sync (Port 4000)"]
         direction TB
-        ExpressServer["Node.js / Express"]
-        PostgresDB[("PostgreSQL<br/>Row-Level Locks")]
-        ExpressServer <--> PostgresDB
+        C1["Express Gateway"]
+        C2["PostgreSQL Database"]
+        C3["Row-Level Locks"]
     end
 
-    ReactUI <-->|HTTP Mutations| VitePlugin
-    SSEStream -->|Push Updates| ReactUI
-    IDBStorage -.->|Idempotent Outbox Sync| ExpressServer
+    Client <==>|HTTP / SSE| Broker
+    Client -.->|Idempotent Outbox Sync| Cloud
 ```
 
-- **Offline-First PWA:** Uses Service Workers with asset caching (`workbox`). Loads instantly without network.
+- **Offline-First PWA:** Uses Service Workers with 10MB asset caching (`workbox`). Loads instantly without network.
 - **Persistent Storage:** Requests `navigator.storage.persist()` on boot so Android Chrome never clears group records under low storage.
 - **Audio Fallback Engine:** If an Android Go phone lacks Devanagari text-to-speech voice packs, the app uses the Web Audio API to synthesize melodic chimes (cash deposit chime, loan approval fanfare, warning buzz).
 
@@ -291,6 +272,6 @@ npm run dev -- --host 0.0.0.0 --port 3000
 
 <div align="center">
 
-**SHGCONNECT | AAYUSH RAHATE**
+### SHGCONNECT | AAYUSH RAHATE
 
 </div>
