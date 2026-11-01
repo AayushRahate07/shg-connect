@@ -34,6 +34,38 @@ interface LiveMeeting {
 
 const liveRooms = new Map<string, LiveMeeting>();
 
+// ── Room TTL & Periodic Garbage Collection (Prevents memory leaks) ──
+const ROOM_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours max life for open meetings
+const COMPLETED_ROOM_TTL_MS = 60 * 60 * 1000; // 1 hour for completed meetings
+
+function purgeExpiredRoom(code: string, reason = 'expired') {
+  const room = liveRooms.get(code);
+  if (!room) return;
+
+  room.subscribers.forEach(res => {
+    try {
+      res.write(`event: room_closed\ndata: ${JSON.stringify({ reason })}\n\n`);
+      res.end();
+    } catch {}
+  });
+  room.subscribers.clear();
+  liveRooms.delete(code);
+}
+
+// Periodic cleanup sweep every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of liveRooms.entries()) {
+    const age = now - new Date(room.startedAt).getTime();
+    const isCompleted = room.status === 'COMPLETED';
+    const limit = isCompleted ? COMPLETED_ROOM_TTL_MS : ROOM_TTL_MS;
+
+    if (age > limit) {
+      purgeExpiredRoom(code, isCompleted ? 'completed_ttl' : 'stale_ttl');
+    }
+  }
+}, 15 * 60 * 1000);
+
 function broadcastToRoom(room: LiveMeeting, event: string, data: any) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   const dead: any[] = [];
@@ -86,8 +118,6 @@ function meetingRoomPlugin(): Plugin {
                 subscribers: new Set(),
               };
               liveRooms.set(code, room);
-              // Auto-expire after 6 hours
-              setTimeout(() => liveRooms.delete(code), 6 * 60 * 60 * 1000);
               res.setHeader('Content-Type', 'application/json');
               res.setHeader('Access-Control-Allow-Origin', '*');
               res.end(JSON.stringify({ ok: true, code, room: roomSnapshot(room) }));
@@ -287,6 +317,8 @@ function meetingRoomPlugin(): Plugin {
           room.status = 'COMPLETED';
           room.completedAt = new Date().toISOString();
           broadcastToRoom(room, 'meeting_completed', roomSnapshot(room));
+          // Auto-expire 1 hour after completion
+          setTimeout(() => purgeExpiredRoom(completeMatch[1], 'completed'), COMPLETED_ROOM_TTL_MS);
           res.setHeader('Content-Type', 'application/json');
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.end(JSON.stringify({ ok: true, room: roomSnapshot(room) }));
@@ -310,10 +342,13 @@ function meetingRoomPlugin(): Plugin {
           const room = liveRooms.get(streamMatch[1]);
           if (!room) { res.statusCode = 404; res.end(); return; }
           res.setHeader('Content-Type', 'text/event-stream');
-          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Cache-Control', 'no-cache, no-transform');
           res.setHeader('Connection', 'keep-alive');
+          res.setHeader('X-Accel-Buffering', 'no');
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.flushHeaders?.();
+          // Instruct client EventSource to retry after 1.5s on screen-sleep reconnect
+          res.write('retry: 1500\n\n');
           // Send current state immediately on connect
           res.write(`event: snapshot\ndata: ${JSON.stringify(roomSnapshot(room))}\n\n`);
           room.subscribers.add(res);

@@ -33,6 +33,98 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
   const t = (mr: string, en: string) => isMr ? mr : en;
 
+  const attachSubscription = (roomCode: string) => {
+    esRef.current?.close();
+    const es = liveMeetingApi.subscribe(roomCode, {
+      onSnapshot: (r) => {
+        setRoom(r);
+        if (r.status === 'COMPLETED') {
+          setPhase('COMPLETED');
+        }
+        if (r.members[memberId]?.pendingSavings) {
+          setPendingHandshake(r.members[memberId].pendingSavings!);
+        } else {
+          setPendingHandshake(null);
+        }
+      },
+      onMemberJoined: ({ members }) => setRoom(prev => prev ? { ...prev, members } : prev),
+      onSavingsUpdated: ({ members, totalPool }) => {
+        setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
+      },
+      onSavingsHandshakeInitiated: (data) => {
+        if (data.memberId === memberId) {
+          setPendingHandshake({ amount: data.amount, otp: data.otp });
+          sound.playStampSound();
+          tts.speak(t(
+            `बचत पडताळणी. प्रमुखाने ${data.amount} रुपये नोंदवले. पडताळणी कोड ${data.otp.split('').join(' ')}`,
+            `Savings verification. Leader recorded ${data.amount} rupees. Verification code is ${data.otp}`
+          ));
+        }
+      },
+      onSavingsVerified: (data) => {
+        setRoom(prev => prev ? { ...prev, members: data.members, totalPool: data.totalPool } : prev);
+        if (data.memberId === memberId) {
+          setPendingHandshake(null);
+          setShowVerifiedToast({ amount: data.amount });
+          sound.playStampSound();
+          tts.speak(t(`${data.amount} रुपयांची बचत पडताळली आणि जमा झाली`, `Savings of ${data.amount} rupees verified and deposited`));
+          setTimeout(() => setShowVerifiedToast(null), 5000);
+        }
+      },
+      onSavingsCancelled: (data) => {
+        if (data.memberId === memberId) {
+          setPendingHandshake(null);
+        }
+      },
+      onMeetingCompleted: (r) => {
+        setRoom(r);
+        setPhase('COMPLETED');
+        sound.playStampSound();
+        tts.speak(t('बैठक पूर्ण झाली. आपली उपस्थिती व बचत नोंदवली गेली.', 'Meeting completed. Your attendance and savings are recorded.'));
+      },
+      onRoomClosed: () => {
+        setError(t('बैठक समाप्त झाली किंवा वेळ संपली.', 'Meeting ended or session expired.'));
+        setPhase('COMPLETED');
+      },
+    });
+    esRef.current = es;
+    return es;
+  };
+
+  // Immediate state resynchronization when mobile screen wakes up from sleep
+  useEffect(() => {
+    const handleWakeSync = async () => {
+      if (document.visibilityState === 'visible' && code && phase === 'LIVE') {
+        try {
+          const res = await liveMeetingApi.getRoom(code);
+          if (res.ok && res.room) {
+            setRoom(res.room);
+            if (res.room.status === 'COMPLETED') {
+              setPhase('COMPLETED');
+            }
+            if (res.room.members[memberId]?.pendingSavings) {
+              setPendingHandshake(res.room.members[memberId].pendingSavings!);
+            } else {
+              setPendingHandshake(null);
+            }
+          }
+        } catch {}
+
+        // If the SSE socket died during mobile sleep, re-subscribe immediately
+        if (!esRef.current || esRef.current.readyState === EventSource.CLOSED) {
+          attachSubscription(code);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeSync);
+    window.addEventListener('focus', handleWakeSync);
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeSync);
+      window.removeEventListener('focus', handleWakeSync);
+    };
+  }, [code, phase, memberId]);
+
   const handleJoin = async () => {
     if (code.length !== 4) return;
     setPhase('JOINING');
@@ -53,50 +145,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
       }
 
       // Subscribe to live updates
-      const es = liveMeetingApi.subscribe(code, {
-        onSnapshot: (r) => {
-          setRoom(r);
-          if (r.members[memberId]?.pendingSavings) {
-            setPendingHandshake(r.members[memberId].pendingSavings!);
-          }
-        },
-        onMemberJoined: ({ members }) => setRoom(prev => prev ? { ...prev, members } : prev),
-        onSavingsUpdated: ({ members, totalPool }) => {
-          setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
-        },
-        onSavingsHandshakeInitiated: (data) => {
-          if (data.memberId === memberId) {
-            setPendingHandshake({ amount: data.amount, otp: data.otp });
-            sound.playStampSound();
-            tts.speak(t(
-              `बचत पडताळणी. प्रमुखाने ${data.amount} रुपये नोंदवले. पडताळणी कोड ${data.otp.split('').join(' ')}`,
-              `Savings verification. Leader recorded ${data.amount} rupees. Verification code is ${data.otp}`
-            ));
-          }
-        },
-        onSavingsVerified: (data) => {
-          setRoom(prev => prev ? { ...prev, members: data.members, totalPool: data.totalPool } : prev);
-          if (data.memberId === memberId) {
-            setPendingHandshake(null);
-            setShowVerifiedToast({ amount: data.amount });
-            sound.playStampSound();
-            tts.speak(t(`${data.amount} रुपयांची बचत पडताळली आणि जमा झाली`, `Savings of ${data.amount} rupees verified and deposited`));
-            setTimeout(() => setShowVerifiedToast(null), 5000);
-          }
-        },
-        onSavingsCancelled: (data) => {
-          if (data.memberId === memberId) {
-            setPendingHandshake(null);
-          }
-        },
-        onMeetingCompleted: (r) => {
-          setRoom(r);
-          setPhase('COMPLETED');
-          sound.playStampSound();
-          tts.speak(t('बैठक पूर्ण झाली. आपली उपस्थिती व बचत नोंदवली गेली.', 'Meeting completed. Your attendance and savings are recorded.'));
-        },
-      });
-      esRef.current = es;
+      attachSubscription(code);
       setPhase('LIVE');
       sound.playStampSound();
       tts.speak(t('बैठकीत सामील झालात. उपस्थिती नोंदवली.', 'Joined the meeting. Attendance marked.'));

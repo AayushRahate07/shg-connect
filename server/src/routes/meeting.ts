@@ -29,6 +29,39 @@ interface LiveMeeting {
 
 const liveRooms = new Map<string, LiveMeeting>();
 
+// ── Room TTL & Periodic Garbage Collection (Prevents memory leaks on Render free tier) ──
+const ROOM_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours max life for open meetings
+const COMPLETED_ROOM_TTL_MS = 60 * 60 * 1000; // 1 hour for completed meetings
+
+function purgeExpiredRoom(code: string, reason = 'expired') {
+  const room = liveRooms.get(code);
+  if (!room) return;
+
+  // Gracefully close any dangling SSE connections before removal
+  room.subscribers.forEach(res => {
+    try {
+      res.write(`event: room_closed\ndata: ${JSON.stringify({ reason })}\n\n`);
+      res.end();
+    } catch {}
+  });
+  room.subscribers.clear();
+  liveRooms.delete(code);
+}
+
+// Periodic cleanup sweep every 15 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [code, room] of liveRooms.entries()) {
+    const age = now - new Date(room.startedAt).getTime();
+    const isCompleted = room.status === 'COMPLETED';
+    const limit = isCompleted ? COMPLETED_ROOM_TTL_MS : ROOM_TTL_MS;
+
+    if (age > limit) {
+      purgeExpiredRoom(code, isCompleted ? 'completed_ttl' : 'stale_ttl');
+    }
+  }
+}, 15 * 60 * 1000);
+
 function broadcastToRoom(room: LiveMeeting, event: string, data: any) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   const dead: Response[] = [];
@@ -78,9 +111,6 @@ meetingRouter.post('/start', (req: Request, res: Response) => {
       subscribers: new Set(),
     };
     liveRooms.set(code, room);
-
-    // Expire after 6 hours
-    setTimeout(() => liveRooms.delete(code), 6 * 60 * 60 * 1000);
 
     res.json({ ok: true, code, room: roomSnapshot(room) });
   } catch (err: any) {
@@ -264,6 +294,10 @@ meetingRouter.post('/:code/complete', (req: Request, res: Response) => {
   room.status = 'COMPLETED';
   room.completedAt = new Date().toISOString();
   broadcastToRoom(room, 'meeting_completed', roomSnapshot(room));
+
+  // Auto-expire 1 hour after completion to free memory
+  setTimeout(() => purgeExpiredRoom(code, 'completed'), COMPLETED_ROOM_TTL_MS);
+
   res.json({ ok: true, room: roomSnapshot(room) });
 });
 
@@ -279,7 +313,7 @@ meetingRouter.get('/:code', (req: Request, res: Response) => {
   res.json({ ok: true, room: roomSnapshot(room) });
 });
 
-// GET /api/meeting/:code/stream (SSE)
+// GET /api/meeting/:code/stream (SSE with Instant Snapshot on (Re)Connect)
 meetingRouter.get('/:code/stream', (req: Request, res: Response) => {
   const code = req.params.code;
   const room = liveRooms.get(code);
@@ -289,23 +323,28 @@ meetingRouter.get('/:code/stream', (req: Request, res: Response) => {
   }
 
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable reverse-proxy chunk buffering
   res.flushHeaders?.();
 
-  // Send current state immediately on connect
-  res.write(`event: snapshot\ndata: ${JSON.stringify(roomSnapshot(room))}\n\n`);
+  // Instruct client EventSource to retry after 1.5s on screen-sleep reconnect
+  res.write('retry: 1500\n\n');
+
+  // 1. Immediately send full snapshot state on initial connect or screen wake-up reconnect
+  const snapshotData = JSON.stringify(roomSnapshot(room));
+  res.write(`event: snapshot\ndata: ${snapshotData}\n\n`);
 
   room.subscribers.add(res);
 
-  // Heartbeat every 20s
+  // 2. Keep-alive heartbeat every 15s
   const hb = setInterval(() => {
     try {
       res.write(': ping\n\n');
     } catch {
       clearInterval(hb);
     }
-  }, 20000);
+  }, 15000);
 
   req.on('close', () => {
     room.subscribers.delete(res);

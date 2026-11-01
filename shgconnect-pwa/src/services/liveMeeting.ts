@@ -24,6 +24,17 @@ export interface LiveMeetingRoom {
   completedAt?: string;
 }
 
+export interface LiveMeetingHandlers {
+  onSnapshot?: (room: LiveMeetingRoom) => void;
+  onMemberJoined?: (data: { memberId: string; memberName: string; members: Record<string, LiveMember> }) => void;
+  onSavingsUpdated?: (data: { memberId: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
+  onSavingsHandshakeInitiated?: (data: { memberId: string; memberName: string; amount: number; otp: string }) => void;
+  onSavingsVerified?: (data: { memberId: string; memberName: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
+  onSavingsCancelled?: (data: { memberId: string }) => void;
+  onMeetingCompleted?: (room: LiveMeetingRoom) => void;
+  onRoomClosed?: (data: { reason: string }) => void;
+}
+
 const RENDER_PROD_URL = 'https://shg-connect.onrender.com';
 
 const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
@@ -110,15 +121,7 @@ export const liveMeetingApi = {
   /** Subscribe to real-time SSE events from the meeting room.
    *  Returns an EventSource. Caller is responsible for .close() on unmount.
    */
-  subscribe(code: string, handlers: {
-    onSnapshot?: (room: LiveMeetingRoom) => void;
-    onMemberJoined?: (data: { memberId: string; memberName: string; members: Record<string, LiveMember> }) => void;
-    onSavingsUpdated?: (data: { memberId: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
-    onSavingsHandshakeInitiated?: (data: { memberId: string; memberName: string; amount: number; otp: string }) => void;
-    onSavingsVerified?: (data: { memberId: string; memberName: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
-    onSavingsCancelled?: (data: { memberId: string }) => void;
-    onMeetingCompleted?: (room: LiveMeetingRoom) => void;
-  }): EventSource {
+  subscribe(code: string, handlers: LiveMeetingHandlers): EventSource {
     const es = new EventSource(`${BASE}/api/meeting/${code}/stream`);
     es.addEventListener('snapshot', (e: MessageEvent) => handlers.onSnapshot?.(JSON.parse(e.data)));
     es.addEventListener('member_joined', (e: MessageEvent) => handlers.onMemberJoined?.(JSON.parse(e.data)));
@@ -127,6 +130,7 @@ export const liveMeetingApi = {
     es.addEventListener('savings_verified', (e: MessageEvent) => handlers.onSavingsVerified?.(JSON.parse(e.data)));
     es.addEventListener('savings_cancelled', (e: MessageEvent) => handlers.onSavingsCancelled?.(JSON.parse(e.data)));
     es.addEventListener('meeting_completed', (e: MessageEvent) => handlers.onMeetingCompleted?.(JSON.parse(e.data)));
+    es.addEventListener('room_closed', (e: MessageEvent) => handlers.onRoomClosed?.(JSON.parse(e.data)));
     return es;
   },
 };

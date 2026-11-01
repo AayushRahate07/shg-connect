@@ -56,6 +56,79 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
   useEffect(() => () => { esRef.current?.close(); }, []);
 
+  const attachSubscription = (roomCode: string) => {
+    esRef.current?.close();
+    const es = liveMeetingApi.subscribe(roomCode, {
+      onSnapshot: r => {
+        setRoom(r);
+        setVerifyModal(prev => {
+          if (prev.open && prev.memberId && !r.members[prev.memberId]?.pendingSavings) {
+            return { ...prev, open: false };
+          }
+          return prev;
+        });
+      },
+      onMemberJoined: ({ memberName, members }) => {
+        setRoom(prev => prev ? { ...prev, members } : prev);
+        sound.playStampSound();
+        tts.speak(t(`${memberName} सामील झाले`, `${memberName} joined`));
+      },
+      onSavingsUpdated: ({ members, totalPool }) => {
+        setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
+      },
+      onSavingsVerified: ({ memberName, amount, members, totalPool }) => {
+        setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
+        sound.playStampSound();
+        tts.speak(t(`${memberName} यांची ₹${amount} बचत पडताळली`, `Verified ₹${amount} savings for ${memberName}`));
+      },
+      onSavingsCancelled: ({ memberId }) => {
+        setRoom(prev => {
+          if (!prev || !prev.members[memberId]) return prev;
+          const updatedMembers = { ...prev.members };
+          delete updatedMembers[memberId].pendingSavings;
+          return { ...prev, members: updatedMembers };
+        });
+        setVerifyModal(prev => (prev.open && prev.memberId === memberId ? { ...prev, open: false } : prev));
+      },
+      onRoomClosed: () => {
+        setError(t('बैठक समाप्त झाली किंवा वेळ संपली.', 'Meeting ended or session expired.'));
+      }
+    });
+    esRef.current = es;
+    return es;
+  };
+
+  // Immediate state resynchronization when leader phone wakes up from sleep
+  useEffect(() => {
+    const handleWakeSync = async () => {
+      if (document.visibilityState === 'visible' && room?.code && phase === 'LIVE') {
+        try {
+          const res = await liveMeetingApi.getRoom(room.code);
+          if (res.ok && res.room) {
+            setRoom(res.room);
+            setVerifyModal(prev => {
+              if (prev.open && prev.memberId && !res.room!.members[prev.memberId]?.pendingSavings) {
+                return { ...prev, open: false };
+              }
+              return prev;
+            });
+          }
+        } catch {}
+
+        if (!esRef.current || esRef.current.readyState === EventSource.CLOSED) {
+          attachSubscription(room.code);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeSync);
+    window.addEventListener('focus', handleWakeSync);
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeSync);
+      window.removeEventListener('focus', handleWakeSync);
+    };
+  }, [room?.code, phase]);
+
   // Auto-start the room on mount
   useEffect(() => {
     (async () => {
@@ -64,32 +137,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
         if (!res.ok) { setError('Failed to start meeting room'); return; }
         setRoom(res.room);
         setPhase('LIVE');
-        // Subscribe to SSE
-        const es = liveMeetingApi.subscribe(res.code, {
-          onSnapshot: r => setRoom(r),
-          onMemberJoined: ({ memberName, members }) => {
-            setRoom(prev => prev ? { ...prev, members } : prev);
-            sound.playStampSound();
-            tts.speak(t(`${memberName} सामील झाले`, `${memberName} joined`));
-          },
-          onSavingsUpdated: ({ members, totalPool }) => {
-            setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
-          },
-          onSavingsVerified: ({ memberName, amount, members, totalPool }) => {
-            setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
-            sound.playStampSound();
-            tts.speak(t(`${memberName} यांची ₹${amount} बचत पडताळली`, `Verified ₹${amount} savings for ${memberName}`));
-          },
-          onSavingsCancelled: ({ memberId }) => {
-            setRoom(prev => {
-              if (!prev || !prev.members[memberId]) return prev;
-              const updatedMembers = { ...prev.members };
-              delete updatedMembers[memberId].pendingSavings;
-              return { ...prev, members: updatedMembers };
-            });
-          }
-        });
-        esRef.current = es;
+        attachSubscription(res.code);
       } catch {
         setError(t('सर्व्हरशी जोडणी अयशस्वी. Dev सर्व्हर सुरू आहे का?', 'Could not connect. Is the dev server running?'));
       }
