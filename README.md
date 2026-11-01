@@ -11,7 +11,7 @@
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_v4-success?style=for-the-badge&logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![WebCrypto](https://img.shields.io/badge/Security-SHA--256_RFC6962-critical?style=for-the-badge&logo=open-access&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
-[Live Demo](https://shg-connect-nine.vercel.app/) • [Architecture](#4-technical-architecture) • [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
+[Live Demo](https://shg-connect-nine.vercel.app/)  •  [Architecture](#4-technical-architecture)  •  [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
 
 </div>
 
