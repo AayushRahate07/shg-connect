@@ -35,73 +35,61 @@ Traditionally, one person (secretary or animator) writes everything in handwritt
 
 ## 1. 4-Tier Role-Based Dashboard Access
 
-SHGConnect structures access into 4 distinct tiers so members see their personal finances, leaders run meetings, animators oversee clusters, and auditors inspect books without accidental data changes:
+SHGConnect structures permissions into 4 distinct tiers to ensure tamper-proof segregation of duties:
 
 ```mermaid
-graph TD
-    Login([Phone Number Login & Role Selection]) --> RoleSplit{User Role}
-
-    RoleSplit -->|सभासद| Tier1["Tier 1: Member Dashboard<br/>(Personal Passbook & Read-Only)"]
-    RoleSplit -->|गट प्रमुख| Tier2["Tier 2: Office Bearer Dashboard<br/>(Leader / Secretary / Treasurer)"]
-    RoleSplit -->|अधिकारी| Tier3["Tier 3: Cluster Animator Dashboard<br/>(Village Coordinator)"]
-    RoleSplit -->|लेखापरीक्षक| Tier4["Tier 4: Government Auditor Dashboard<br/>(NRLM / BMMU Inspector)"]
-
-    Tier1 --> T1_F["• Personal Passbook & running balance<br/>• Active loan EMI schedule & interest<br/>• Join live meeting with 4-digit code<br/>• Mutual Handshake OTP verification<br/>• UPI QR payment generator<br/>• Savings goal calculator"]
-
-    Tier2 --> T2_F["• 📡 Start Live Meeting Room<br/>• 4-Step Offline Meeting Wizard<br/>• Physical Cash Box Note Counter<br/>• Approve & record member loans<br/>• Resolution Register (ठराव नोंदवही)<br/>• Single-Writer Master Lease"]
-
-    Tier3 --> T3_F["• Multi-SHG portfolio across villages<br/>• Track meeting attendance health<br/>• Switch active SHG group context<br/>• Offline backup & restore (.shgbk)<br/>• Manage member additions"]
-
-    Tier4 --> T4_F["• Cryptographic Hash Verifier<br/>• Detect tampered/edited blocks<br/>• NRLM Panchasutra compliance score<br/>• One-click audit slip export (CSV/PDF)<br/>• Outbox sync inspection"]
+graph LR
+    Auth([Phone Login]) --> T1["<b>Tier 1: Member</b><br/>• Personal Passbook<br/>• Live Handshake OTP<br/>• Dynamic UPI QR"]
+    Auth --> T2["<b>Tier 2: Lead</b><br/>• Live Room Host<br/>• 4-Step Conductor<br/>• Cash Box Tally"]
+    Auth --> T3["<b>Tier 3: Animator</b><br/>• 5-20 SHG Portfolio<br/>• Offline .shgbk Sync<br/>• Member Onboarding"]
+    Auth --> T4["<b>Tier 4: Auditor</b><br/>• SHA-256 Ledger Audit<br/>• Panchasutra Score<br/>• CSV / PDF Export"]
 ```
 
 ### Detailed Breakdown of the 4 Tiers
 
-| Tier | Role Title | Primary Screen | Permissions & Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Tier 1** | **Member (सभासद)** | `MemberDashboard.tsx` | **Read-Only Personal Records & Meeting Participation.**<br/>• Views individual savings deposits, loan balances, next EMI due date.<br/>• Joins live meeting by entering a 4-digit room code.<br/>• Receives real-time Handshake OTP to verify physical cash handed to the leader.<br/>• Generates UPI deep-link QR codes for cashless payments.<br/>• Checks the group's overall Panchasutra health score. |
-| **Tier 2** | **SHG Lead (गट प्रमुख)** | `OfficeBearerDashboard.tsx` | **Full Meeting & Financial Operations.**<br/>• Launches live multi-device meetings with 4-digit room codes.<br/>• Inputs savings and enters member handshake codes to lock transactions.<br/>• Runs traditional 4-step offline meeting wizard when members don't have phones.<br/>• Uses the physical cash box counter to balance rupee notes.<br/>• Records group resolutions (ठराव) approved during the meeting. |
-| **Tier 3** | **Cluster Animator (अधिकारी)** | `AnimatorDashboard.tsx` | **Multi-Village Cluster Coordination.**<br/>• Monitors 5 to 20 SHGs across different villages from a single phone.<br/>• Tracks which groups are holding regular meetings and meeting NRLM standards.<br/>• Manages offline data backup files (`.shgbk`) on device storage.<br/>• Registers new members and handles group onboarding. |
-| **Tier 4** | **Auditor (लेखापरीक्षक)** | `AuditorDashboard.tsx` | **Government / Bank Inspection & Verification.**<br/>• Inspects complete transaction ledgers without edit permissions.<br/>• Runs SHA-256 hash checks to ensure no historical payment was altered.<br/>• Checks the 5 NRLM Panchasutra metrics before bank loan linkage.<br/>• Exports compliance and financial reports. |
+| Tier & Role | Core View | Primary Capabilities |
+| :--- | :--- | :--- |
+| **Tier 1: Member**<br/>*(सभासद)* | `MemberDashboard.tsx` | **Read-Only Passbook & Live Verification.** Views personal savings, active EMI schedule, and Panchasutra health. Joins live meetings via 4-digit code and approves physical cash handoffs via Handshake OTP. |
+| **Tier 2: SHG Lead**<br/>*(गट प्रमुख)* | `OfficeBearerDashboard.tsx` | **Meeting & Financial Operations.** Hosts real-time meeting rooms, enters savings, executes 4-step offline meeting wizard, tallies cash box denominations, and records formal resolutions. |
+| **Tier 3: Cluster Animator**<br/>*(अधिकारी)* | `AnimatorDashboard.tsx` | **Multi-Village Oversight.** Tracks health metrics across 5–20 village SHGs from one device, manages offline encrypted `.shgbk` backups, and handles new member registrations. |
+| **Tier 4: Auditor**<br/>*(लेखापरीक्षक)* | `AuditorDashboard.tsx` | **Forensic Bank & NRLM Inspection.** Read-only audit portal. Validates SHA-256 cryptographic hash chains, evaluates 5 Panchasutra lending rules, and exports formal compliance reports. |
 
 ---
 
 ## 2. How Physical Cash is Verified
 
-The hardest problem in rural microfinance is that **software cannot roll back rupee notes once handed out of a metal box**. SHGConnect uses a two-layer verification system to guarantee that digital numbers match physical cash:
+Software cannot roll back physical rupee notes once taken out of a metal box. SHGConnect uses a two-layer sequential verification pipeline:
 
 ```mermaid
-flowchart TD
-    subgraph Layer1["Layer 1: Individual Handshake OTP (Member to Leader)"]
-        A1["1. Leader types ₹500 for Member on Leader's Phone"] --> A2["2. Server sends dynamic OTP to Member's Phone"]
-        A2 --> A3["3. Member phone shows: '₹500 Entered. Code: 7774'"]
-        A3 --> A4{"Does Member agree with the amount?"}
-        A4 -->|Yes| A5["4. Member reads code '7774' to Leader"]
-        A4 -->|No - Wrong amount entered| A6["Member taps 'Reject' on phone<br/>Transaction cancelled"]
-        A5 --> A7["5. Leader types '7774' on Leader's Phone"]
-        A7 --> A8["6. ₹500 officially locked into digital meeting pool<br/>Both phones play confirmation sound"]
+flowchart LR
+    subgraph L1["Layer 1: Mutual Handshake OTP"]
+        direction LR
+        A1["Leader enters ₹500"] --> A2["Member phone shows<br/>OTP: <b>7774</b>"]
+        A2 --> A3{"Member verifies?"}
+        A3 -->|Yes| A4["Leader enters 7774<br/><b>Locked ✅</b>"]
+        A3 -->|No| A5["Member rejects<br/><b>Cancelled ❌</b>"]
     end
 
-    subgraph Layer2["Layer 2: Metal Cash Box Physical Note Counter"]
-        B1["Leader opens metal cash box at end of meeting"] --> B2["Secretary counts physical notes by denomination<br/>(₹500 × 12, ₹200 × 5, ₹100 × 24, coins...)"]
-        B2 --> B3["App calculates: Physical Cash Total vs Expected Total"]
-        B3 --> B4{"Does Cash Match Ledger?"}
-        B4 -->|Zero Difference| B5["✅ Perfect Match • Meeting Closed & Stamped"]
-        B4 -->|Mismatch Detected| B6["⚠️ Warning Banner: Discrepancy highlighted<br/>Leader re-checks cash box before closing"]
+    subgraph L2["Layer 2: Metal Cash Box Counter"]
+        direction LR
+        B1["Count paper notes<br/>(₹500, ₹200, ₹100...)"] --> B2["Physical Cash Total<br/>vs Expected Total"]
+        B2 --> B3{"Variance?"}
+        B3 -->|0 Diff| B4["<b>Closed & Stamped ✅</b>"]
+        B3 -->|Mismatch| B5["<b>Warning: Halt Disbursal ⚠️</b>"]
     end
 
-    Layer1 --> Layer2
+    L1 --> L2
 ```
 
 ### 1. The Mutual Handshake OTP (Preventing Typing Errors & Disputes)
-- When the leader enters an amount (e.g. ₹500) and hits Save, the app **does not** immediately save it.
-- A dynamic 4-digit OTP is pushed directly to that specific member's phone over the local connection.
+- When the leader enters an amount (e.g. ₹500) and hits Save, the app **does not** immediately commit it.
+- A dynamic 4-digit OTP is pushed directly to that specific member's phone over the local network.
 - The member's phone displays:
   > **बचत रक्कम पडताळणी (Savings Verification)**  
   > प्रमुखांनी तुमची बचत नोंदवली: **₹५००**  
   > रक्कम बरोबर असल्यास हा कोड प्रमुखाला सांगा: **`[ 7 7 7 4 ]`**
 - The member physically hands the cash and reads out the code.
-- Once the leader types `7774`, the transaction is locked and verified with a stamp sound on both devices.
+- Once the leader types `7774`, the transaction is locked and verified with an audible chime on both devices.
 - If the leader accidentally typed ₹5,000 instead of ₹500, the member taps **"रक्कम चुकीची आहे (Reject)"**, and nothing is saved.
 
 ### 2. Physical Cash Box Note Counter (Preventing Physical Missing Cash)
@@ -126,7 +114,7 @@ mindmap
     Offline Conductor
       4-Step Meeting Wizard
       Attendance Checklist
-      Cash Box Note Counter
+      Cash Box<br/>Note Counter
       Biometric / PIN Quorum Sign-off
     Financial Ledger
       Member Passbooks
@@ -186,38 +174,34 @@ When only one phone is available in the meeting, the leader uses the guided wiza
 ## 4. Technical Architecture
 
 ```mermaid
-flowchart TD
-    subgraph ClientLayer["Frontend Client (PWA)"]
-        ReactUI["React 18 + Tailwind UI"]
-        IDBStorage["IndexedDB v4 Storage (Local Records)"]
-        HashChain["SHA-256 Hash Chain Service"]
-        AudioSynthesizer["Web Audio Oscillator Synthesizer"]
-        BioAuth["WebAuthn Biometric Service"]
+flowchart LR
+    subgraph Client["Frontend Client (PWA)"]
+        direction TB
+        ReactUI["React 18 + Tailwind"]
+        IDBStorage["IndexedDB v4 Storage"]
+        HashChain["SHA-256 Hash Chain"]
+        ReactUI <--> IDBStorage
+        IDBStorage <--> HashChain
     end
 
-    subgraph BrokerLayer["Local Real-Time Engine (Port 3000)"]
-        VitePlugin["meetingRoomPlugin (Vite Dev Server)"]
-        SSEStream["Server-Sent Events Stream (/api/meeting/:code/stream)"]
-        InMemStore["In-Memory Room State Map"]
+    subgraph LocalEngine["Local Broker (Port 3000)"]
+        direction TB
+        VitePlugin["meetingRoomPlugin"]
+        InMemStore["In-Memory State"]
+        SSEStream["SSE Stream"]
+        VitePlugin <--> InMemStore --> SSEStream
     end
 
-    subgraph SyncLayer["Optional Cloud Sync (Port 4000)"]
-        ExpressServer["Node.js / Express Gateway"]
-        PostgresDB[(PostgreSQL Database with Row-Level Locks)]
+    subgraph CloudSync["Optional Cloud (Port 4000)"]
+        direction TB
+        ExpressServer["Node.js / Express"]
+        PostgresDB[("PostgreSQL<br/>Row-Level Locks")]
+        ExpressServer <--> PostgresDB
     end
 
-    ReactUI <--> IDBStorage
-    IDBStorage <--> HashChain
-    ReactUI --> AudioSynthesizer
-    ReactUI --> BioAuth
-
-    ReactUI <-->|HTTP REST Mutations| VitePlugin
-    VitePlugin <--> InMemStore
-    InMemStore -->|SSE Real-Time Push| SSEStream
+    ReactUI <-->|HTTP Mutations| VitePlugin
     SSEStream -->|Push Updates| ReactUI
-
-    IDBStorage -.->|Idempotent Outbox Push / Pull| ExpressServer
-    ExpressServer <--> PostgresDB
+    IDBStorage -.->|Idempotent Outbox Sync| ExpressServer
 ```
 
 - **Offline-First PWA:** Uses Service Workers with asset caching (`workbox`). Loads instantly without network.
@@ -302,3 +286,11 @@ npm run dev -- --host 0.0.0.0 --port 3000
      $$\text{₹५०० बचत} \quad\longrightarrow\quad \text{पडताळणी कोड: } [\mathbf{7774}]$$
    - Phone 1 prompts for the code. Type `7774` and hit confirm.
    - Both phones play a celebratory stamp sound, Phone 2 receives a **Verified ✅** badge, and the meeting cash box updates in real time.
+
+---
+
+<div align="center">
+
+**SHGCONNECT | AAYUSH RAHATE**
+
+</div>
