@@ -24,7 +24,9 @@ export interface LiveMeetingRoom {
   completedAt?: string;
 }
 
-const BASE = '';  // Same origin — works on dev server and over ngrok
+const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
+  ? (import.meta as any).env.VITE_LIVE_MEETING_SERVER_URL.replace(/\/+$/, '')
+  : '';
 
 export const liveMeetingApi = {
   /** Lead: create a new meeting room */
