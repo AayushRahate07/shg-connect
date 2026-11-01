@@ -24,9 +24,13 @@ export interface LiveMeetingRoom {
   completedAt?: string;
 }
 
+const RENDER_PROD_URL = 'https://shg-connect.onrender.com';
+
 const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
   ? (import.meta as any).env.VITE_LIVE_MEETING_SERVER_URL.replace(/\/+$/, '')
-  : '';
+  : (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.startsWith('127.') && !window.location.hostname.startsWith('192.') && !window.location.hostname.startsWith('10.')
+      ? RENDER_PROD_URL
+      : '');
 
 export const liveMeetingApi = {
   /** Lead: create a new meeting room */
