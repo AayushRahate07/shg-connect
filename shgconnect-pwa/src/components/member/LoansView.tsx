@@ -3,7 +3,7 @@ import { Member, Transaction, Loan, SupportedLanguage } from '../../types/shg';
 import { translations } from '../../i18n/translations';
 import { formatINR } from '../../theme/tokens';
 import { Card } from '../ui/Card';
-import { Landmark, ArrowUpRight, CheckCircle2, AlertCircle, Calendar, ShieldCheck, History } from 'lucide-react';
+import { Landmark, ArrowUpRight, CheckCircle2, AlertCircle, Calendar, ShieldCheck, History, Check } from 'lucide-react';
 
 interface LoansViewProps {
   member: Member;
@@ -44,6 +44,13 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const paid = Math.max(0, principal - outstanding);
   const progressPercent = Math.min(100, Math.round((paid / principal) * 100));
 
+  const nextDueDate = (() => {
+    const d = new Date();
+    d.setDate(5);
+    if (d < new Date()) d.setMonth(d.getMonth() + 1);
+    return d.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' });
+  })();
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-6">
       {/* Page Header */}
@@ -61,14 +68,14 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {outstanding > 0 ? (
         <div className="space-y-6">
           {/* Active Loan Hero Card */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E4E8EF] shadow-card space-y-3.5">
+          <div className="bg-blue-50/20 p-5 sm:p-6 rounded-2xl border border-blue-200 shadow-card space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {language === 'mr' ? 'सक्रिय कर्जाची शिल्लक' : language === 'hi' ? 'सक्रिय ऋण शेष' : 'Active Outstanding Loan'}
               </span>
               <span className="bg-[#FFF0E5] text-[#E8720C] border border-[#FED7AA] font-extrabold text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" />
-                {language === 'mr' ? 'पुढील हप्ता: ₹१,००० (५ ऑक्टोबर)' : language === 'hi' ? 'अगली किस्त: ₹1,000 (5 अक्टू)' : 'Next EMI: ₹1,000 (Due 5 Oct)'}
+                {language === 'mr' ? `पुढील हप्ता: ₹१,००० (${nextDueDate})` : language === 'hi' ? `अगली किस्त: ₹1,000 (${nextDueDate})` : `Next EMI: ₹1,000 (Due ${nextDueDate})`}
               </span>
             </div>
 
@@ -83,7 +90,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
               </div>
 
               <button
-                onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 1000)}
+                onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 0)}
                 className="w-full sm:w-auto bg-[#E8720C] hover:bg-[#C55E08] text-white px-6 py-3 rounded-xl text-[14px] font-bold transition flex items-center justify-center gap-2 shadow-sm min-h-[48px]"
               >
                 <ArrowUpRight className="w-4 h-4 text-white" />
@@ -120,7 +127,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                         ? 'bg-[#E8720C] text-white ring-2 ring-[#FFF0E5]' 
                         : 'bg-gray-100 text-gray-500 border border-gray-200'
                     }`}>
-                      {step.done ? '✓' : idx + 1}
+                      {step.done ? <Check className="w-3.5 h-3.5" /> : idx + 1}
                     </div>
                     <span className="text-[10px] font-bold text-[#111827] truncate max-w-full">
                       {step.label}
@@ -214,7 +221,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                     <div className="text-right">
                       <div className="font-black text-[#1A6B4A] text-[15px] amount-display">{formatINR(loan.principal)}</div>
                       <span className="text-[10px] font-bold text-[#1A6B4A] bg-[#E6F4EE] border border-[#A7D9BC] px-2.5 py-0.5 rounded-full inline-block mt-1">
-                        ✓ {language === 'mr' ? 'पूर्ण परतफेड' : 'Completed'}
+                        Completed
                       </span>
                     </div>
                   </div>

@@ -7,7 +7,7 @@ interface LoanCalculatorProps {
 }
 
 export const LoanCalculator: React.FC<LoanCalculatorProps> = ({ language }) => {
-  const [principal, setPrincipal] = useState<number>(10000);
+  const [principal, setPrincipal] = useState<number>(0);
   const [monthlyRate, setMonthlyRate] = useState<number>(1.5); // 1.5% per month
   const [tenureMonths, setTenureMonths] = useState<number>(6);
 
@@ -65,8 +65,9 @@ export const LoanCalculator: React.FC<LoanCalculatorProps> = ({ language }) => {
               <input
                 type="number"
                 step="1000"
-                value={principal}
-                onChange={(e) => setPrincipal(Math.max(1000, parseFloat(e.target.value) || 0))}
+                value={principal || ''}
+                placeholder="0"
+                onChange={(e) => setPrincipal(Math.max(0, parseFloat(e.target.value) || 0))}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-8 pr-3 py-2 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none"
               />
             </div>

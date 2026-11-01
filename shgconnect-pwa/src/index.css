@@ -1,27 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Mukta:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Mukta:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  html, body, #root {
+  html {
     width: 100%;
-    max-width: 100%;
-    min-height: 100dvh;
+    min-height: 100%;
     margin: 0;
     padding: 0;
-    touch-action: manipulation;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', 'Mukta', system-ui, -apple-system, sans-serif;
+    font-family: 'Geologica', 'Mukta', system-ui, -apple-system, sans-serif;
     line-height: 1.55;
     background-color: #F4F6FA;
     color: #111827;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   :root[lang="mr"] body,
@@ -35,7 +48,7 @@
   :root[lang="en"] body,
   [lang="en"],
   .font-english {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Geologica', system-ui, sans-serif;
   }
 
   input, select, textarea {
@@ -50,6 +63,7 @@
 
   * {
     box-sizing: border-box;
+    font-family: 'Geologica', 'Mukta', system-ui, sans-serif;
   }
 
   :focus-visible {

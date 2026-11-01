@@ -45,8 +45,8 @@ export const ResolutionRegister: React.FC<ResolutionRegisterProps> = ({
   const [title, setTitle] = useState<string>('');
   const [category, setCategory] = useState<ResolutionCategory>('LIVELIHOOD');
   const [description, setDescription] = useState<string>('');
-  const [proposedBy, setProposedBy] = useState<string>(members[0]?.name || '');
-  const [secondedBy, setSecondedBy] = useState<string>(members[1]?.name || '');
+  const [proposedBy, setProposedBy] = useState<string>('');
+  const [secondedBy, setSecondedBy] = useState<string>('');
 
   const applyTemplate = (templateType: 'SAVINGS' | 'LOAN' | 'FINE') => {
     sound.playStampSound();
@@ -88,15 +88,15 @@ export const ResolutionRegister: React.FC<ResolutionRegisterProps> = ({
   const getCategoryBadge = (cat: ResolutionCategory) => {
     switch (cat) {
       case 'AGRICULTURE':
-        return <span className="bg-[#14532D] text-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold">🌾 शेती / शेळीपालन</span>;
+        return <span className="bg-[#14532D] text-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold">शेती / शेळीपालन</span>;
       case 'LIVELIHOOD':
-        return <span className="bg-amber-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">🐐 उपजीविका (Livelihood)</span>;
+        return <span className="bg-amber-600 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">उपजीविका (Livelihood)</span>;
       case 'MEDICAL_EMERGENCY':
-        return <span className="bg-rose-700 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">🏥 वैद्यकीय आणीबाणी (0% Interest)</span>;
+        return <span className="bg-rose-700 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">वैद्यकीय आणीबाणी (0% Interest)</span>;
       case 'EDUCATION':
-        return <span className="bg-blue-700 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">📚 शिक्षण (Education)</span>;
+        return <span className="bg-blue-700 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">शिक्षण (Education)</span>;
       case 'PENALTY_FINE':
-        return <span className="bg-stone-800 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">⚖️ दंड / शिस्त</span>;
+        return <span className="bg-stone-800 text-amber-300 px-2 py-0.5 rounded-full text-[10px] font-bold">दंड / शिस्त</span>;
     }
   };
 
@@ -177,11 +177,11 @@ export const ResolutionRegister: React.FC<ResolutionRegisterProps> = ({
                 onChange={(e) => setCategory(e.target.value as ResolutionCategory)}
                 className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-1.5 text-xs font-bold text-[#1C1917] outline-none"
               >
-                <option value="AGRICULTURE">🌾 शेती / शेळीपालन (Agriculture)</option>
-                <option value="LIVELIHOOD">🐐 उपजीविका (Livelihood)</option>
-                <option value="MEDICAL_EMERGENCY">🏥 वैद्यकीय आणीबाणी (Medical Emergency)</option>
-                <option value="EDUCATION">📚 शिक्षण (Education)</option>
-                <option value="PENALTY_FINE">⚖️ दंड / शिस्त (Penalty/Fine)</option>
+                <option value="AGRICULTURE">शेती / शेळीपालन (Agriculture)</option>
+                <option value="LIVELIHOOD">उपजीविका (Livelihood)</option>
+                <option value="MEDICAL_EMERGENCY">वैद्यकीय आणीबाणी (Medical Emergency)</option>
+                <option value="EDUCATION">शिक्षण (Education)</option>
+                <option value="PENALTY_FINE">दंड / शिस्त (Penalty/Fine)</option>
               </select>
             </div>
           </div>

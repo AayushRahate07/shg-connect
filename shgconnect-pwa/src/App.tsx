@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution } from './types/shg';
-import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
+import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution, PaymentMode, SettlementStatus, OfficerSignature } from './types/shg';
+import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, saveResolutions, saveGroupInfo, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
 import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
@@ -14,10 +14,38 @@ import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { ConflictResolutionModal } from './components/ConflictResolutionModal';
 import { SyncCenterModal } from './components/sync/SyncCenterModal';
 import { AddMemberModal } from './components/member/AddMemberModal';
+import { LoginView } from './components/auth/LoginView';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<Role>('MEMBER');
+  // Privacy & Banking Security: Session is memory-only. Refreshing or reopening lands securely on Login screen.
+  const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string } | null>(null);
+
+  const handleLoginSuccess = (newSession: { memberId: string; phone: string; role: Role; memberName?: string }) => {
+    setSession(newSession);
+    setCurrentRole(newSession.role);
+    setActiveTab('home');
+    setNavStack(['home']);
+    window.history.pushState({ app: 'shgconnect', view: 'dashboard', tab: 'home' }, '', '#home');
+  };
+
+  const handleLogout = () => {
+    setSession(null);
+    setCurrentRole('MEMBER');
+    setActiveTab('home');
+    try {
+      localStorage.removeItem('shg_auth_session_v1');
+    } catch (e) {}
+  };
+
+  const handleRoleChange = (role: Role) => {
+    setCurrentRole(role);
+    if (session) {
+      setSession({ ...session, role });
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<string>('home');
   const [navStack, setNavStack] = useState<string[]>(['home']);
   const [language, setLanguage] = useState<SupportedLanguage>('mr');
@@ -47,6 +75,10 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Clear any previous persistent session to ensure privacy on shared devices & page reloads
+    try {
+      localStorage.removeItem('shg_auth_session_v1');
+    } catch (e) {}
     reloadAllData();
 
     // Prevent Android OS storage eviction on budget devices
@@ -75,45 +107,106 @@ export default function App() {
   const handleSelectTab = (tab: string) => {
     if (tab === 'sync') {
       setShowSyncModal(true);
+      window.history.pushState({ app: 'shgconnect', view: 'modal', modal: 'sync' }, '', '#sync');
       return;
     }
 
-    const primaryTabs = ['home', 'savings', 'loans', 'meetings', 'more'];
+    const primaryTabs = ['home', 'savings', 'loans', 'meetings', 'more', 'members', 'panchasutra', 'passbook', 'resolutions', 'reports', 'settings'];
     setNavStack(prev => {
       if (tab === 'home') {
         return ['home'];
       }
-      if (primaryTabs.includes(tab)) {
-        return ['home', tab];
-      }
-      return [...prev, tab];
+      return [...prev.filter(t => t !== tab), tab];
     });
     setActiveTab(tab);
     try {
-      window.history.pushState({ tab }, '', `#${tab}`);
-    } catch (e) {
-      // Browser history fallback
-    }
+      window.history.pushState({ app: 'shgconnect', view: 'tab', tab }, '', `#${tab}`);
+    } catch (e) {}
   };
 
   const handleGoBack = () => {
+    if (showSyncModal) {
+      setShowSyncModal(false);
+      return;
+    }
+    if (showAddMemberModal) {
+      setShowAddMemberModal(false);
+      return;
+    }
+    if (showBackupModal) {
+      setShowBackupModal(false);
+      return;
+    }
+    if (showConflictModal) {
+      setShowConflictModal(false);
+      return;
+    }
+
     if (navStack.length > 1) {
       const newStack = navStack.slice(0, navStack.length - 1);
-      const prevTab = newStack[newStack.length - 1];
+      const prevTab = newStack[newStack.length - 1] || 'home';
       setNavStack(newStack);
       setActiveTab(prevTab);
+      window.history.pushState({ app: 'shgconnect', view: 'tab', tab: prevTab }, '', `#${prevTab}`);
+    } else if (activeTab !== 'home') {
+      setActiveTab('home');
+      setNavStack(['home']);
+      window.history.pushState({ app: 'shgconnect', view: 'tab', tab: 'home' }, '', '#home');
     }
   };
 
+  // Safe PopState: Intercept Back button so it NEVER leaves the website abruptly!
   useEffect(() => {
-    const handlePopState = () => {
-      if (navStack.length > 1) {
-        handleGoBack();
+    // Ensure baseline history state exists
+    if (!window.history.state) {
+      window.history.replaceState({ app: 'shgconnect', view: session ? 'dashboard' : 'login', tab: activeTab }, '', window.location.hash || '#');
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      // 1. If any modal is open, close the modal and stay inside app
+      if (showSyncModal) {
+        setShowSyncModal(false);
+        window.history.pushState({ app: 'shgconnect', view: 'tab', tab: activeTab }, '', `#${activeTab}`);
+        return;
       }
+      if (showAddMemberModal) {
+        setShowAddMemberModal(false);
+        window.history.pushState({ app: 'shgconnect', view: 'tab', tab: activeTab }, '', `#${activeTab}`);
+        return;
+      }
+      if (showBackupModal) {
+        setShowBackupModal(false);
+        window.history.pushState({ app: 'shgconnect', view: 'tab', tab: activeTab }, '', `#${activeTab}`);
+        return;
+      }
+      if (showConflictModal) {
+        setShowConflictModal(false);
+        window.history.pushState({ app: 'shgconnect', view: 'tab', tab: activeTab }, '', `#${activeTab}`);
+        return;
+      }
+
+      // 2. If inside a sub-tab (not 'home'), navigate back to 'home'
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        setNavStack(['home']);
+        window.history.pushState({ app: 'shgconnect', view: 'tab', tab: 'home' }, '', '#home');
+        return;
+      }
+
+      // 3. If on 'home' and authenticated, log out to the login view instead of closing tab!
+      if (session) {
+        handleLogout();
+        window.history.pushState({ app: 'shgconnect', view: 'login' }, '', '#login');
+        return;
+      }
+
+      // 4. If already on login view, prevent exiting by holding current state
+      window.history.pushState({ app: 'shgconnect', view: 'login' }, '', '#login');
     };
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [navStack]);
+  }, [activeTab, session, navStack, showSyncModal, showAddMemberModal, showBackupModal, showConflictModal]);
 
   const getTabLabel = (tab: string) => {
     switch (tab) {
@@ -149,7 +242,11 @@ export default function App() {
     memberId: string,
     amount: number,
     type: 'SAVINGS' | 'EMI_REPAYMENT' | 'LOAN_DISBURSAL',
-    notes?: string
+    notes?: string,
+    paymentMode?: PaymentMode,
+    settlementStatus?: SettlementStatus,
+    utrReference?: string,
+    signatories?: OfficerSignature[]
   ) => {
     const member = members.find(m => m.id === memberId);
     if (!member) return;
@@ -173,6 +270,10 @@ export default function App() {
       type,
       amount,
       notes,
+      paymentMode: paymentMode || 'CASH',
+      settlementStatus: settlementStatus || (paymentMode === 'UPI_INTENT' ? 'SETTLED_DIGITAL_UTR' : 'SETTLED_CASH'),
+      utrReference,
+      signatories,
       prevHash,
       hash,
       checkpointFingerprint
@@ -192,7 +293,7 @@ export default function App() {
       hlcTimestamp: `${timestamp}-0001`,
       type: type === 'SAVINGS' ? 'RECORD_SAVINGS' : type === 'LOAN_DISBURSAL' ? 'DISBURSE_LOAN' : 'REPAY_EMI',
       entityId: newTx.id,
-      payload: { memberId, amount, type, notes, checkpointFingerprint }
+      payload: { memberId, amount, type, notes, checkpointFingerprint, paymentMode, settlementStatus, utrReference }
     });
 
     // Update Member balances
@@ -269,21 +370,104 @@ export default function App() {
     attendanceRecord: Record<string, boolean>,
     savingsCollected: { memberId: string; amount: number }[],
     loanDisbursed?: { memberId: string; amount: number; notes: string },
-    newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[]
+    newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[],
+    signatories?: OfficerSignature[],
+    signatureProof?: string
   ) => {
-    // Record savings transactions
+    let currentTxs = [...transactions];
+    let currentMembers = [...members];
+    const timestamp = new Date().toISOString();
+    const activeShgCode = group?.shgCode || 'SHG-MH-SAT-2024-0089';
+
+    // 1. Process each savings transaction in strict cryptographic sequence
     for (const item of savingsCollected) {
-      await handleRecordTransaction(item.memberId, item.amount, 'SAVINGS', 'Monthly Savings Pool');
+      if (item.amount <= 0) continue;
+      const mem = currentMembers.find(m => m.id === item.memberId);
+      if (!mem) continue;
+
+      const newIndex = currentTxs.length;
+      const lastBlock = currentTxs[currentTxs.length - 1];
+      const prevHash = lastBlock ? lastBlock.hash : "GENESIS_BLOCK_00000000000000000000000000000000";
+      const payload = `${mem.id}:${mem.name}:SAVINGS:${item.amount}:Monthly Savings Pool`;
+      const hash = await computeBlockHash(newIndex, prevHash, timestamp, payload);
+      const checkpointFingerprint = generateCheckpointFingerprint(hash);
+
+      const newTx: Transaction = {
+        id: `tx-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        shgId: activeShgCode,
+        index: newIndex,
+        timestamp,
+        memberId: mem.id,
+        memberName: mem.name,
+        type: 'SAVINGS',
+        amount: item.amount,
+        notes: 'Monthly Savings Pool',
+        paymentMode: 'CASH',
+        settlementStatus: 'SETTLED_CASH',
+        signatories,
+        signatureProof,
+        prevHash,
+        hash,
+        checkpointFingerprint
+      };
+      currentTxs.push(newTx);
+
+      currentMembers = currentMembers.map(m =>
+        m.id === mem.id ? { ...m, totalSavings: (m.totalSavings || 0) + item.amount } : m
+      );
+
+      await queueMutation({
+        opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        shgId: activeShgCode,
+        actorId: 'animator-1',
+        actorRole: 'ANIMATOR',
+        deviceId: 'dev-pwa-local',
+        hlcTimestamp: `${timestamp}-0001`,
+        type: 'RECORD_SAVINGS',
+        entityId: newTx.id,
+        payload: { memberId: mem.id, amount: item.amount, checkpointFingerprint }
+      });
     }
 
-    // Record loan disbursal if any
-    if (loanDisbursed) {
-      await handleRecordTransaction(loanDisbursed.memberId, loanDisbursed.amount, 'LOAN_DISBURSAL', loanDisbursed.notes);
-      
-      const borrower = members.find(m => m.id === loanDisbursed.memberId);
+    // 2. Process micro-loan disbursal if any
+    let updatedLoans = [...loans];
+    if (loanDisbursed && loanDisbursed.amount > 0) {
+      const borrower = currentMembers.find(m => m.id === loanDisbursed.memberId);
       if (borrower) {
+        const newIndex = currentTxs.length;
+        const lastBlock = currentTxs[currentTxs.length - 1];
+        const prevHash = lastBlock ? lastBlock.hash : "GENESIS_BLOCK_00000000000000000000000000000000";
+        const payload = `${borrower.id}:${borrower.name}:LOAN_DISBURSAL:${loanDisbursed.amount}:${loanDisbursed.notes || ''}`;
+        const hash = await computeBlockHash(newIndex, prevHash, timestamp, payload);
+        const checkpointFingerprint = generateCheckpointFingerprint(hash);
+
+        const disbursalTx: Transaction = {
+          id: `tx-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          shgId: activeShgCode,
+          index: newIndex,
+          timestamp,
+          memberId: borrower.id,
+          memberName: borrower.name,
+          type: 'LOAN_DISBURSAL',
+          amount: loanDisbursed.amount,
+          notes: loanDisbursed.notes || 'Micro-Loan Disbursal',
+          paymentMode: 'CASH',
+          settlementStatus: 'SETTLED_CASH',
+          signatories,
+          signatureProof,
+          prevHash,
+          hash,
+          checkpointFingerprint
+        };
+        currentTxs.push(disbursalTx);
+
+        currentMembers = currentMembers.map(m =>
+          m.id === borrower.id ? { ...m, activeLoanBalance: (m.activeLoanBalance || 0) + loanDisbursed.amount } : m
+        );
+
         const newLoan: Loan = {
           id: `loan-${Date.now()}`,
+          shgId: activeShgCode,
           memberId: borrower.id,
           memberName: borrower.name,
           principal: loanDisbursed.amount,
@@ -292,52 +476,92 @@ export default function App() {
           totalPaid: 0,
           remainingBalance: loanDisbursed.amount,
           status: 'ACTIVE',
-          dateDisbursed: new Date().toISOString().split('T')[0],
+          dateDisbursed: timestamp.split('T')[0],
           entityVersion: 1
         };
-        const updatedLoans = [...loans, newLoan];
-        setLoans(updatedLoans);
-        await saveLoans(updatedLoans);
+        updatedLoans.push(newLoan);
+
+        await queueMutation({
+          opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          shgId: activeShgCode,
+          actorId: 'animator-1',
+          actorRole: 'ANIMATOR',
+          deviceId: 'dev-pwa-local',
+          hlcTimestamp: `${timestamp}-0002`,
+          type: 'DISBURSE_LOAN',
+          entityId: newLoan.id,
+          payload: { memberId: borrower.id, amount: loanDisbursed.amount }
+        });
       }
     }
 
-    // Record resolutions if any
+    // 3. Process resolutions if any
+    let updatedResolutions = [...resolutions];
     if (newResolutions && newResolutions.length > 0) {
-      newResolutions.forEach(r => handleAddResolution(r));
+      newResolutions.forEach((r, idx) => {
+        updatedResolutions.push({
+          ...r,
+          id: `res-${Date.now()}-${idx}`,
+          resolutionNumber: updatedResolutions.length + 1
+        });
+      });
+      setResolutions(updatedResolutions);
+      await saveResolutions(updatedResolutions);
     }
 
-    // Record meeting metadata
+    // 4. Save and commit meeting record
     const totalSav = savingsCollected.reduce((sum, s) => sum + s.amount, 0);
     const meetingFingerprint = `CHK-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const newMeeting: Meeting = {
       id: `meet-${meetings.length + 1}`,
-      date: new Date().toISOString().split('T')[0],
+      date: timestamp.split('T')[0],
       meetingNumber: meetings.length + 1,
       totalSavingsCollected: totalSav,
       totalEmiCollected: 0,
       totalDisbursed: loanDisbursed ? loanDisbursed.amount : 0,
       attendanceRecord,
+      signatories,
       checkpointFingerprint: meetingFingerprint
     };
-
     const updatedMeetings = [...meetings, newMeeting];
+
+    // 5. Commit all updated states to IndexedDB atomically
+    setTransactions(currentTxs);
+    await saveTransactions(currentTxs);
+
+    setMembers(currentMembers);
+    await saveMembers(currentMembers);
+
+    setLoans(updatedLoans);
+    await saveLoans(updatedLoans);
+
     setMeetings(updatedMeetings);
     await saveMeetings(updatedMeetings);
 
+    // 6. Update Group Fund
+    if (group) {
+      const updatedFund = group.totalGroupFund + totalSav - (loanDisbursed?.amount || 0);
+      const updatedGroup = { ...group, totalGroupFund: updatedFund };
+      setGroup(updatedGroup);
+      await saveGroupInfo(updatedGroup);
+    }
+
+    // 7. Queue meeting mutation
     await queueMutation({
       opId: `op-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      shgId: group?.shgCode || 'SHG-MH-2024-884',
+      shgId: activeShgCode,
       actorId: 'animator-1',
       actorRole: 'ANIMATOR',
       deviceId: 'dev-pwa-local',
-      hlcTimestamp: `${new Date().toISOString()}-0001`,
+      hlcTimestamp: `${timestamp}-0003`,
       type: 'COMMIT_MEETING',
       entityId: newMeeting.id,
       payload: { meetingNumber: newMeeting.meetingNumber, totalSavingsCollected: totalSav, checkpointFingerprint: meetingFingerprint }
     });
 
-    tts.speak(language === 'mr' ? 'बैठक सत्र यशस्वीरीत्या नोंदवले गेले आहे.' : 'Meeting Session committed to hash-chain successfully.');
+    sound.playCashDepositChime();
+    tts.speak(language === 'mr' ? 'बैठक सत्र यशस्वीरीत्या पूर्ण होऊन लेजरमध्ये जतन झाले.' : 'Meeting session committed to tamper-proof ledger successfully.');
   };
 
   /**
@@ -384,10 +608,22 @@ export default function App() {
     );
   }
 
+    if (!session) {
+    return (
+      <LoginView
+        members={members}
+        language={language}
+        onLanguageChange={handleLanguageChange}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
+
+
   return (
     <AppShell
       currentRole={currentRole}
-      onRoleChange={setCurrentRole}
+      onRoleChange={handleRoleChange}
       activeTab={activeTab}
       onSelectTab={handleSelectTab}
       language={language}
@@ -403,9 +639,11 @@ export default function App() {
       onOpenConflictModal={() => setShowConflictModal(true)}
       onGoBack={handleGoBack}
       parentTabLabel={parentTabLabel}
+      onLogout={handleLogout}
     >
       {currentRole === 'MEMBER' ? (
         <MemberDashboard
+          group={group}
           members={members}
           transactions={transactions}
           loans={loans}
@@ -421,6 +659,7 @@ export default function App() {
           onLanguageChange={handleLanguageChange}
           onOpenBackupModal={() => setShowBackupModal(true)}
           onResetData={handleResetData}
+          loggedInMemberId={session?.memberId}
         />
       ) : currentRole === 'OFFICE_BEARER' ? (
         <OfficeBearerDashboard
@@ -444,10 +683,13 @@ export default function App() {
           onOpenSyncCenter={() => setShowSyncModal(true)}
           onResetData={handleResetData}
           onOpenAddMember={() => setShowAddMemberModal(true)}
+          onMemberAdded={(newMem) => setMembers(prev => [...prev, newMem])}
+          onRecordTransaction={handleRecordTransaction}
         />
       ) : currentRole === 'ANIMATOR' ? (
         <AnimatorDashboard
           group={group}
+          members={members}
           language={language}
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
@@ -458,6 +700,8 @@ export default function App() {
           ttsEnabled={ttsEnabled}
           onResetData={handleResetData}
           onOpenAddMember={() => setShowAddMemberModal(true)}
+          onSwitchShg={handleSwitchShgGroup}
+          onCompleteMeetingSession={handleCompleteMeetingSession}
         />
       ) : (
         <AuditorDashboard

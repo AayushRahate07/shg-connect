@@ -423,13 +423,41 @@ export async function seedInitialDataIfNeeded(): Promise<{
     }
   }
 
-  const activeGroup = groupList.length > 0 ? groupList[0] : INITIAL_GROUP;
+  // Verify that all 7 groups and all 70 members are seeded in IndexedDB
+  const groupsSeedV2 = typeof localStorage !== 'undefined' ? localStorage.getItem('shg_7groups_seeded_v2') : null;
+  if (groupList.length < 7 || members.length < 70 || groupsSeedV2 !== 'COMPLETED') {
+    try {
+      const tx = db.transaction(['group_info', 'members', 'loans'], 'readwrite');
+      DEMO_ASSIGNED_GROUPS.forEach(g => tx.objectStore('group_info').put(g));
+      DEMO_MEMBERS.forEach(m => tx.objectStore('members').put(m));
+      DEMO_LOANS.forEach(l => tx.objectStore('loans').put(l));
+      await new Promise<void>((res, rej) => {
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('shg_7groups_seeded_v2', 'COMPLETED');
+      }
+      groupList = await getAllFromStore<GroupInfo>('group_info');
+      members = await getAllFromStore<Member>('members');
+      loans = await getAllFromStore<Loan>('loans');
+    } catch (e) {
+      console.error('Failed to seed 7 SHG groups into IndexedDB:', e);
+    }
+  }
+
+  const targetShgId = getCurrentShgId();
+  const activeGroup = groupList.find(g => g.shgCode === targetShgId) || groupList[0] || INITIAL_GROUP;
+  const activeMembers = members.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode);
+  const activeLoans = loans.filter(l => (l.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode);
+  const activeMeetings = meetings.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode || !m.shgId);
+
   return {
     group: activeGroup,
-    members,
+    members: activeMembers.length > 0 ? activeMembers : members.slice(0, 10),
     transactions,
-    loans,
-    meetings,
+    loans: activeLoans,
+    meetings: activeMeetings,
     officers: DEFAULT_OFFICERS
   };
 }
@@ -821,7 +849,21 @@ export async function addMember(
  */
 export async function getAllCachedGroups(): Promise<GroupInfo[]> {
   const groups = await getAllFromStore<GroupInfo>('group_info');
-  return groups;
+  if (groups.length >= 7) return groups;
+  await seedInitialDataIfNeeded();
+  return await getAllFromStore<GroupInfo>('group_info');
+}
+
+export async function getMembersByShg(shgId?: string): Promise<Member[]> {
+  const targetShgId = shgId || getCurrentShgId();
+  const allMembers = await getAllFromStore<Member>('members');
+  return allMembers.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === targetShgId);
+}
+
+export async function getLoansByShg(shgId?: string): Promise<Loan[]> {
+  const targetShgId = shgId || getCurrentShgId();
+  const allLoans = await getAllFromStore<Loan>('loans');
+  return allLoans.filter(l => (l.shgId || 'SHG-MH-SAT-2024-0089') === targetShgId);
 }
 
 export async function saveGroupInfo(group: GroupInfo): Promise<void> {
@@ -837,3 +879,41 @@ export async function saveGroupInfo(group: GroupInfo): Promise<void> {
 
 
 
+
+
+import type { MembershipRequest } from '../types/shg';
+
+const MEMBERSHIP_REQUESTS_STORAGE_KEY = 'shg_membership_requests_v1';
+
+export function getMembershipRequests(): MembershipRequest[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(MEMBERSHIP_REQUESTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Failed to load membership requests:', e);
+    return [];
+  }
+}
+
+export function saveMembershipRequest(req: MembershipRequest): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const current = getMembershipRequests();
+    const updated = [req, ...current.filter(r => r.id !== req.id)];
+    localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to save membership request:', e);
+  }
+}
+
+export function updateMembershipRequestStatus(id: string, status: 'APPROVED' | 'REJECTED'): void {
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const current = getMembershipRequests();
+    const updated = current.map(r => r.id === id ? { ...r, status } : r);
+    localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to update membership request status:', e);
+  }
+}

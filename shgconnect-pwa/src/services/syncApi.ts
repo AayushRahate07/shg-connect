@@ -6,15 +6,22 @@ import {
 } from '../types/sync';
 import { mockSyncServer } from './mockSyncServer';
 
-const SERVER_BASE_URL =
-  (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_SYNC_SERVER_URL) ||
-  'http://localhost:4000';
+function getSyncServerBaseUrl(): string {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env.VITE_SYNC_SERVER_URL) {
+    return (import.meta as any).env.VITE_SYNC_SERVER_URL;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:4000`;
+  }
+  return 'http://localhost:4000';
+}
 
 export class SyncApi {
   private baseUrl: string;
 
-  constructor(baseUrl: string = SERVER_BASE_URL) {
-    this.baseUrl = baseUrl.replace(/\/+$/, '');
+  constructor(baseUrl?: string) {
+    this.baseUrl = (baseUrl || getSyncServerBaseUrl()).replace(/\/+$/, '');
   }
 
   public async push(req: SyncPushRequest): Promise<SyncPushResponse> {

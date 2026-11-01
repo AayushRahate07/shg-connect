@@ -92,8 +92,8 @@ export const LedgerVerifier: React.FC<LedgerVerifierProps> = ({
             <div>
               <h3 className="font-extrabold text-sm sm:text-base">
                 {result.isValid
-                  ? (language === 'mr' ? '✅ सर्व ब्लॉक सुरक्षित आणि वैध आहेत (Audit Log Intact)' : '✅ Audit Log Chain Verified 100% Intact')
-                  : (language === 'mr' ? '⚠️ नोंदवहीत बदल/हेरफेर आढळला आहे! (Chain Integrity Tampered)' : '⚠️ Cryptographic Tampering Detected!')}
+                  ? (language === 'mr' ? 'सर्व ब्लॉक सुरक्षित आणि वैध आहेत (Audit Log Intact)' : 'Audit Log Chain Verified 100% Intact')
+                  : (language === 'mr' ? 'नोंदवहीत बदल/हेरफेर आढळला आहे! (Chain Integrity Tampered)' : 'Cryptographic Tampering Detected!')}
               </h3>
               <p className="text-xs opacity-90">
                 {result.isValid

@@ -92,7 +92,7 @@ export const MemberLoan: React.FC<MemberLoanProps> = ({
           <Button
             variant="secondary"
             className="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 font-black py-3 rounded-2xl text-xs flex items-center justify-center space-x-2 shadow transition"
-            onClick={() => onOpenUpiPayment('EMI_REPAYMENT', emiAmount)}
+            onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 0)}
           >
             <IndianRupee className="w-4 h-4" />
             <span>

@@ -1,14 +1,24 @@
 import { Transaction, ChainVerificationResult, ChainVerificationBlockResult } from '../types/shg';
+import { sha256 } from 'js-sha256';
 
 /**
- * Calculates SHA-256 hash string for text payload
+ * Calculates SHA-256 hash string for text payload.
+ * Uses Web Crypto API when available (HTTPS / localhost),
+ * and seamlessly falls back to pure-JS sha256 in insecure HTTP contexts (e.g. mobile LAN IP testing).
  */
 export async function calculateSHA256(text: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    if (typeof crypto !== 'undefined' && crypto.subtle && typeof crypto.subtle.digest === 'function') {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(text);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (_e) {
+    // Subtle crypto unavailable or failed, fall through to pure JS
+  }
+  return sha256(text);
 }
 
 /**

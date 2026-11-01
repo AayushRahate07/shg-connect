@@ -129,10 +129,10 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
 
       {/* Table Header Controls & Filter Pills */}
       <div className="p-4 bg-[#F7F4EC] border-b border-[#E2DDD3] space-y-3 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-black text-[#1C1917] flex items-center gap-2">
-              📖 {language === 'mr' ? 'पासबुक व डिजिटल नोंदवही' : 'Physical Passbook Register'}
+            <h2 className="text-base sm:text-lg font-black text-[#1C1917] flex items-center gap-2">
+              {language === 'mr' ? 'पासबुक व डिजिटल नोंदवही' : 'Physical Passbook Register'}
             </h2>
             <p className="text-xs text-stone-600">
               {language === 'mr' 
@@ -141,7 +141,7 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {/* Member Filter Dropdown */}
             {onSelectMemberFilter && (
               <select
@@ -197,7 +197,7 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
               categoryFilter === 'SAVINGS' ? 'bg-[#14532D] text-white shadow-xs' : 'bg-white text-stone-700 hover:bg-amber-100 border border-[#E2DDD3]'
             }`}
           >
-            💰 बचत (Savings)
+            बचत (Savings)
           </button>
           <button
             onClick={() => handlePillClick('LOAN')}
@@ -205,7 +205,7 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
               categoryFilter === 'LOAN' ? 'bg-[#14532D] text-white shadow-xs' : 'bg-white text-stone-700 hover:bg-amber-100 border border-[#E2DDD3]'
             }`}
           >
-            🤝 कर्ज (Loans)
+            कर्ज (Loans)
           </button>
           <button
             onClick={() => handlePillClick('RESOLUTION')}
@@ -213,7 +213,7 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
               categoryFilter === 'RESOLUTION' ? 'bg-[#14532D] text-white shadow-xs' : 'bg-white text-stone-700 hover:bg-amber-100 border border-[#E2DDD3]'
             }`}
           >
-            📜 इतिवृत्त (Resolutions)
+            इतिवृत्त (Resolutions)
           </button>
           <button
             onClick={() => handlePillClick('PENALTY')}
@@ -221,13 +221,92 @@ export const PassbookTable: React.FC<PassbookTableProps> = ({
               categoryFilter === 'PENALTY' ? 'bg-[#14532D] text-white shadow-xs' : 'bg-white text-stone-700 hover:bg-amber-100 border border-[#E2DDD3]'
             }`}
           >
-            ⚖️ दंड (Penalties)
+            दंड (Penalties)
           </button>
         </div>
       </div>
 
-      {/* Main Register Table */}
-      <div className="overflow-x-auto">
+      {/* Mobile Responsive Card List (sm:hidden) */}
+      <div className="block sm:hidden divide-y divide-[#E2DDD3]">
+        {rows.length === 0 ? (
+          <div className="py-8 text-center text-xs text-stone-500">
+            {language === 'mr' ? 'कोणतेही व्यवहार आढळले नाहीत.' : 'No transactions found.'}
+          </div>
+        ) : (
+          rows.map((row) => {
+            const targetMember = members.find(m => m.id === row.memberId);
+            return (
+              <div key={row.id} className="p-3.5 space-y-2 bg-white hover:bg-amber-50/40 transition">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded">
+                      #{row.index}
+                    </span>
+                    <span className="text-[11px] font-semibold text-stone-600">
+                      {new Date(row.timestamp).toLocaleDateString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <span className="bg-stone-50 border border-[#E2DDD3] text-stone-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                    {getTxTypeLabel(row.type)}
+                  </span>
+                </div>
+
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <button
+                      onClick={() => targetMember && onSelectMemberDossier && onSelectMemberDossier(targetMember)}
+                      className="font-extrabold text-xs text-[#1C1917] hover:text-[#14532D] flex items-center gap-1.5 text-left"
+                    >
+                      <User className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
+                      <span>{row.memberName}</span>
+                    </button>
+                    {row.notes && (
+                      <p className="text-[11px] text-stone-500 mt-0.5">{row.notes}</p>
+                    )}
+                  </div>
+
+                  <div className="text-right flex-shrink-0">
+                    {row.credit > 0 ? (
+                      <span className="text-xs font-black text-[#14532D] block amount-display">
+                        +₹{row.credit.toLocaleString('en-IN')}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-black text-rose-700 block amount-display">
+                        -₹{row.debit.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-stone-500 font-semibold block">
+                      {language === 'mr' ? 'शिल्लक: ' : 'Bal: '}₹{row.balance.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-1.5 border-t border-[#F5F2EA] flex items-center justify-between text-[10px]">
+                  <button
+                    onClick={() => onVerifyBlock && onVerifyBlock(row.index)}
+                    className="inline-flex items-center space-x-1 text-[#14532D] hover:underline font-mono font-bold"
+                  >
+                    <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                    <span>0x{row.hash.substring(0, 6)}...</span>
+                  </button>
+                  {row.checkpointFingerprint && (
+                    <span className="font-mono text-[9px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      {row.checkpointFingerprint}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Main Register Table (Desktop / Tablet) */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
             <tr className="bg-[#F7F4EC] text-[#1C1917] text-xs uppercase font-extrabold border-b border-[#E2DDD3]">

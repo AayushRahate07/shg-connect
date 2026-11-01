@@ -7,9 +7,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'Mukta', 'system-ui', 'sans-serif'],
+        sans: ['Geologica', 'Mukta', 'system-ui', 'sans-serif'],
+        geologica: ['Geologica', 'sans-serif'],
         devanagari: ['Mukta', 'Noto Sans Devanagari', 'sans-serif'],
-        english: ['Inter', 'system-ui', 'sans-serif'],
+        english: ['Geologica', 'system-ui', 'sans-serif'],
       },
       colors: {
         brand: {

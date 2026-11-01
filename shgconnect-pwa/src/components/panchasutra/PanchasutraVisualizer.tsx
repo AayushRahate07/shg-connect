@@ -27,7 +27,7 @@ export const PanchasutraVisualizer: React.FC<PanchasutraVisualizerProps> = ({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E7E5E4] shadow-card overflow-hidden space-y-6">
+    <div className="bg-white rounded-2xl border border-emerald-200 shadow-card overflow-hidden space-y-6">
       {/* Header */}
       <div className="bg-white p-5 border-b border-[#E7E5E4] flex flex-wrap items-center justify-between gap-4">
         <div>

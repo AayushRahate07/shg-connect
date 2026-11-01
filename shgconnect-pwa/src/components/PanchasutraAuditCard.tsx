@@ -136,7 +136,7 @@ export const PanchasutraAuditCard: React.FC<PanchasutraAuditCardProps> = ({
             </span>
           </div>
           <h2 className="text-xl font-black text-[#1C1917] mt-2 flex items-center gap-2">
-            🏛️ {language === 'mr' ? 'SHGConnect कार्यक्षमता निर्देशांक (पंचसूत्र मानके)' : 'SHGConnect Operational Health Index (Panchasutra-Aligned)'}
+            {language === 'mr' ? 'SHGConnect कार्यक्षमता निर्देशांक (पंचसूत्र मानके)' : 'SHGConnect Operational Health Index (Panchasutra-Aligned)'}
           </h2>
           <p className="text-xs text-stone-600">
             {language === 'mr'

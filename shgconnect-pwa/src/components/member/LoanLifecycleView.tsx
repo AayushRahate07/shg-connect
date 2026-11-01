@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Progress } from '../ui/Progress';
 import { formatINR } from '../../theme/tokens';
-import { Landmark, CheckCircle, Clock, Calendar, ArrowUpRight } from 'lucide-react';
+import { Landmark, CheckCircle, Clock, Calendar, ArrowUpRight, Check } from 'lucide-react';
 
 interface LoanLifecycleViewProps {
   loan?: Loan;
@@ -62,7 +62,7 @@ export const LoanLifecycleView: React.FC<LoanLifecycleViewProps> = ({
                   step.done ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-500'
                 }`}
               >
-                {step.done ? '✓' : idx + 1}
+                {step.done ? <Check className="w-3.5 h-3.5" /> : idx + 1}
               </div>
               <span className={`text-[10px] text-center ${step.done ? 'text-stone-800 font-extrabold' : 'text-stone-400'}`}>
                 {step.label}

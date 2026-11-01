@@ -1,21 +1,20 @@
 /**
- * Offline Two-OTP Attendance Handshake Engine (Phase 8.3)
+ * Dynamic Offline Attendance Handshake Engine (TOTP 60-Second Rotating Window)
  *
- * Algorithm:
- * 1. Meeting Officer device generates a time-salted 4-digit session code using local HMAC-SHA256:
- *    HMAC(meetingId + dateKey, officerSecret)
- * 2. Member or Co-Officer enters their paired PIN/OTP.
- * 3. Verified locally in browser memory without external API roundtrips.
+ * Supports:
+ * 1. Time-windowed (60s) cryptographic HMAC-SHA256 rotating code.
+ * 2. Clock-drift tolerance (current window + previous window).
+ * 3. Member confidential PIN validation.
  */
 
 export async function generateMeetingOtp(
-  meetingId: string,
-  dateKey: string,
+  entityId: string,
+  timeStepKey: string,
   secret: string = 'SHG-OFFICER-AUTH-SECRET'
 ): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
-  const msgData = encoder.encode(`${meetingId}:${dateKey}`);
+  const msgData = encoder.encode(`${entityId}:${timeStepKey}`);
 
   try {
     if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -39,12 +38,31 @@ export async function generateMeetingOtp(
 
   // Fallback deterministic pseudo-HMAC
   let sum = 0;
-  const combined = `${meetingId}:${dateKey}:${secret}`;
+  const combined = `${entityId}:${timeStepKey}:${secret}`;
   for (let i = 0; i < combined.length; i++) {
     sum = (sum * 31 + combined.charCodeAt(i)) >>> 0;
   }
   const otp = (sum % 9000) + 1000;
   return otp.toString().padStart(4, '0');
+}
+
+export async function getCurrentDynamicOtp(entityId: string): Promise<string> {
+  const timeStep = Math.floor(Date.now() / 60000).toString();
+  return await generateMeetingOtp(entityId, timeStep);
+}
+
+export async function verifyDynamicOtp(
+  entityId: string,
+  enteredOtp: string
+): Promise<boolean> {
+  if (!enteredOtp || enteredOtp.trim().length < 4) return false;
+  const cleanEntered = enteredOtp.trim();
+
+  const currentStep = Math.floor(Date.now() / 60000);
+  const codeNow = await generateMeetingOtp(entityId, currentStep.toString());
+  const codePrev = await generateMeetingOtp(entityId, (currentStep - 1).toString());
+
+  return cleanEntered === codeNow || cleanEntered === codePrev;
 }
 
 export function verifyMeetingOtp(

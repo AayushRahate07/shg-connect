@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { Member, Transaction, SupportedLanguage, Loan, Meeting } from '../types/shg';
+import {
+  Member,
+  Transaction,
+  SupportedLanguage,
+  Loan,
+  Meeting,
+  GroupInfo,
+  PaymentMode,
+  SettlementStatus,
+  OfficerSignature
+} from '../types/shg';
 import { translations } from '../i18n/translations';
 import { MemberHome } from '../components/member/MemberHome';
 import { MemberPassbook } from '../components/member/MemberPassbook';
@@ -15,8 +25,11 @@ import { PanchasutraVisualizer } from '../components/panchasutra/PanchasutraVisu
 import { SettingsView } from '../components/settings/SettingsView';
 import { MemberDossierModal } from '../components/MemberDossierModal';
 import { SavingsGoal } from '../components/member/SavingsGoal';
+import { MemberLiveMeeting } from '../components/meeting/MemberLiveMeeting';
+import { Radio } from 'lucide-react';
 
 interface MemberDashboardProps {
+  group?: GroupInfo | null;
   members: Member[];
   transactions: Transaction[];
   loans: Loan[];
@@ -32,9 +45,11 @@ interface MemberDashboardProps {
   onLanguageChange?: (lang: SupportedLanguage) => void;
   onOpenBackupModal?: () => void;
   onResetData?: () => void;
+  loggedInMemberId?: string;
 }
 
 export const MemberDashboard: React.FC<MemberDashboardProps> = ({
+  group,
   members,
   transactions,
   loans,
@@ -49,25 +64,34 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   ttsEnabled,
   onLanguageChange,
   onOpenBackupModal,
-  onResetData
+  onResetData,
+  loggedInMemberId
 }) => {
   const t = translations[language] || translations.en;
-  // Member experience uses logged-in member (default first member) without member selector dropdown
-  const currentMember = members[0] || {
-    id: 'mem-1',
-    name: 'Kamlatai Patil',
-    nameRegional: 'कमलाताई पाटील',
-    role: 'TREASURER',
-    totalSavings: 18500,
-    activeLoanBalance: 0,
-    joinDate: '2022-01-15'
-  };
+
+  // Member resolution:
+  // 1. Logged in member (from authentication session)
+  // 2. First member with role === 'MEMBER' (e.g. Meena-bai Jadhav)
+  // 3. Fallback to first member
+  const currentMember = (loggedInMemberId ? members.find(m => m.id === loggedInMemberId) : null)
+    || members.find(m => m.role === 'MEMBER')
+    || members[0]
+    || {
+      id: 'mem-4',
+      name: 'Meena-bai Jadhav',
+      nameRegional: 'मीनाबाई जाधव',
+      role: 'MEMBER',
+      totalSavings: 16000,
+      activeLoanBalance: 0,
+      joinDate: '2022-01-15'
+    };
 
   const memberTransactions = transactions.filter(t => t.memberId === currentMember.id);
   const [showUpiModal, setShowUpiModal] = useState<boolean>(false);
   const [paymentType, setPaymentType] = useState<'SAVINGS' | 'EMI_REPAYMENT'>('SAVINGS');
-  const [paymentAmount, setPaymentAmount] = useState<number>(500);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
   const [selectedDossierMember, setSelectedDossierMember] = useState<Member | null>(null);
+  const [showLiveMeeting, setShowLiveMeeting] = useState<boolean>(false);
 
   const handleOpenPayment = (type: 'SAVINGS' | 'EMI_REPAYMENT', defaultAmt: number) => {
     setPaymentType(type);
@@ -75,8 +99,22 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
     setShowUpiModal(true);
   };
 
-  const handlePaymentConfirmed = (amount: number, type: 'SAVINGS' | 'EMI_REPAYMENT') => {
-    onRecordTransaction(currentMember.id, amount, type, type === 'EMI_REPAYMENT' ? 'EMI Repayment via UPI' : 'Monthly Savings via UPI');
+  const handlePaymentConfirmed = (
+    amount: number,
+    type: 'SAVINGS' | 'EMI_REPAYMENT',
+    paymentMode?: PaymentMode,
+    settlementStatus?: SettlementStatus,
+    utrOrNotes?: string,
+    signatories?: OfficerSignature[]
+  ) => {
+    const isCash = paymentMode === 'CASH';
+    const notes = isCash
+      ? (utrOrNotes || 'रोख जमा (कोरम पडताळणी पूर्ण)')
+      : (type === 'EMI_REPAYMENT'
+        ? `EMI Repayment via UPI (UTR: ${utrOrNotes || 'N/A'})`
+        : `Monthly Savings via UPI (UTR: ${utrOrNotes || 'N/A'})`);
+
+    onRecordTransaction(currentMember.id, amount, type, notes);
   };
 
   const handleNavigate = (tab: string) => {
@@ -87,6 +125,39 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* ── LIVE MEETING fullscreen overlay ── */}
+      {showLiveMeeting && (
+        <div className="fixed inset-0 z-50 bg-stone-50 overflow-y-auto">
+          <MemberLiveMeeting
+            memberId={currentMember.id}
+            memberName={currentMember.nameRegional || currentMember.name}
+            phone={currentMember.phone || ''}
+            language={language}
+            onLeave={() => setShowLiveMeeting(false)}
+          />
+        </div>
+      )}
+
+      {/* Live Meeting Banner (shown on home) */}
+      {(activeTab === 'home' || activeTab === 'meetings') && !showLiveMeeting && (
+        <div className="mx-4 mt-2">
+          <button
+            onClick={() => setShowLiveMeeting(true)}
+            className="w-full bg-emerald-800 text-white rounded-2xl p-4 flex items-center justify-between shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-green-400/20 rounded-xl flex items-center justify-center">
+                <Radio className="w-4 h-4 text-green-300 animate-pulse" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-black">{language === 'mr' ? 'बैठकीत सामील व्हा' : 'Join Live Meeting'}</p>
+                <p className="text-[10px] text-emerald-300 font-medium">{language === 'mr' ? 'गट प्रमुखांकडून कोड मिळवा' : 'Get code from your SHG Lead'}</p>
+              </div>
+            </div>
+            <div className="text-emerald-300 text-xs font-black">→</div>
+          </button>
+        </div>
+      )}
       {/* 1. Home Page */}
       {activeTab === 'home' && (
         <MemberHome
@@ -97,6 +168,9 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           onOpenUpiPayment={handleOpenPayment}
           onNavigateTab={handleNavigate}
           onOpenDossier={(m) => setSelectedDossierMember(m)}
+          group={group}
+          meetings={meetings}
+          members={members}
         />
       )}
 
@@ -108,6 +182,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           language={language}
           onOpenUpiPayment={handleOpenPayment}
           onNavigateTab={handleNavigate}
+          group={group}
+          members={members}
         />
       )}
 
@@ -127,6 +203,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         <MeetingsView
           meetings={meetings}
           language={language}
+          group={group}
+          onJoinLiveMeeting={() => setShowLiveMeeting(true)}
         />
       )}
 
@@ -154,7 +232,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
       {activeTab === 'goals' && (
         <div className="space-y-6 max-w-2xl mx-auto">
-          <SavingsGoal currentSavings={currentMember.totalSavings} targetAmount={25000} goalName="Emergency & Medical Fund" />
+          <SavingsGoal currentSavings={currentMember.totalSavings} targetAmount={25000} goalName="आपत्कालीन व वैद्यकीय निधी" />
           <LoanCalculator language={language} />
         </div>
       )}
@@ -189,7 +267,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
         />
       )}
 
-      {/* UPI Payment Intent Modal */}
+      {/* Deposit Savings & Payment Modal (Cash with Quorum Witnessing OR Online UPI) */}
       {showUpiModal && (
         <UpiPaymentModal
           member={currentMember}
@@ -198,6 +276,8 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           language={language}
           onClose={() => setShowUpiModal(false)}
           onPaymentConfirmed={handlePaymentConfirmed}
+          group={group}
+          members={members}
         />
       )}
 

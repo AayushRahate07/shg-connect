@@ -26,6 +26,7 @@ interface AppShellProps {
   onGoBack?: () => void;
   parentTabLabel?: string;
   demoMode?: boolean;
+  onLogout?: () => void;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -47,7 +48,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   onOpenConflictModal,
   onGoBack,
   parentTabLabel,
-  demoMode = true
+  demoMode = true,
+  onLogout
 }) => {
   return (
     <div className="min-h-screen w-full flex font-sans relative" style={{ background: '#F4F6FA', color: '#111827' }}>
@@ -58,15 +60,11 @@ export const AppShell: React.FC<AppShellProps> = ({
         onSelectTab={onSelectTab}
         language={language}
         onRoleChange={onRoleChange}
+        onLogout={onLogout}
       />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
-        {demoMode && (
-          <div className="bg-amber-500 text-stone-900 text-[11px] font-black py-1.5 px-4 text-center tracking-wide flex items-center justify-center gap-2 border-b border-amber-600/20 shadow-xs">
-            <span>✨ Demo Mode Active • Sample Data (16 Members) • No Internet Required</span>
-          </div>
-        )}
         <OfflineBanner language={language} />
         {/* Sticky Header */}
         <Header
@@ -87,10 +85,11 @@ export const AppShell: React.FC<AppShellProps> = ({
           onSelectTab={onSelectTab}
           onGoBack={onGoBack}
           parentTabLabel={parentTabLabel}
+          onLogout={onLogout}
         />
 
         {/* Page Content */}
-        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8 animate-fadeIn">
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 animate-fadeIn">
           {children}
         </main>
       </div>

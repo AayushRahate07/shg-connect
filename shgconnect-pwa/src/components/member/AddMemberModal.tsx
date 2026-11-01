@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Role, SupportedLanguage } from '../../types/shg';
 import { sound } from '../../services/sound';
 import { tts } from '../../services/tts';
-import { UserPlus, Check, X, Shield, Phone, User, Briefcase, IndianRupee } from 'lucide-react';
+import { UserPlus, Check, X, Shield, Phone, User, Briefcase, IndianRupee, AlertCircle } from 'lucide-react';
 
 interface AddMemberModalProps {
   language: SupportedLanguage;
@@ -27,7 +27,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<Role>('MEMBER');
   const [occupation, setOccupation] = useState('');
-  const [initialSavings, setInitialSavings] = useState('500');
+  const [initialSavings, setInitialSavings] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -98,7 +98,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs p-3 rounded-xl font-semibold flex items-center gap-2">
-            <span>⚠️</span>
+            <AlertCircle className="w-4 h-4 text-amber-600 inline" />
             <span>{error}</span>
           </div>
         )}

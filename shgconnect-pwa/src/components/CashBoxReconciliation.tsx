@@ -17,11 +17,11 @@ export const CashBoxReconciliation: React.FC<CashBoxReconciliationProps> = ({
   const [denominations, setDenominations] = useState<CashBoxDenominations>({
     n500: 0,
     n200: 0,
-    n100: Math.floor(expectedCash / 100),
+    n100: 0,
     n50: 0,
     n20: 0,
     n10: 0,
-    coins: expectedCash % 100
+    coins: 0
   });
 
   const totalCountedCash =

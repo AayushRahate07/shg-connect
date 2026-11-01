@@ -1,5 +1,5 @@
 import React from 'react';
-import { Member, Transaction, Loan, SupportedLanguage } from '../../types/shg';
+import { Member, Transaction, Loan, SupportedLanguage, GroupInfo, Meeting } from '../../types/shg';
 import { translations } from '../../i18n/translations';
 import { formatINR } from '../../theme/tokens';
 import { tts } from '../../services/tts';
@@ -17,6 +17,13 @@ import {
   Sparkles,
   ShieldCheck,
   CreditCard,
+  Volume2,
+  BookOpen,
+  Landmark,
+  Target,
+  ArrowDownLeft,
+  Banknote,
+  Clock
 } from 'lucide-react';
 
 interface MemberHomeProps {
@@ -27,6 +34,9 @@ interface MemberHomeProps {
   onOpenUpiPayment: (type: 'SAVINGS' | 'EMI_REPAYMENT', defaultAmt: number) => void;
   onNavigateTab: (tab: string) => void;
   onOpenDossier: (member: Member) => void;
+  group?: GroupInfo | null;
+  meetings?: Meeting[];
+  members?: Member[];
 }
 
 export const MemberHome: React.FC<MemberHomeProps> = ({
@@ -37,13 +47,50 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
   onOpenUpiPayment,
   onNavigateTab,
   onOpenDossier,
+  group,
+  meetings = [],
+  members = []
 }) => {
   const t = translations[language] || translations.en;
+  const isMr = language === 'mr';
   const activeLoans = loans.filter(l => l.memberId === member.id && l.status === 'ACTIVE');
   const activeLoan = activeLoans[0];
   const memberTxs = transactions.filter(tx => tx.memberId === member.id).slice(-4).reverse();
 
-  const greeting = language === 'mr'
+  const groupName = group?.nameRegional || group?.name || (isMr ? 'सावित्री महिला बचत गट' : 'Savitri Mahila Bachat Gat');
+  const villageInfo = group?.village ? `${group.village}, ${group.district}` : (isMr ? 'शिरवळ, सातारा' : 'Shirwal, Satara');
+  const monthlyRate = group?.monthlyPoolRate || 500;
+
+  // Dynamic savings deposited THIS month
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const thisMonthSavings = transactions
+    .filter(t => t.memberId === member.id && t.type === 'SAVINGS')
+    .filter(t => {
+      const d = new Date(t.timestamp);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    })
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Dynamic next meeting date
+  const nextMeetingLabel = (() => {
+    if (meetings && meetings.length > 0) {
+      const latest = new Date(meetings[0].date);
+      const next = new Date(latest);
+      next.setMonth(next.getMonth() + 1);
+      return next.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' }) + ' · ४ वा.';
+    }
+    const d = new Date();
+    d.setDate(18);
+    return d.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' }) + ' · ४ वा.';
+  })();
+
+  // Dynamic group health score
+  const healthScore = Math.min(100, Math.round(88 + (member.trustScore ? member.trustScore * 0.1 : 6)));
+  const healthGrade = healthScore >= 90 ? 'Grade A' : healthScore >= 75 ? 'Grade B' : 'Grade C';
+
+  const greeting = isMr
     ? `नमस्कार, ${member.nameRegional || member.name}`
     : language === 'hi'
     ? `नमस्ते, ${member.name}`
@@ -55,34 +102,32 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
       {/* ── Greeting row ── */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold text-gray-400 mb-0.5 uppercase tracking-wider">
-            {language === 'mr' ? 'सावित्री महिला बचत गट • सातारा' : 'Savitri Mahila Bachat Gat • Satara'}
+          <p className="text-xs font-semibold text-stone-500 mb-0.5 uppercase tracking-wider">
+            {groupName} • {villageInfo}
           </p>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-            <span>{greeting} 👋</span>
+          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+            <span>{greeting}</span>
           </h1>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
-              const msg = language === 'mr'
+              const msg = isMr
                 ? `नमस्कार ${member.nameRegional || member.name}. तुमची एकूण बचत ₹${member.totalSavings} आहे.`
                 : `Hello ${member.name}. Your total savings is ₹${member.totalSavings}.`;
               tts.speak(msg);
             }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl transition-all duration-200 hover:scale-105"
-            style={{ background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }}
+            className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl transition bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100"
             title="Audio Balance Readout"
           >
-            <span>🔊</span>
-            <span className="hidden sm:inline">{language === 'mr' ? 'ऐका' : 'Listen'}</span>
+            <Volume2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{isMr ? 'ऐका' : 'Listen'}</span>
           </button>
 
           <button
             onClick={() => onOpenDossier(member)}
-            className="flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl transition-all duration-200 hover:scale-105"
-            style={{ background: '#E6F4EE', color: '#1A6B4A', border: '1px solid #A7D9BC' }}
+            className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl transition bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
           >
             <User className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{t.member.viewDossier}</span>
@@ -92,276 +137,341 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
       {/* ── Hero Savings Card ── */}
       <div className="card-hero-green rounded-2xl p-5 sm:p-6 relative overflow-hidden">
-        {/* Decorative orbs */}
-        <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-10 -translate-y-1/2 translate-x-1/2"
-          style={{ background: 'radial-gradient(circle, white, transparent)' }} />
-        <div className="absolute bottom-0 left-0 w-28 h-28 rounded-full opacity-8 translate-y-1/2 -translate-x-1/2"
-          style={{ background: 'radial-gradient(circle, white, transparent)' }} />
-
         <div className="relative z-10">
           {/* Top row */}
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-green-200 text-xs font-semibold uppercase tracking-wider mb-1">
-                {language === 'mr' ? 'एकूण बचत' : language === 'hi' ? 'कुल बचत' : 'Total Savings'}
+                {isMr ? 'एकूण बचत' : 'Total Savings'}
               </p>
               <div className="text-4xl sm:text-5xl font-black text-white tracking-tight amount-display">
                 {formatINR(member.totalSavings)}
               </div>
               <p className="text-green-200 text-xs font-medium mt-1">
-                {language === 'mr' ? 'मासिक योगदान:' : 'Monthly contribution:'} ₹500
+                {isMr ? 'मासिक योगदान:' : 'Monthly contribution:'} ₹{monthlyRate}
               </p>
             </div>
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
-              style={{ background: 'rgba(255,255,255,0.15)', color: '#DCFCE7', border: '1px solid rgba(255,255,255,0.2)' }}>
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-white/15 text-[#DCFCE7] border border-white/20">
               <TrendingUp className="w-3 h-3" />
-              +₹500 {language === 'mr' ? 'या महिन्यात' : 'this month'}
+              +₹{thisMonthSavings} {isMr ? 'या महिन्यात' : 'this month'}
             </span>
           </div>
 
           {/* Bottom row */}
-          <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+          <div className="flex items-center justify-between pt-4 border-t border-white/20">
             <span className="flex items-center gap-1.5 text-green-200 text-xs font-semibold">
               <ShieldCheck className="w-3.5 h-3.5" />
-              {language === 'mr' ? 'नोंद सुरक्षित आहे' : 'Cryptographically Secured'}
+              {isMr ? 'नोंद ब्लॉकचेन लेजरमध्ये सुरक्षित' : 'Cryptographically Secured'}
             </span>
             <button
               onClick={() => onNavigateTab('passbook')}
-              className="flex items-center gap-1 text-xs font-semibold text-white hover:text-green-100 transition-colors"
+              className="flex items-center gap-1 text-xs font-bold text-white hover:text-green-100 transition-colors"
             >
-              {language === 'mr' ? 'पासबुक पहा' : 'View Passbook'}
+              {isMr ? 'पासबुक पहा' : 'View Passbook'}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── 4 Primary Metric Cards Grid ── */}
+      {/* ── 4 Primary Metric Cards Grid (UI Reference from ParthKing-123/SHG) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-            {language === 'mr' ? 'माझी बचत' : 'My Savings'}
-          </span>
-          <span className="text-base font-black text-emerald-800 amount-display mt-0.5 block">
+        {/* Total Savings Card */}
+        <div className="bg-emerald-50/30 p-3.5 rounded-2xl border border-emerald-200 shadow-xs text-left">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+              {isMr ? 'माझी बचत' : 'My Savings'}
+            </span>
+            <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Banknote className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-[#14532D] amount-display mt-0.5 block">
             {formatINR(member.totalSavings)}
           </span>
+          <span className="text-[10px] text-stone-400 font-semibold block mt-0.5">
+            {isMr ? 'गटात जमा' : 'In Group Fund'}
+          </span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-            {language === 'mr' ? 'थकीत कर्ज' : 'Loan Due'}
-          </span>
-          <span className="text-base font-black text-amber-700 amount-display mt-0.5 block">
+        {/* Loan Due Card */}
+        <div className="bg-amber-50/30 p-3.5 rounded-2xl border border-amber-200 shadow-xs text-left">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+              {isMr ? 'थकीत कर्ज' : 'Loan Due'}
+            </span>
+            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+              <Landmark className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-amber-700 amount-display mt-0.5 block">
             {formatINR(member.activeLoanBalance)}
           </span>
-        </div>
-
-        <div className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-            {language === 'mr' ? 'पुढील बैठक' : 'Next Meeting'}
-          </span>
-          <span className="text-xs font-black text-gray-900 mt-1 block">
-            24 Sept · 4 PM
+          <span className="text-[10px] text-stone-400 font-semibold block mt-0.5">
+            {member.activeLoanBalance > 0 ? (isMr ? 'परतफेड शिल्लक' : 'To Repay') : (isMr ? 'निरंक' : 'Zero Debt')}
           </span>
         </div>
 
-        <div className="bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm text-left">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-            {language === 'mr' ? 'गट आरोग्य' : 'Group Health'}
+        {/* Next Meeting Card */}
+        <div className="bg-teal-50/30 p-3.5 rounded-2xl border border-teal-200 shadow-xs text-left">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+              {isMr ? 'पुढील बैठक' : 'Next Meeting'}
+            </span>
+            <div className="w-7 h-7 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <span className="text-xs sm:text-sm font-black text-stone-900 mt-0.5 block truncate">
+            {nextMeetingLabel}
           </span>
-          <span className="text-xs font-black text-emerald-800 mt-1 block flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>92/100 (Grade A)</span>
+          <span className="text-[10px] text-teal-700 font-bold block mt-0.5">
+            {isMr ? 'उपस्थिती अनिवार्य' : 'Mandatory'}
+          </span>
+        </div>
+
+        {/* Group Health / Trust Score Card */}
+        <div className="bg-purple-50/30 p-3.5 rounded-2xl border border-purple-200 shadow-xs text-left">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+              {isMr ? 'विश्वास निर्देशांक' : 'Trust Score'}
+            </span>
+            <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5" />
+            </div>
+          </div>
+          <span className="text-base sm:text-lg font-black text-purple-900 mt-0.5 block">
+            {healthScore}/100
+          </span>
+          <span className="text-[10px] text-purple-700 font-bold block mt-0.5">
+            {healthGrade} ({isMr ? 'उत्कृष्ट' : 'Grade A'})
           </span>
         </div>
       </div>
 
-      {/* ── 4 Quick Navigation Tiles (Spec: Passbook, Loans, Meetings, Goals) ── */}
+      {/* ── 4 Quick Navigation Tiles ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigateTab('passbook')}
-          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-emerald-50/60 rounded-2xl border border-stone-200/80 hover:border-emerald-300 shadow-sm transition text-center group min-h-[52px]"
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-emerald-50/60 rounded-2xl border border-stone-200 shadow-xs transition text-center group min-h-[52px]"
         >
-          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📖</span>
+          <BookOpen className="w-5 h-5 text-emerald-800 mb-1 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800 group-hover:text-emerald-800">
-            {language === 'mr' ? 'माझे पासबुक' : language === 'hi' ? 'मेरी पासबुक' : 'My Passbook'}
+            {isMr ? 'माझे पासबुक' : 'My Passbook'}
           </span>
         </button>
 
         <button
           onClick={() => onNavigateTab('loans')}
-          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-blue-50/60 rounded-2xl border border-stone-200/80 hover:border-blue-300 shadow-sm transition text-center group min-h-[52px]"
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-blue-50/60 rounded-2xl border border-stone-200 shadow-xs transition text-center group min-h-[52px]"
         >
-          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">🏦</span>
+          <Landmark className="w-5 h-5 text-blue-800 mb-1 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800 group-hover:text-blue-800">
-            {language === 'mr' ? 'माझे कर्ज' : language === 'hi' ? 'मेरा ऋण' : 'My Loan'}
+            {isMr ? 'माझे कर्ज' : 'My Loan'}
           </span>
         </button>
 
         <button
           onClick={() => onNavigateTab('meetings')}
-          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-amber-50/60 rounded-2xl border border-stone-200/80 hover:border-amber-300 shadow-sm transition text-center group min-h-[52px]"
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-amber-50/60 rounded-2xl border border-stone-200 shadow-xs transition text-center group min-h-[52px]"
         >
-          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">📅</span>
+          <Calendar className="w-5 h-5 text-amber-800 mb-1 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800 group-hover:text-amber-800">
-            {language === 'mr' ? 'बैठका' : language === 'hi' ? 'बैठकें' : 'Meetings'}
+            {isMr ? 'बैठका' : 'Meetings'}
           </span>
         </button>
 
         <button
           onClick={() => onNavigateTab('goals')}
-          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-purple-50/60 rounded-2xl border border-stone-200/80 hover:border-purple-300 shadow-sm transition text-center group min-h-[52px]"
+          className="flex flex-col items-center justify-center p-3.5 bg-white hover:bg-purple-50/60 rounded-2xl border border-stone-200 shadow-xs transition text-center group min-h-[52px]"
         >
-          <span className="text-2xl mb-1 group-hover:scale-110 transition-transform">🎯</span>
+          <Target className="w-5 h-5 text-purple-800 mb-1 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800 group-hover:text-purple-800">
-            {language === 'mr' ? 'बचत ध्येय' : language === 'hi' ? 'बचत लक्ष्य' : 'Savings Goal'}
+            {isMr ? 'बचत ध्येय' : 'Savings Goal'}
           </span>
         </button>
       </div>
 
-      {/* ── Quick Actions ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => onOpenUpiPayment('SAVINGS', 500)}
-          className="flex flex-col items-start gap-2 p-4 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-left"
-          style={{ background: '#E6F4EE', border: '1px solid #A7D9BC' }}
-        >
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#1A6B4A' }}>
-            <PlusCircle className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
-          </span>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: '#0F4230' }}>
-              {language === 'mr' ? 'बचत जमा करा' : language === 'hi' ? 'बचत जमा करें' : 'Deposit Savings'}
-            </p>
-            <p className="text-xs" style={{ color: '#1A6B4A' }}>UPI · Cash</p>
+      {/* ── Quick Reminders & Meeting Schedule (UI Reference from ParthKing-123/SHG) ── */}
+      <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs">
+              <Clock className="w-4 h-4" />
+            </div>
+            <h3 className="font-extrabold text-sm text-amber-950">
+              {isMr ? 'महत्त्वाच्या सूचना व बैठकीचे स्मरणपत्र' : 'Quick Reminders & Meeting Schedule'}
+            </h3>
           </div>
-        </button>
+          <span className="bg-amber-200/70 text-amber-900 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            {isMr ? 'आगामी' : 'Upcoming'}
+          </span>
+        </div>
 
-        <button
-          onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 1000)}
-          className="flex flex-col items-start gap-2 p-4 rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-left"
-          style={{ background: '#FFF0E5', border: '1px solid #FED7AA' }}
-        >
-          <span className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#E8720C' }}>
-            <ArrowUpRight className="w-4.5 h-4.5 text-white" style={{ width: 18, height: 18 }} />
-          </span>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: '#7C2D12' }}>
-              {language === 'mr' ? 'हप्ता भरा' : language === 'hi' ? 'किस्त चुकाएं' : 'Repay EMI'}
-            </p>
-            <p className="text-xs" style={{ color: '#E8720C' }}>UPI · UTR</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {/* Monthly Savings Quota Due */}
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-amber-100 shadow-2xs">
+            <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+              <Banknote className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                {isMr ? 'मासिक बचत योगदान' : 'Monthly Savings Due'}
+              </span>
+              <span className="text-sm font-black text-emerald-900 block amount-display">
+                ₹{monthlyRate}
+              </span>
+              <span className="text-[10px] font-semibold text-stone-600 truncate block">
+                {isMr ? 'बैठकीत रोख/पेटीत जमा' : 'Collected centrally in meeting'}
+              </span>
+            </div>
           </div>
-        </button>
+
+          {/* Next Meeting */}
+          <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-amber-100 shadow-2xs">
+            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                {isMr ? 'पुढील मासिक बैठक' : 'Next Group Meeting'}
+              </span>
+              <span className="text-xs font-black text-stone-900 block truncate">
+                {nextMeetingLabel}
+              </span>
+              <span className="text-[10px] font-semibold text-stone-600 truncate block">
+                {villageInfo}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Central Savings Quorum Notice & EMI Repay Action ── */}
+      <div className="space-y-3">
+        <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+          <div className="w-9 h-9 rounded-xl bg-[#14532D] text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+            <ShieldCheck className="w-5 h-5 text-amber-300" />
+          </div>
+          <div className="space-y-0.5 text-xs">
+            <h3 className="font-extrabold text-emerald-950 text-sm">
+              {isMr ? 'बचत संकलन: गट बैठकीत अध्यक्षांकडे जमा' : 'Savings Deposit: Centrally Maintained by Group Head'}
+            </h3>
+            <p className="text-emerald-800 font-medium leading-relaxed">
+              {isMr
+                ? 'मासिक बैठकीत अध्यक्षा / कोषाध्यक्षा (कमलताई पाटील) रोख किंवा अधिकृत UPI ने बचत संकलित करतात आणि किमान २ पंचांच्या (Quorum) स्वाक्षरीने सुरक्षित पेटीत जमा करतात.'
+                : 'Collected centrally by Group Head/Treasurer during monthly meetings and verified by Quorum into the tamper-proof ledger.'}
+            </p>
+          </div>
+        </div>
+
+        {activeLoan && (
+          <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-amber-800">
+                {isMr ? 'थकीत कर्ज हप्ता' : 'Active Loan Due'}
+              </p>
+              <p className="text-base font-black text-amber-950">
+                {formatINR(activeLoan.remainingBalance)} {isMr ? 'शिल्लक' : 'Remaining'}
+              </p>
+            </div>
+            <button
+              onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 0)}
+              className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 transition active:scale-95"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              <span>{isMr ? 'हप्ता भरा' : 'Repay EMI'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Active Loan card (if any) ── */}
       {activeLoan && (
-        <div className="rounded-2xl p-4 sm:p-5" style={{ background: '#EBF3FF', border: '1px solid #BFDBFE' }}>
+        <div className="rounded-2xl p-4 sm:p-5 bg-blue-50/70 border border-blue-200 text-left space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1D5FA8' }}>
-                <CreditCard className="w-4 h-4 text-white" />
+              <span className="w-8 h-8 rounded-xl flex items-center justify-center bg-blue-700 text-white">
+                <CreditCard className="w-4 h-4" />
               </span>
               <div>
-                <p className="text-xs font-semibold text-gray-400">
-                  {language === 'mr' ? 'सक्रिय कर्ज' : 'Active Loan'}
+                <p className="text-xs font-black text-blue-950">
+                  {isMr ? 'सक्रिय कर्ज खाते' : 'Active Loan Account'}
                 </p>
-                <p className="text-lg font-bold" style={{ color: '#1E3A5F' }}>
-                  {formatINR(activeLoan.remainingBalance)}
-                  <span className="text-xs font-medium text-gray-400 ml-1">remaining</span>
+                <p className="text-[10px] text-blue-700 font-bold">
+                  {activeLoan.id}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => onNavigateTab('loans')}
-              className="text-xs font-semibold flex items-center gap-1 px-3 py-1.5 rounded-lg"
-              style={{ background: '#1D5FA8', color: 'white' }}
-            >
-              Details <ArrowRight className="w-3 h-3" />
-            </button>
+            <span className="text-xs font-black text-blue-900 bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200">
+              {formatINR(activeLoan.remainingBalance)} {isMr ? 'बाकी' : 'Balance'}
+            </span>
           </div>
         </div>
       )}
 
-      {/* ── Next Meeting card ── */}
-      <div className="rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-4"
-        style={{ background: 'white', border: '1px solid #E4E8EF', boxShadow: '0 1px 4px rgba(17,24,39,0.06)' }}>
-        <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: '#FFF0E5', border: '1px solid #FED7AA' }}>
-            <Calendar className="w-5 h-5" style={{ color: '#E8720C' }} />
+      {/* ── Recent Transactions Card ── */}
+      <Card className="p-0 border border-stone-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+        <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
+          <span className="text-xs font-black uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-[#14532D]" />
+            <span>{isMr ? 'अलीकडील व्यवहार (Recent Transactions)' : 'Recent Transactions'}</span>
           </span>
-          <div>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
-              {language === 'mr' ? 'पुढील बैठक' : language === 'hi' ? 'अगली बैठक' : 'Next Meeting'}
-            </p>
-            <p className="text-[15px] font-bold text-gray-900 mt-0.5">24 Sept • 4:00 PM</p>
-            <p className="text-xs text-gray-400 font-medium">Shirwal Gram Panchayat Hall</p>
-          </div>
+          <button
+            onClick={() => onNavigateTab('passbook')}
+            className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1"
+          >
+            <span>{isMr ? 'सर्व पहा' : 'View All'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <button
-          onClick={() => onNavigateTab('meetings')}
-          className="text-xs font-semibold flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all hover:scale-105"
-          style={{ background: '#FFF0E5', color: '#E8720C', border: '1px solid #FED7AA' }}
-        >
-          {language === 'mr' ? 'बैठका' : 'View'}
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
 
-      {/* ── Recent Transactions ── */}
-      {memberTxs.length > 0 && (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '1px solid #E4E8EF', boxShadow: '0 1px 4px rgba(17,24,39,0.06)' }}>
-          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #F4F6FA' }}>
-            <p className="text-sm font-semibold text-gray-900">
-              {language === 'mr' ? 'अलीकडील व्यवहार' : 'Recent Transactions'}
-            </p>
-            <button
-              onClick={() => onNavigateTab('passbook')}
-              className="text-xs font-semibold flex items-center gap-1"
-              style={{ color: '#1A6B4A' }}
-            >
-              All <ArrowRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {memberTxs.map((tx) => {
-              const isSavings = tx.type === 'SAVINGS';
-              const isLoan = tx.type === 'LOAN_DISBURSAL';
-              return (
-                <div key={tx.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span
-                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
-                      style={{
-                        background: isSavings ? '#E6F4EE' : isLoan ? '#EBF3FF' : '#FFF0E5',
-                      }}
-                    >
-                      {isSavings ? '💰' : isLoan ? '🏦' : '↩️'}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">
-                        {isSavings
-                          ? (language === 'mr' ? 'बचत' : 'Savings')
-                          : isLoan
-                          ? (language === 'mr' ? 'कर्ज' : 'Loan')
-                          : (language === 'mr' ? 'हप्ता' : 'EMI')}
-                      </p>
-                      <p className="text-[11px] text-gray-400">{new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</p>
-                    </div>
+        <div className="divide-y divide-stone-200">
+          {memberTxs.length === 0 ? (
+            <div className="p-6 text-center text-xs text-stone-500 font-medium">
+              {isMr ? 'कोणतेही व्यवहार उपलब्ध नाहीत.' : 'No recent transactions.'}
+            </div>
+          ) : (
+            memberTxs.map(tx => (
+              <div key={tx.id} className="p-3.5 flex items-center justify-between hover:bg-stone-50 transition">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                    tx.type === 'SAVINGS'
+                      ? 'bg-emerald-100 text-emerald-900'
+                      : tx.type === 'LOAN_DISBURSAL'
+                      ? 'bg-blue-100 text-blue-900'
+                      : 'bg-amber-100 text-amber-900'
+                  }`}>
+                    {tx.type === 'SAVINGS' ? '+' : '-'}
                   </div>
-                  <span
-                    className="text-sm font-bold amount-display"
-                    style={{ color: isSavings ? '#1A6B4A' : '#1D5FA8' }}
-                  >
-                    {isSavings ? '+' : ''}{formatINR(tx.amount)}
+                  <div className="text-left">
+                    <p className="text-xs font-black text-stone-900">
+                      {tx.type === 'SAVINGS'
+                        ? (isMr ? 'बचत जमा' : 'Savings Deposit')
+                        : tx.type === 'LOAN_DISBURSAL'
+                        ? (isMr ? 'कर्ज वाटप' : 'Loan Disbursal')
+                        : (isMr ? 'कर्ज हप्ता परतफेड' : 'EMI Repayment')}
+                    </p>
+                    <p className="text-[10px] text-stone-500 font-medium">
+                      {new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {tx.notes ? ` • ${tx.notes}` : ''}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className={`text-xs font-black ${
+                    tx.type === 'SAVINGS' ? 'text-[#14532D]' : 'text-stone-900'
+                  }`}>
+                    {tx.type === 'SAVINGS' ? '+' : ''}{formatINR(tx.amount)}
                   </span>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            ))
+          )}
         </div>
-      )}
+      </Card>
+
     </div>
   );
 };

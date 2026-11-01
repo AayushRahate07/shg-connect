@@ -46,7 +46,7 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({
         <div className="flex items-center justify-between text-xs text-stone-600 font-medium pt-1">
           <span className="flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            {remaining > 0 ? `${formatINR(remaining)} remaining` : 'Goal achieved! 🎉'}
+            {remaining > 0 ? `${formatINR(remaining)} remaining` : 'Goal achieved!'}
           </span>
           <span className="text-stone-500">Monthly Quota: ₹500</span>
         </div>

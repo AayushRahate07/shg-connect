@@ -22,7 +22,7 @@ interface MeetingWizardProps {
     newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[],
     signatories?: OfficerSignature[],
     signatureProof?: string
-  ) => void;
+  ) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -50,7 +50,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   // Step 1 state: Attendance
   const [attendance, setAttendance] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    members.forEach(m => { initial[m.id] = true; });
+    members.forEach(m => { initial[m.id] = false; });
     return initial;
   });
   const [otpMember, setOtpMember] = useState<Member | null>(null);
@@ -58,7 +58,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   // Step 2 state: Savings collection & Cash Box
   const [savingsAmounts, setSavingsAmounts] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
-    members.forEach(m => { initial[m.id] = monthlySavingsAmount; });
+    members.forEach(m => { initial[m.id] = 0; });
     return initial;
   });
 
@@ -66,8 +66,8 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   const [sessionResolutions, setSessionResolutions] = useState<Omit<Resolution, 'id' | 'resolutionNumber'>[]>([]);
   const [disburseLoan, setDisburseLoan] = useState<boolean>(false);
   const [selectedLoanMemberId, setSelectedLoanMemberId] = useState<string>('');
-  const [loanAmount, setLoanAmount] = useState<number>(5000);
-  const [loanPurpose, setLoanPurpose] = useState<string>('शेती/छोटे दुकान (Agri/Small Business)');
+  const [loanAmount, setLoanAmount] = useState<number>(0);
+  const [loanPurpose, setLoanPurpose] = useState<string>('');
 
   // Step 4 state: 2-of-3 Multi-Signatory PIN Quorum
   const [selectedRoles, setSelectedRoles] = useState<OfficerRole[]>(['PRESIDENT', 'TREASURER']);
@@ -84,6 +84,13 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   const [pinErrorMsg, setPinErrorMsg] = useState<string>('');
   const [isCommitted, setIsCommitted] = useState<boolean>(false);
   const [committedSignatures, setCommittedSignatures] = useState<OfficerSignature[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [commitSuccessData, setCommitSuccessData] = useState<{
+    fingerprint: string;
+    merkleRoot: string;
+    savings: number;
+    disbursed: number;
+  } | null>(null);
 
   const toggleAttendance = (memberId: string) => {
     sound.playStampSound();
@@ -169,80 +176,108 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
       return;
     }
 
-    sound.playStampSound();
-    const confirmedSigs: OfficerSignature[] = selectedRoles
-      .filter(r => verifiedSignatures[r])
-      .map(r => {
-        const off = DEFAULT_OFFICERS.find(o => o.role === r);
-        return {
-          role: r,
-          signedAt: new Date().toISOString(),
-          officerName: off ? off.name : r
+    setIsSubmitting(true);
+    setPinErrorMsg('');
+
+    try {
+      sound.playStampSound();
+      const confirmedSigs: OfficerSignature[] = selectedRoles
+        .filter(r => verifiedSignatures[r])
+        .map(r => {
+          const off = DEFAULT_OFFICERS.find(o => o.role === r);
+          return {
+            role: r,
+            signedAt: new Date().toISOString(),
+            officerName: off ? off.name : r
+          };
+        });
+
+      setCommittedSignatures(confirmedSigs);
+
+      // Compute signatureProof hash
+      const concatSigners = confirmedSigs.map(s => `${s.role}:${s.signedAt}`).join('|');
+      const proofHash = await calculateSHA256(concatSigners);
+
+      const savingsList = Object.entries(savingsAmounts)
+        .filter(([_, amt]) => amt > 0)
+        .map(([mId, amt]) => ({ memberId: mId, amount: amt }));
+
+      let loanData = undefined;
+      if (disburseLoan && selectedLoanMemberId && loanAmount > 0) {
+        loanData = {
+          memberId: selectedLoanMemberId,
+          amount: loanAmount,
+          notes: loanPurpose
         };
+      }
+
+      // Safe eventBus emit
+      try {
+        await eventBus.emit(
+          {
+            type: 'QUORUM_SIGNATURES_AUTHENTICATED',
+            payload: {
+              officerRoles: confirmedSigs.map(s => s.role),
+              sessionHash: proofHash
+            }
+          },
+          {
+            shgId: 'SHG-MH-2024-884',
+            actorId: confirmedSigs[0]?.role || 'TREASURER',
+            actorRole: (confirmedSigs[0]?.role as any) || 'TREASURER',
+            deviceId: 'dev-pwa-local'
+          }
+        );
+
+        await eventBus.emit(
+          {
+            type: 'MEETING_COMMITTED',
+            payload: {
+              meetingId: `meet-${Date.now()}`,
+              blockId: proofHash.substring(0, 10),
+              totalSavings: totalSavingsCollected,
+              totalDisbursed: loanData ? loanData.amount : 0
+            }
+          },
+          {
+            shgId: 'SHG-MH-2024-884',
+            actorId: 'animator-1',
+            actorRole: 'ANIMATOR',
+            deviceId: 'dev-pwa-local'
+          }
+        );
+      } catch (busErr) {
+        console.warn('EventBus dispatch warning (non-fatal):', busErr);
+      }
+
+      if (loanData) {
+        sound.playLoanApprovalFanfare();
+      } else {
+        sound.playCashDepositChime();
+      }
+
+      // Await database batch commit!
+      await onCompleteMeeting(attendance, savingsList, loanData, sessionResolutions, confirmedSigs, proofHash);
+
+      const genFingerprint = `CHK-${proofHash.substring(0, 4).toUpperCase()}-${proofHash.substring(4, 8).toUpperCase()}-${proofHash.substring(8, 12).toUpperCase()}`;
+      setCommitSuccessData({
+        fingerprint: genFingerprint,
+        merkleRoot: proofHash,
+        savings: totalSavingsCollected,
+        disbursed: loanData ? loanData.amount : 0
       });
-
-    setCommittedSignatures(confirmedSigs);
-
-    // Compute signatureProof hash
-    const concatSigners = confirmedSigs.map(s => `${s.role}:${s.signedAt}`).join('|');
-    const proofHash = await calculateSHA256(concatSigners);
-
-    const savingsList = Object.entries(savingsAmounts)
-      .filter(([_, amt]) => amt > 0)
-      .map(([mId, amt]) => ({ memberId: mId, amount: amt }));
-
-    let loanData = undefined;
-    if (disburseLoan && selectedLoanMemberId && loanAmount > 0) {
-      loanData = {
-        memberId: selectedLoanMemberId,
-        amount: loanAmount,
-        notes: loanPurpose
-      };
+      setIsCommitted(true);
+      tts.speak(language === 'mr' ? 'बैठकीची नोंद नोंदवहीत यशस्वीरीत्या जतन झाली आहे.' : 'Meeting session successfully saved to ledger.');
+    } catch (err: any) {
+      console.error('Failed to commit meeting session:', err);
+      setPinErrorMsg(
+        language === 'mr'
+          ? `नोंद जतन करताना त्रुटी आली: ${err?.message || 'अज्ञात त्रुटी'}`
+          : `Failed to commit meeting: ${err?.message || 'Unknown error'}`
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Emit Quorum Authenticated and Meeting Committed events to eventBus
-    await eventBus.emit(
-      {
-        type: 'QUORUM_SIGNATURES_AUTHENTICATED',
-        payload: {
-          officerRoles: confirmedSigs.map(s => s.role),
-          sessionHash: proofHash
-        }
-      },
-      {
-        shgId: 'SHG-MH-2024-884',
-        actorId: confirmedSigs[0]?.role || 'TREASURER',
-        actorRole: (confirmedSigs[0]?.role as any) || 'TREASURER',
-        deviceId: 'dev-pwa-local'
-      }
-    );
-
-    await eventBus.emit(
-      {
-        type: 'MEETING_COMMITTED',
-        payload: {
-          meetingId: `meet-${Date.now()}`,
-          blockId: proofHash.substring(0, 10),
-          totalSavings: totalSavingsCollected,
-          totalDisbursed: loanData ? loanData.amount : 0
-        }
-      },
-      {
-        shgId: 'SHG-MH-2024-884',
-        actorId: 'animator-1',
-        actorRole: 'ANIMATOR',
-        deviceId: 'dev-pwa-local'
-      }
-    );
-
-    if (loanData) {
-      sound.playLoanApprovalFanfare();
-    } else {
-      sound.playCashDepositChime();
-    }
-
-    onCompleteMeeting(attendance, savingsList, loanData, sessionResolutions, confirmedSigs, proofHash);
-    setIsCommitted(true);
   };
 
   // Broadcast Out-of-Band SMS / WhatsApp Audit Receipts
@@ -279,23 +314,31 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
             ? `डिव्हाइसवर ${conflictCount} अनिर्णित नोंद फरक (Unresolved Conflicts) आहेत. पुढील बैठक सुरू करण्यापूर्वी Sync Center मध्ये जाऊन हे फरक सोडवणे बंधनकारक आहे.`
             : `There are ${conflictCount} unresolved synchronization conflicts. To preserve ledger integrity, resolve pending conflicts in Sync Center before conducting a new meeting.`}
         </p>
-        <button
-          onClick={onCancel}
-          className="px-6 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow transition"
-        >
-          {language === 'mr' ? 'मागे जा (Go Back)' : 'Go Back'}
-        </button>
+        <div className="flex gap-2 justify-center">
+          <button
+            onClick={() => setHasConflictFreeze(false)}
+            className="px-5 py-2.5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs rounded-xl shadow transition"
+          >
+            {language === 'mr' ? 'तफावत दुर्लक्षित करा आणि बैठक सुरू करा' : 'Bypass Freeze & Conduct Meeting'}
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-5 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs rounded-xl shadow transition"
+          >
+            {language === 'mr' ? 'मागे जा (Go Back)' : 'Go Back'}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-[#FDFBF7] rounded-3xl shadow-2xl border-2 border-[#14532D] overflow-hidden">
+    <div className="bg-[#FDFBF7] rounded-3xl shadow-xl border border-emerald-900/20 overflow-hidden mb-12 sm:mb-6">
       {/* Wizard Step Progress Header - Interactive Tab Buttons */}
-      <div className="bg-[#14532D] text-white p-5">
+      <div className="bg-[#14532D] text-white p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-black flex items-center gap-2">
-            ✨ {language === 'mr' ? 'मासिक बैठक सत्र (Meeting Session Mode)' : 'Monthly Meeting Session'}
+            {language === 'mr' ? 'मासिक बैठक सत्र (Meeting Session Mode)' : 'Monthly Meeting Session'}
           </h2>
           <span className="text-xs bg-emerald-900 text-amber-300 px-3 py-1 rounded-full font-bold border border-emerald-700">
             Step {step} of 4
@@ -303,35 +346,39 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
         </div>
 
         {/* Step Indicators - Interactive Clickable Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-black">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 text-center text-[11px] sm:text-xs font-black">
           <button
+            type="button"
             onClick={() => { sound.playStampSound(); setStep(1); }}
-            className={`p-2 rounded-xl border transition ${step === 1 ? 'bg-amber-400 text-amber-950 border-amber-500 shadow' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
+            className={`p-2 rounded-xl border transition truncate ${step === 1 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
           >
             1. {language === 'mr' ? 'उपस्थिती' : 'Attendance'}
           </button>
           <button
+            type="button"
             onClick={() => { sound.playStampSound(); setStep(2); }}
-            className={`p-2 rounded-xl border transition ${step === 2 ? 'bg-amber-400 text-amber-950 border-amber-500 shadow' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
+            className={`p-2 rounded-xl border transition truncate ${step === 2 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
           >
-            2. {language === 'mr' ? 'बचत व रोकड पेटी' : 'Savings & Cash Box'}
+            2. {language === 'mr' ? 'बचत व रोकड' : 'Savings & Cash'}
           </button>
           <button
+            type="button"
             onClick={() => { sound.playStampSound(); setStep(3); }}
-            className={`p-2 rounded-xl border transition ${step === 3 ? 'bg-amber-400 text-amber-950 border-amber-500 shadow' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
+            className={`p-2 rounded-xl border transition truncate ${step === 3 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
           >
             3. {language === 'mr' ? 'इतिवृत्त व कर्ज' : 'Resolutions & Loan'}
           </button>
           <button
+            type="button"
             onClick={() => { sound.playStampSound(); setStep(4); }}
-            className={`p-2 rounded-xl border transition ${step === 4 ? 'bg-amber-400 text-amber-950 border-amber-500 shadow' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
+            className={`p-2 rounded-xl border transition truncate ${step === 4 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
           >
-            4. {language === 'mr' ? 'द्वि-स्वाक्षरी व जतन' : 'Quorum & Commit'}
+            4. {language === 'mr' ? 'कोरम व जतन' : 'Quorum & Commit'}
           </button>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* STEP 1: Attendance Checklist */}
         {step === 1 && (
           <div>
@@ -565,7 +612,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
             <div className="bg-white border border-[#E2DDD3] p-4 rounded-2xl">
               {!masterLeaseService.isMasterDevice() && (
                 <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl text-xs text-amber-950 font-bold mb-3 flex items-start gap-2 shadow-xs">
-                  <span className="text-base">⚠️</span>
+                  <AlertCircle className="w-4 h-4 text-amber-600 inline mr-1" />
                   <div>
                     <span className="block font-black">
                       {language === 'mr' ? 'गौण (Secondary) डिव्हाइस - कर्ज वाटप मर्यादा' : 'Secondary Device: Read-Only Cash Box'}
@@ -661,13 +708,13 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
         {/* STEP 4: 2-of-3 Multi-Signatory Quorum PIN & Out-of-Band SMS Receipt */}
         {step === 4 && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div>
-              <h3 className="text-base font-black text-[#1C1917] flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-[#14532D]" />
-                {language === 'mr' ? '४. २-पैकी-३ पदाधिकारी द्वि-स्वाक्षरी (2-of-3 PIN Quorum Consensus)' : 'Step 4: Multi-Signatory PIN Quorum'}
+              <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-800" />
+                {language === 'mr' ? '४. २-पैकी-३ पदाधिकारी स्वाक्षरी (Quorum Consensus)' : 'Step 4: Multi-Signatory PIN Quorum'}
               </h3>
-              <p className="text-xs text-stone-600">
+              <p className="text-xs text-stone-600 mt-0.5">
                 {language === 'mr'
                   ? 'एकल-चालक गैरव्यवहार टाळण्यासाठी किमान २ पदाधिकाऱ्यांचे ४-अंकी पिन आवश्यक.'
                   : 'To eliminate single-operator fraud, at least 2 elected officers must enter their 4-digit PIN.'}
@@ -675,19 +722,34 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
             </div>
 
             {/* Quorum Officer Selector Badges & Quick Auto-Fill Helpers */}
-            <div className="bg-white border border-[#E2DDD3] p-4 rounded-2xl space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-xs font-bold text-stone-700">
-                  {language === 'mr' ? 'स्वाक्षरी करणाऱ्या २ पदाधिकाऱ्यांची निवड करा:' : 'Select Signatory Officers (Choose 2 or 3):'}
+            <div className="bg-white border border-stone-200 p-3.5 sm:p-4 rounded-2xl space-y-3.5 shadow-2xs">
+              
+              {/* Auto-Sign Banner: Clean, Responsive without Overlapping */}
+              <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 space-y-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs font-bold text-emerald-950">
+                    {language === 'mr' ? 'स्वाक्षरी करणारे २ पदाधिकारी निवडा:' : 'Select Signatory Officers (Choose 2 or 3):'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAutoFillPin('PRESIDENT');
+                      handleAutoFillPin('TREASURER');
+                    }}
+                    className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1.5 transition"
+                    title="Auto-sign both President and Treasurer PINs"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    <span>{language === 'mr' ? '⚡ १-टॅप कोरम स्वाक्षऱ्या भरा' : '⚡ 1-Click Auto-Sign Quorum'}</span>
+                  </button>
                 </div>
 
-                {/* Quick Auto-Fill Helper Badges for Easy Demo */}
-                <div className="flex items-center gap-1.5 text-[11px] font-bold">
-                  <span className="text-stone-500">Auto-Fill:</span>
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-200/60 text-[11px] font-bold">
+                  <span className="text-emerald-900 font-semibold">{language === 'mr' ? 'पिन:' : 'PINs:'}</span>
                   <button
                     type="button"
                     onClick={() => handleAutoFillPin('PRESIDENT')}
-                    className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2 py-0.5 rounded border border-amber-300"
+                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
                     title="Auto-fill President PIN (1111)"
                   >
                     अध्यक्ष (1111)
@@ -695,7 +757,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAutoFillPin('TREASURER')}
-                    className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2 py-0.5 rounded border border-amber-300"
+                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
                     title="Auto-fill Treasurer PIN (3333)"
                   >
                     खजिनदार (3333)
@@ -703,7 +765,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                   <button
                     type="button"
                     onClick={() => handleAutoFillPin('SECRETARY')}
-                    className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2 py-0.5 rounded border border-amber-300"
+                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
                     title="Auto-fill Secretary PIN (2222)"
                   >
                     सचिव (2222)
@@ -798,7 +860,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
               {!isQuorumMet && (
                 <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-xl text-xs font-bold text-center">
-                  ⚠️ किमान २ पदाधिकाऱ्यांची पिन स्वाक्षरी आवश्यक आहे (Minimum 2 officer PIN signatures required)
+                  किमान २ पदाधिकाऱ्यांची पिन स्वाक्षरी आवश्यक आहे (Minimum 2 officer PIN signatures required)
                 </div>
               )}
             </div>
@@ -818,14 +880,16 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                 <span className="text-[#14532D] font-extrabold">{validSignaturesCount} / 3 Officers</span>
               </div>
               {isCommitted && (
-                <div className="pt-2 border-t border-emerald-200/80 font-mono text-[11px] text-emerald-950 space-y-1">
-                  <div className="flex justify-between">
+                <div className="pt-2 border-t border-emerald-200 font-mono text-[11px] text-emerald-950 space-y-1">
+                  <div className="flex justify-between items-center">
                     <span>Block Fingerprint:</span>
-                    <span className="font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded">CHK-8F3A-21BC-91D4</span>
+                    <span className="font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                      {commitSuccessData?.fingerprint || 'CHK-8F3A-21BC-91D4'}
+                    </span>
                   </div>
                   <div className="flex justify-between text-[10px] text-stone-600">
-                    <span>Merkle Root Proof:</span>
-                    <span className="truncate max-w-[180px]">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
+                    <span>Merkle Root:</span>
+                    <span className="truncate max-w-[200px]">{commitSuccessData?.merkleRoot || 'e3b0c442...'}</span>
                   </div>
                 </div>
               )}
@@ -833,45 +897,75 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
             {/* Out-of-Band SMS Audit Receipts Drawer (Visible after commit) */}
             {isCommitted && (
-              <div className="bg-amber-50 border-2 border-amber-300 p-4 rounded-2xl space-y-3 animate-in fade-in duration-300">
-                <div className="flex items-center space-x-2 text-amber-950 font-black text-sm">
+              <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl space-y-3 animate-fadeIn">
+                <div className="flex items-center gap-2 text-amber-950 font-black text-sm">
                   <MessageSquare className="w-5 h-5 text-amber-700" />
-                  <span>सदस्यांना ऑफलाईन SMS / WhatsApp पावती पाठवा</span>
+                  <span>{language === 'mr' ? 'सदस्यांना ऑफलाईन SMS / WhatsApp पावती पाठवा' : 'Broadcast Audit Receipts via SMS / WhatsApp'}</span>
                 </div>
                 <p className="text-xs text-amber-900 font-medium">
-                  कोणत्याही ऑनलाईन SMS गेटवेचा वापर न करता मोबाईल वेब शेअर API द्वारे सदस्यांना ऑडीट पावती पाठवा.
+                  {language === 'mr'
+                    ? 'कोणत्याही ऑनलाईन SMS गेटवेचा वापर न करता मोबाईल वेब शेअर द्वारे सदस्यांना पावती पाठवा.'
+                    : 'Dispatch cryptographic audit receipts directly to members via mobile share.'}
                 </p>
                 <button
+                  type="button"
                   onClick={handleBroadcastSmsReceipts}
-                  className="w-full bg-slate-900 hover:bg-black text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center space-x-2 shadow transition"
+                  className="w-full bg-stone-900 hover:bg-black text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition active:scale-95"
                 >
                   <Share2 className="w-4 h-4 text-amber-400" />
-                  <span>SMS / WhatsApp पावती पाठवा (Broadcast Audit Receipts)</span>
+                  <span>{language === 'mr' ? 'SMS / WhatsApp पावती पाठवा' : 'Broadcast Receipts'}</span>
                 </button>
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#E2DDD3]">
+            {/* Bottom Actions */}
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t border-stone-200 pb-2">
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(3); }}
-                disabled={isCommitted}
-                className="px-4 py-2 border border-[#E2DDD3] rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center space-x-1"
+                disabled={isCommitted || isSubmitting}
+                className="px-4 py-2.5 border border-stone-300 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition disabled:opacity-50"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{language === 'mr' ? 'मागे' : 'Back'}</span>
               </button>
-              <button
-                onClick={handleFinalSubmit}
-                disabled={!isQuorumMet || isCommitted}
-                className={`font-black px-6 py-3 rounded-2xl text-sm flex items-center space-x-2 shadow-xl transition transform active:scale-95 ${
-                  isQuorumMet && !isCommitted
-                    ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
-                    : 'bg-stone-300 text-stone-500 cursor-not-allowed'
-                }`}
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                <span>{isCommitted ? 'ब्लॉक जतन झाला! (Block Sealed)' : (language === 'mr' ? 'नोंदवहीत जतन करा (Commit Block)' : 'Save Session to Ledger')}</span>
-              </button>
+
+              {isCommitted ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playStampSound();
+                    onCancel();
+                  }}
+                  className="w-full sm:w-auto font-black px-6 py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg bg-emerald-700 hover:bg-emerald-800 text-white transition transform active:scale-95"
+                >
+                  <CheckCircle2 className="w-5 h-5 text-amber-300" />
+                  <span>{language === 'mr' ? 'बैठक समाप्त करा आणि डॅशबोर्ड पहा' : 'Finish & Return to Dashboard'}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleFinalSubmit}
+                  disabled={!isQuorumMet || isSubmitting}
+                  className={`w-full sm:w-auto font-black px-6 py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg transition transform active:scale-95 ${
+                    isQuorumMet && !isSubmitting
+                      ? 'bg-amber-400 hover:bg-amber-300 text-stone-900 cursor-pointer shadow-amber-200'
+                      : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
+                      <span>{language === 'mr' ? 'नोंदवहीत जतन होत आहे...' : 'Saving to Ledger...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>{language === 'mr' ? 'नोंदवहीत जतन करा (Commit Block)' : 'Save Session to Ledger'}</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}

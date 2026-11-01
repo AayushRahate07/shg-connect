@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Transaction, SupportedLanguage, Loan, Meeting, Resolution } from '../types/shg';
+import { Member, Transaction, SupportedLanguage, Loan, Meeting, Resolution, PaymentMode, SettlementStatus, OfficerSignature } from '../types/shg';
+import { CentralSavingsModal } from '../components/office/CentralSavingsModal';
 import { GroupInfo } from '../services/db';
 import { translations } from '../i18n/translations';
 import { formatINR } from '../theme/tokens';
@@ -13,11 +14,17 @@ import { MemberDossierModal } from '../components/MemberDossierModal';
 import { ReportsView } from '../components/reports/ReportsView';
 import { SettingsView } from '../components/settings/SettingsView';
 import { MoreMenuView } from '../components/member/MoreMenuView';
+import { getMembershipRequests, updateMembershipRequestStatus, saveMembers } from '../services/db';
+import { MembershipRequest } from '../types/shg';
+import { sound } from '../services/sound';
+import { tts } from '../services/tts';
 import { verifyLedgerIntegrity } from '../services/hashChain';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Users, Building2, HandCoins, ShieldCheck, Sparkles, BookOpen, Calculator, Lock, FileText, Award, Calendar, Landmark, Settings } from 'lucide-react';
+import { Users, Building2, HandCoins, ShieldCheck, Sparkles, BookOpen, Calculator, Lock, FileText, Award, Calendar, Landmark, Settings, Check, Banknote, Radio } from 'lucide-react';
+import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
+import { LiveMeetingRoom } from '../services/liveMeeting';
 
 interface OfficeBearerDashboardProps {
   group: GroupInfo;
@@ -31,8 +38,10 @@ interface OfficeBearerDashboardProps {
     attendanceRecord: Record<string, boolean>,
     savingsCollected: { memberId: string; amount: number }[],
     loanDisbursed?: { memberId: string; amount: number; notes: string },
-    newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[]
-  ) => void;
+    newResolutions?: Omit<Resolution, 'id' | 'resolutionNumber'>[],
+    signatories?: OfficerSignature[],
+    signatureProof?: string
+  ) => Promise<void> | void;
   onAddResolution: (res: Omit<Resolution, 'id' | 'resolutionNumber'>) => void;
   onVerifyBlockIndex: (index: number) => void;
   onSimulateTamper: () => void;
@@ -45,6 +54,17 @@ interface OfficeBearerDashboardProps {
   onOpenSyncCenter?: () => void;
   onResetData?: () => void;
   onOpenAddMember?: () => void;
+  onMemberAdded?: (newMember: Member) => void;
+  onRecordTransaction?: (
+    memberId: string,
+    amount: number,
+    type: 'SAVINGS' | 'EMI_REPAYMENT' | 'LOAN_DISBURSAL',
+    notes?: string,
+    paymentMode?: PaymentMode,
+    settlementStatus?: SettlementStatus,
+    utrReference?: string,
+    signatories?: OfficerSignature[]
+  ) => void;
 }
 
 export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
@@ -67,10 +87,60 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
   onOpenBackupModal = () => {},
   onOpenSyncCenter = () => {},
   onResetData = () => {},
-  onOpenAddMember
+  onOpenAddMember,
+  onMemberAdded,
+  onRecordTransaction
 }) => {
   const t = translations[language] || translations.en;
+    const [pendingRequests, setPendingRequests] = useState<MembershipRequest[]>([]);
+
+  const loadRequests = () => {
+    const all = getMembershipRequests();
+    setPendingRequests(all.filter(r => r.status === 'PENDING' && (!r.shgId || r.shgId === group.shgCode)));
+  };
+
+  useEffect(() => {
+    loadRequests();
+  }, [group.shgCode]);
+
+  const handleApproveRequest = async (req: MembershipRequest) => {
+    sound.playStampSound();
+    updateMembershipRequestStatus(req.id, 'APPROVED');
+
+    const avatarColors = ['bg-amber-500', 'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-rose-600'];
+    const newMember: Member = {
+      id: 'mem-' + Date.now(),
+      shgId: group.shgCode,
+      name: req.name,
+      nameRegional: req.name,
+      phone: req.phone,
+      role: 'MEMBER',
+      totalSavings: 0,
+      activeLoanBalance: 0,
+      trustScore: 90,
+      occupation: req.occupation,
+      joinedDate: new Date().toISOString().split('T')[0],
+      avatarColor: avatarColors[members.length % avatarColors.length],
+      entityVersion: 1
+    };
+
+    const updatedMembers = [...members, newMember];
+    await saveMembers(updatedMembers);
+    if (onMemberAdded) {
+      onMemberAdded(newMember);
+    }
+    loadRequests();
+    tts.speak(language === 'mr' ? req.name + ' यांना बचत गटात समाविष्ट करण्यात आले आहे.' : req.name + ' has been approved into the SHG.');
+  };
+
+  const handleRejectRequest = (reqId: string) => {
+    updateMembershipRequestStatus(reqId, 'REJECTED');
+    loadRequests();
+  };
+
   const [showWizard, setShowWizard] = useState<boolean>(false);
+  const [showLiveMeeting, setShowLiveMeeting] = useState<boolean>(false);
+  const [showSavingsModal, setShowSavingsModal] = useState<boolean>(false);
   const [selectedDossierMember, setSelectedDossierMember] = useState<Member | null>(null);
   const [isChainValid, setIsChainValid] = useState<boolean>(true);
 
@@ -97,29 +167,144 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     loanEligibilityInr: 500000
   };
 
+    const renderPendingRequestsCard = () => {
+    if (pendingRequests.length === 0) return null;
+    return (
+      <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold">
+              <Users className="w-4 h-4" />
+            </span>
+            <div>
+              <h3 className="font-extrabold text-sm sm:text-base text-amber-950">
+                {language === 'mr' ? 'नवीन सदस्य सामील होण्याच्या विनंत्या' : 'Pending Membership Requests'}
+              </h3>
+              <p className="text-xs text-amber-800 font-medium">
+                {language === 'mr' ? pendingRequests.length + ' अर्जदारांनी बचत गटात सामील होण्याची विनंती केली आहे.' : pendingRequests.length + ' applicant(s) waiting for officer approval.'}
+              </p>
+            </div>
+          </div>
+          <Badge variant="warning">{pendingRequests.length} Pending</Badge>
+        </div>
+
+        <div className="divide-y divide-amber-200">
+          {pendingRequests.map(req => (
+            <div key={req.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-stone-900">{req.name}</span>
+                  <span className="text-xs font-mono font-semibold text-stone-600 bg-amber-100 px-2 py-0.5 rounded">
+                    +91 {req.phone}
+                  </span>
+                </div>
+                <div className="text-xs text-stone-600">
+                  {language === 'mr' ? 'व्यवसाय: ' : 'Occupation: '}
+                  <span className="font-medium text-stone-800">{req.occupation || '—'}</span>
+                  <span className="mx-2 opacity-40">·</span>
+                  <span className="text-[11px] text-stone-500">{new Date(req.requestedAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => handleRejectRequest(req.id)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition active:scale-95"
+                >
+                  {language === 'mr' ? 'नाकारा (Reject)' : 'Reject'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApproveRequest(req)}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 transition active:scale-95 shadow-sm flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5 mr-1" /><span>{language === 'mr' ? 'मंजूर करा' : 'Approve'}</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const handleNavigate = (tab: string) => {
     if (onSelectTab) {
       onSelectTab(tab);
     }
   };
 
+  if (showLiveMeeting) {
+    return (
+      <LeadLiveMeeting
+        shgId={group.shgCode}
+        shgName={language === 'mr' ? group.nameRegional : group.name}
+        leadId="officer-1"
+        leadName={language === 'mr' ? 'कमलताई पाटील' : 'Kamalai Patil'}
+        knownMembers={members}
+        language={language}
+        onComplete={(completedRoom: LiveMeetingRoom) => {
+          setShowLiveMeeting(false);
+          tts.speak(language === 'mr' ? 'बैठक पूर्ण झाली' : 'Meeting completed successfully');
+        }}
+        onCancel={() => setShowLiveMeeting(false)}
+      />
+    );
+  }
+
+    if (showWizard) {
+    return (
+      <div className="space-y-4 animate-fadeIn">
+        {/* Active Meeting Session Header */}
+        <div className="bg-white rounded-2xl border border-stone-200 p-3.5 sm:p-4 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black flex-shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
+                {language === 'mr' ? 'बैठक संचालन सत्र' : 'Active Meeting Session'}
+              </span>
+              <h2 className="font-black text-sm sm:text-base text-stone-900 leading-tight mt-0.5 truncate">
+                {language === 'mr' ? group.nameRegional : group.name} · #{meetings.length + 1}
+              </h2>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowWizard(false)}
+            className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 border border-stone-200 transition active:scale-95 flex-shrink-0"
+          >
+            ✕ {language === 'mr' ? 'बाहेर पडा' : 'Exit'}
+          </button>
+        </div>
+
+        <MeetingWizard
+          members={members}
+          language={language}
+          monthlySavingsAmount={group.monthlyPoolRate || 500}
+          onCancel={() => setShowWizard(false)}
+          onCompleteMeeting={async (attendance, savings, loan, resolutions, signatories, proof) => {
+            await onCompleteMeetingSession(attendance, savings, loan, resolutions, signatories, proof);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* ── Group Hero Banner ── */}
       <div
         className="rounded-2xl p-5 sm:p-6 relative overflow-hidden flex flex-wrap items-center justify-between gap-4"
-        style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #145739 55%, #0F4230 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 55%, #0F4230 100%)' }}
       >
-        {/* Decorative orbs */}
-        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10 -translate-y-1/2 translate-x-1/4 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, white, transparent)' }} />
-        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-8 translate-y-1/2 -translate-x-1/4 pointer-events-none"
-          style={{ background: 'radial-gradient(circle, white, transparent)' }} />
-
         <div className="relative z-10">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1 rounded-full mb-3"
             style={{ background: 'rgba(255,255,255,0.15)', color: '#FEF3C7', border: '1px solid rgba(255,255,255,0.2)' }}>
-            {group.shgCode}
+            <Award className="w-3.5 h-3.5 text-amber-300" />
+            {language === 'mr' ? 'गट प्रमुख डॅशबोर्ड (SHG Lead)' : 'SHG Lead Dashboard'} · {group.shgCode}
           </span>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
             {language === 'mr' ? group.nameRegional : group.name}
@@ -133,38 +318,47 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           </p>
         </div>
 
-        <Button
-          variant="secondary"
-          size="lg"
-          icon={<Sparkles className="w-5 h-5" />}
-          onClick={() => setShowWizard(true)}
-          className="relative z-10 flex-shrink-0"
-        >
-          {t.meeting.startMeeting}
-        </Button>
+        <div className="relative z-10 flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="secondary"
+            size="lg"
+            icon={<Banknote className="w-5 h-5 text-amber-950" />}
+            onClick={() => setShowSavingsModal(true)}
+            className="flex-shrink-0 bg-amber-400 hover:bg-amber-300 text-stone-900 font-black shadow-md border border-amber-300"
+          >
+            {language === 'mr' ? 'बचत संकलन (कोरम)' : 'Record Savings (Quorum)'}
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
+            icon={<Sparkles className="w-5 h-5" />}
+            onClick={() => setShowWizard(true)}
+            className="flex-shrink-0"
+          >
+            {t.meeting.startMeeting}
+          </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={<Radio className="w-5 h-5" />}
+            onClick={() => setShowLiveMeeting(true)}
+            className="flex-shrink-0 bg-blue-700 hover:bg-blue-800"
+          >
+            {language === 'mr' ? '📡 थेट बैठक सुरू करा' : '📡 Start Live Meeting'}
+          </Button>
+        </div>
       </div>
 
-      {/* Guided 7-Step Meeting Wizard */}
-      {showWizard ? (
-        <MeetingWizard
-          members={members}
-          language={language}
-          monthlySavingsAmount={group.monthlyPoolRate || 500}
-          onCancel={() => setShowWizard(false)}
-          onCompleteMeeting={(attendance, savings, loan, resolutions) => {
-            setShowWizard(false);
-            onCompleteMeetingSession(attendance, savings, loan, resolutions);
-          }}
-        />
-      ) : (
-        <>
+      {/* Dynamic Tab Body */}
+      <>
           {/* Dynamic Tab Body */}
           {(activeTab === 'home' || activeTab === 'overview') && (
             <div className="space-y-5">
+              {renderPendingRequestsCard()}
               {/* ── Metric Cards ── */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Group Capital */}
-                <div className="rounded-2xl p-5 stat-green">
+                <div className="rounded-2xl p-5 stat-green border border-emerald-300 shadow-xs">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1A6B4A' }}>
                       <Building2 className="w-4 h-4 text-white" />
@@ -182,7 +376,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 </div>
 
                 {/* Active Loans */}
-                <div className="rounded-2xl p-5 stat-red">
+                <div className="rounded-2xl p-5 stat-red border border-rose-300 shadow-xs">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-8 h-8 rounded-xl flex items-center justify-center bg-red-600">
                       <HandCoins className="w-4 h-4 text-white" />
@@ -200,7 +394,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 </div>
 
                 {/* Audit State */}
-                <div className="rounded-2xl p-5 stat-violet">
+                <div className="rounded-2xl p-5 stat-violet border border-purple-300 shadow-xs">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#6D28D9' }}>
                       <ShieldCheck className="w-4 h-4 text-white" />
@@ -253,6 +447,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
 
           {activeTab === 'members' && (
             <div className="space-y-4">
+              {renderPendingRequestsCard()}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1D5FA8' }}>
@@ -394,6 +589,17 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
             <MoreMenuView language={language} onNavigateTab={handleNavigate} />
           )}
 
+          {/* Central Savings Deposit Modal (Quorum Verified by Group Head) */}
+          {showSavingsModal && (
+            <CentralSavingsModal
+              group={group}
+              members={members}
+              language={language}
+              onClose={() => setShowSavingsModal(false)}
+              onRecordTransaction={onRecordTransaction || (() => {})}
+            />
+          )}
+
           {/* Member Dossier Modal */}
           {selectedDossierMember && (
             <MemberDossierModal
@@ -405,7 +611,6 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
             />
           )}
         </>
-      )}
     </div>
   );
 };

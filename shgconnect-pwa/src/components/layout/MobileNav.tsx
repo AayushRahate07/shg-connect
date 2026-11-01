@@ -23,11 +23,11 @@ const getNavItems = (language: SupportedLanguage, role: Role) => {
     ];
   }
 
-  if (role === 'ANIMATOR') {
+  if (role === 'ANIMATOR' || (role as string) === 'OFFICER') {
     return [
-      { id: 'home', label: tHome, icon: Home, color: '#1D5FA8' },
-      { id: 'members', label: 'Portfolio', icon: Activity, color: '#1D5FA8' },
-      { id: 'sync', label: 'Sync', icon: RefreshCw, color: '#1D5FA8' },
+      { id: 'home', label: language === 'mr' ? 'सर्व ७ गट' : 'Portfolio', icon: Activity, color: '#1D5FA8' },
+      { id: 'meetings', label: language === 'mr' ? 'बैठक' : 'Meetings', icon: Calendar, color: '#1D5FA8' },
+      { id: 'members', label: language === 'mr' ? 'सभासद' : 'Members', icon: Users, color: '#1D5FA8' },
       { id: 'settings', label: language === 'mr' ? 'सेटिंग्ज' : 'Settings', icon: Settings, color: '#1D5FA8' },
     ];
   }

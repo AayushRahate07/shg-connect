@@ -1,23 +1,48 @@
 import React, { useState } from 'react';
 import { Meeting, SupportedLanguage, Resolution } from '../../types/shg';
+import { GroupInfo } from '../../services/db';
 import { translations } from '../../i18n/translations';
 import { formatINR } from '../../theme/tokens';
 import { Card } from '../ui/Card';
-import { Calendar, CheckCircle2, MapPin, Users, PiggyBank, Landmark, ShieldCheck, ArrowLeft, ChevronRight, FileText } from 'lucide-react';
+import { Calendar, CheckCircle2, MapPin, Users, PiggyBank, Landmark, ShieldCheck, ArrowLeft, ChevronRight, FileText, Radio, ArrowRight, Sparkles } from 'lucide-react';
 
 interface MeetingsViewProps {
+  onJoinLiveMeeting?: () => void;
   meetings: Meeting[];
   resolutions?: Resolution[];
   language: SupportedLanguage;
+  group?: GroupInfo | null;
 }
 
 export const MeetingsView: React.FC<MeetingsViewProps> = ({
   meetings,
   resolutions = [],
-  language
+  language,
+  group,
+  onJoinLiveMeeting
 }) => {
   const t = translations[language] || translations.en;
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+
+  const monthlyRate = group?.monthlyPoolRate || 500;
+  const locationLabel = group?.village
+    ? (language === 'mr' ? `${group.village} ग्रामपंचायत सभागृह` : `${group.village} Gram Panchayat Hall`)
+    : (language === 'mr' ? 'ग्रामपंचायत सभागृह' : 'Gram Panchayat Hall');
+
+  const nextMeetingDate = (() => {
+    if (meetings && meetings.length > 0) {
+      const last = new Date(meetings[meetings.length - 1].date);
+      if (!isNaN(last.getTime())) {
+        const next = new Date(last);
+        next.setMonth(next.getMonth() + 1);
+        return next.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
+      }
+    }
+    const d = new Date();
+    d.setDate(18);
+    if (d < new Date()) d.setMonth(d.getMonth() + 1);
+    return d.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
+  })();
 
   // If a meeting detail is selected, render the dedicated Detail Screen
   if (selectedMeeting) {
@@ -39,12 +64,12 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
 
           <span className="bg-[#CCFBF1] text-[#0F766E] font-extrabold text-xs px-3 py-1 rounded-full flex items-center gap-1">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            {language === 'mr' ? 'बैठक पूर्ण ✓' : 'Meeting Completed ✓'}
+            {language === 'mr' ? 'बैठक पूर्ण' : 'Meeting Completed'}
           </span>
         </div>
 
         {/* Meeting Hero Banner */}
-        <div className="bg-white p-6 rounded-2xl border border-[#E7E5E4] border-l-4 border-l-[#0F766E] shadow-card space-y-3">
+        <div className="bg-teal-50/20 p-6 rounded-2xl border border-teal-200 shadow-card space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
               {language === 'mr' ? `बैठक क्रमांक #${selectedMeeting.meetingNumber}` : `Meeting #${selectedMeeting.meetingNumber}`}
@@ -58,7 +83,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           </h2>
           <div className="text-xs text-[#78716C] font-medium flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-            <span>Shirwal Gram Panchayat Hall</span>
+            <span>{locationLabel}</span>
           </div>
         </div>
 
@@ -125,11 +150,11 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           <ul className="space-y-2 text-xs text-[#1C1917] font-medium">
             <li className="flex items-start gap-2 bg-[#FAFAF9] p-2.5 rounded-xl border border-[#E7E5E4]">
               <span className="text-[#0F766E] font-bold">•</span>
-              <span>{language === 'mr' ? 'मासिक बचत दरमहा ₹५०० वेळेवर जमा करण्याचा ठराव मंजूर.' : 'Monthly savings contribution fixed at ₹500 per member.'}</span>
+              <span>{language === 'mr' ? `मासिक बचत दरमहा ₹${monthlyRate} वेळेवर जमा करण्याचा ठराव मंजूर.` : `Monthly savings contribution fixed at ₹${monthlyRate} per member.`}</span>
             </li>
             <li className="flex items-start gap-2 bg-[#FAFAF9] p-2.5 rounded-xl border border-[#E7E5E4]">
               <span className="text-[#0F766E] font-bold">•</span>
-              <span>{language === 'mr' ? 'पुढील बैठकीची तारीख २४ सप्टेंबर २०२६ ग्रामपंचायत सभागृहात निश्चित.' : 'Next meeting schedule confirmed for 24 Sept 2026 at Gram Panchayat Hall.'}</span>
+              <span>{language === 'mr' ? `पुढील बैठकीची तारीख ${nextMeetingDate} ${locationLabel} येथे निश्चित.` : `Next meeting confirmed for ${nextMeetingDate} at ${locationLabel}.`}</span>
             </li>
           </ul>
         </div>
@@ -158,6 +183,41 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         </p>
       </div>
 
+      {/* Live Meeting Action Card */}
+      {onJoinLiveMeeting && (
+        <div className="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-5 rounded-2xl shadow-lg border border-emerald-600 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping inline-block" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">
+                {language === 'mr' ? 'थेट बैठक कक्ष' : 'Live Meeting Room'}
+              </span>
+            </div>
+            <span className="bg-emerald-500/30 text-emerald-100 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-400/30">
+              {language === 'mr' ? 'सुरू आहे' : 'Active'}
+            </span>
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-white">
+              {language === 'mr' ? 'गटाची थेट बैठक सुरू आहे?' : 'Is your SHG meeting in progress?'}
+            </h2>
+            <p className="text-xs text-emerald-100/90 mt-1">
+              {language === 'mr'
+                ? 'गट प्रमुखांकडून ४-अंकी कोड घ्या आणि बैठकीत सामील व्हा.'
+                : 'Get the 4-digit code from your Lead and join to record your attendance & savings.'}
+            </p>
+          </div>
+          <button
+            onClick={onJoinLiveMeeting}
+            className="w-full bg-white text-emerald-900 font-black text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:bg-emerald-50 active:scale-[0.98] transition"
+          >
+            <Radio className="w-4 h-4 text-emerald-700 animate-pulse" />
+            <span>{language === 'mr' ? 'बैठकीत सामील व्हा (Join Meeting)' : 'Join Live Meeting'}</span>
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </button>
+        </div>
+      )}
+
       {/* Upcoming Meeting Banner Card */}
       <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7E5E4] shadow-card space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
@@ -168,11 +228,11 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
             <div className="text-2xl font-extrabold text-[#1C1917]">
-              24 Sept 2026 • 4:00 PM
+              {nextMeetingDate}
             </div>
             <div className="text-xs text-[#78716C] font-medium mt-1 flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-              Shirwal Gram Panchayat Hall
+              <span>{locationLabel}</span>
             </div>
           </div>
           <span className="bg-[#FFEDD5] text-[#C2410C] font-extrabold text-xs px-3 py-1.5 rounded-full">
@@ -206,7 +266,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
                         {m.date}
                       </span>
                       <span className="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        ✓ {language === 'mr' ? 'बैठक पूर्ण' : 'Completed'}
+                        {language === 'mr' ? 'बैठक पूर्ण' : 'Completed'}
                       </span>
                     </div>
 

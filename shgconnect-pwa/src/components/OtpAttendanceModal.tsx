@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SupportedLanguage } from '../types/shg';
 import { sound } from '../services/sound';
 import { hybridOtpService } from '../services/otpService';
-import { ShieldCheck, CheckCircle2, X, Send, Smartphone, Wifi, WifiOff, Key, RefreshCw } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, X, Send, Smartphone, Wifi, WifiOff, AlertCircle, Key, RefreshCw } from 'lucide-react';
 
 interface OtpAttendanceModalProps {
   memberId: string;
@@ -76,10 +76,11 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
     setSending(true);
     setError('');
 
-    const targetPhone = cleanPhone || '9823011223';
+    const targetPhone = cleanPhone || '8767993248';
 
     try {
       const result = await hybridOtpService.requestOtp(targetPhone, memberId);
+      if (!result.success) { setError(result.message); return; }
       if (result.phoneMasked) setPhoneMasked(result.phoneMasked);
       if (result.devOtp) setDevOtpHint(result.devOtp);
 
@@ -87,7 +88,7 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
         setActiveMode('OFFLINE_PIN');
       } else {
         setActiveMode('SMS');
-        setCooldown(45); // 45 seconds resend cooldown
+        setCooldown(60); // 1 minute limit on OTP intake
       }
     } catch (err: any) {
       console.warn('Failed to dispatch SMS, falling back to offline:', err);
@@ -104,7 +105,7 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
       return;
     }
 
-    const targetPhone = cleanPhone || '9823011223';
+    const targetPhone = cleanPhone || '8767993248';
     const mode = activeMode === 'SMS' && isOnline ? 'ONLINE_SMS' : 'OFFLINE_FALLBACK';
     const result = await hybridOtpService.verifyOtp(targetPhone, enteredOtp, memberId, mode);
 
@@ -251,7 +252,7 @@ export const OtpAttendanceModal: React.FC<OtpAttendanceModalProps> = ({
 
             {error && (
               <p className="text-xs text-rose-600 font-bold bg-rose-50 p-2 rounded-xl">
-                ⚠️ {error}
+                <AlertCircle className="w-4 h-4 text-rose-600 inline mr-1.5 flex-shrink-0" />{error}
               </p>
             )}
 

@@ -1,4 +1,11 @@
-export type Role = 'MEMBER' | 'OFFICE_BEARER' | 'ANIMATOR' | 'AUDITOR';
+/**
+ * SHGConnect Role Hierarchy:
+ * - MEMBER: SHG Member (personal savings, loans, passbook)
+ * - SHG_LEAD / OFFICE_BEARER: Leads only one SHG (orchestrates meetings & keeps finance lead)
+ * - OFFICER / ANIMATOR: Manages multiple SHGs (can also orchestrate meetings in one SHG at a time)
+ * - AUDITOR: Government Senior Person (inspects data & collects information for government)
+ */
+export type Role = 'MEMBER' | 'SHG_LEAD' | 'OFFICE_BEARER' | 'OFFICER' | 'ANIMATOR' | 'AUDITOR';
 
 export type OfficerRole = 'PRESIDENT' | 'SECRETARY' | 'TREASURER';
 
@@ -101,6 +108,7 @@ export interface Loan {
 
 export interface Meeting {
   id: string;
+  shgId?: string;
   date: string;
   meetingNumber: number;
   totalSavingsCollected: number;
@@ -274,4 +282,18 @@ export interface OfficerCredentials {
   nameRegional: string;
   pinHash: string; // SHA-256 hash of PIN
   defaultPin: string;
+}
+
+
+export interface MembershipRequest {
+  id: string;
+  shgId: string;
+  shgName?: string;
+  name: string;
+  nameRegional?: string;
+  phone: string;
+  occupation?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  requestedAt: string;
+  notes?: string;
 }
