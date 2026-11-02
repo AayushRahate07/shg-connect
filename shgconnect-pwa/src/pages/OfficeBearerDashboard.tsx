@@ -102,7 +102,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
 
   const loadRequests = () => {
     const all = getMembershipRequests();
-    setPendingRequests(all.filter(r => r.status === 'PENDING' && (!r.shgId || r.shgId === group.shgCode)));
+    setPendingRequests(all.filter(r => r.status === 'PENDING' && r.shgId === group.shgCode));
   };
 
   useEffect(() => {

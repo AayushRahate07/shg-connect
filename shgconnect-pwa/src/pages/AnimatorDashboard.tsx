@@ -124,6 +124,36 @@ export const AnimatorDashboard: React.FC<AnimatorDashboardProps> = ({
         </div>
       ) : (
         <>
+          {/* Pending Membership Requests Alert Banner for Officer (Group specific) */}
+          {unreadNotificationsCount > 0 && onOpenNotifications && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-fadeIn mb-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+                  <Bell className="w-5 h-5 animate-bounce" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-black text-amber-950">
+                    {isMr
+                      ? `${unreadNotificationsCount} नवीन सदस्य नोंदणी अर्ज प्रलंबित आहेत!`
+                      : `${unreadNotificationsCount} New Membership Applications Pending!`}
+                  </h3>
+                  <p className="text-xs text-amber-800 font-medium">
+                    {isMr
+                      ? `${group.nameRegional || group.name} (${group.shgCode}) साठी अर्ज तपासा.`
+                      : `Review applications for ${group.name} (${group.shgCode}).`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                {isMr ? 'अर्ज पहा व मंजूर करा' : 'Review & Approve'}
+              </button>
+            </div>
+          )}
+
           {/* Default Multi-SHG Portfolio Tab */}
           {(activeTab === 'home' || activeTab === 'overview') && (
             <AnimatorMultiSHGView

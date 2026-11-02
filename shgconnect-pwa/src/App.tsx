@@ -84,16 +84,16 @@ export default function App() {
   }, [session, currentRole]);
 
   // Compute unread pending requests for the active role & group
+  // Rule: Members (Tier 1) & Auditors (Tier 4) do NOT receive admitting new member notifications.
+  // Only Tier 2 (Lead) & Tier 3 (Officer) receive notifications, and SPECIFICALLY ONLY for their SHG.
+  // Once accepted, status becomes APPROVED and clears the notification for everyone.
   const unreadNotificationsCount = membershipRequests.filter(r => {
     if (r.status !== 'PENDING') return false;
-    if (currentRole === 'OFFICER' || currentRole === 'ANIMATOR') {
-      return true; // Officer oversees all pending requests across all SHGs
+    if (currentRole === 'MEMBER' || currentRole === 'AUDITOR') {
+      return false; // Members and Auditors never receive admission requests
     }
-    if (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD') {
-      return !r.shgId || r.shgId === group?.shgCode || !group?.shgCode || r.shgId === 'SHG-MH-SAT-2024-0089';
-    }
-    if (currentRole === 'MEMBER') {
-      return !r.shgId || r.shgId === group?.shgCode;
+    if (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD' || currentRole === 'OFFICER' || currentRole === 'ANIMATOR') {
+      return r.shgId === group?.shgCode; // Specifically only requests for their SHG
     }
     return false;
   }).length;

@@ -29,14 +29,18 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
   const loadRequests = () => {
     const all = getMembershipRequests();
-    // Tier 2 (SHG Lead): Scoped to their specific group, or Savitri Gat, or fallback to all
-    // Tier 3 (Officer): Oversees all groups across cluster
-    if (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD') {
-      const scoped = all.filter(r => !r.shgId || r.shgId === currentGroupCode || r.shgId === 'SHG-MH-SAT-2024-0089');
-      setRequests(scoped.length > 0 ? scoped : all);
-    } else {
-      setRequests(all);
+    // Rule: Members (Tier 1) & Auditors (Tier 4) do NOT receive admitting new member notifications.
+    if (currentRole === 'MEMBER' || currentRole === 'AUDITOR') {
+      setRequests([]);
+      return;
     }
+    // Tier 2 (SHG Lead) & Tier 3 (Officer): Specifically and ONLY those which applied to their SHG.
+    if (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD' || currentRole === 'OFFICER' || currentRole === 'ANIMATOR') {
+      const scoped = all.filter(r => r.shgId === currentGroupCode);
+      setRequests(scoped);
+      return;
+    }
+    setRequests([]);
   };
 
   useEffect(() => {
