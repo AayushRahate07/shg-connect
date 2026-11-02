@@ -11,7 +11,7 @@
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_v4-success?style=for-the-badge&logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![WebCrypto](https://img.shields.io/badge/Security-SHA--256_RFC6962-critical?style=for-the-badge&logo=open-access&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
-[Live Demo](https://shg-connect-in.vercel.app/#)  •  [मराठी माहितीपत्रक](README.mr.md)  •  [Architecture](#4-technical-architecture)  •  [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
+[Live Demo](https://shg-connect-in.vercel.app/#)  •  [मराठी माहितीपत्रक](README.mr.md)  •  [Meeting Modes](#3-meeting-operational-modes--dynamic-protocols)  •  [Edge Cases & Early Departures](#4-member-lifecycle-early-departures--edge-case-safeguards)  •  [Architecture](#6-technical-architecture)
 
 </div>
 
@@ -77,9 +77,9 @@ flowchart LR
 
 | Tier & Role | Core View | Primary Capabilities |
 | :--- | :--- | :--- |
-| **Tier 1: Member** | `MemberDashboard.tsx` | **Read-Only Passbook & Meeting Client.** Individual savings balances, EMI schedules, 4-digit room join, and live cash OTP verification. |
-| **Tier 2: Lead** | `OfficeBearerDashboard.tsx` | **Operational Meeting Console.** Room broadcast, single-writer ledger write lease, physical note denomination counter, and dual PIN sign-off. |
-| **Tier 3: Animator** | `AnimatorDashboard.tsx` | **Village Cluster Oversight.** Cross-group portfolio monitoring (5–20 SHGs), `.shgbk` device backups, and health grading. |
+| **Tier 1: Member** | `MemberDashboard.tsx` | **Read-Only Passbook & Meeting Client.** Individual savings balances, EMI schedules, 4-digit room join, dynamic departure modal, and live cash OTP verification. |
+| **Tier 2: Lead** | `OfficeBearerDashboard.tsx` | **Operational Meeting Console.** Real-time room broadcast, single-writer ledger write lease, physical note denomination counter, and dual PIN sign-off. |
+| **Tier 3: Animator** | `AnimatorDashboard.tsx` | **Village Cluster Oversight.** Cross-group portfolio monitoring (5–20 SHGs), multi-group meeting orchestration, `.shgbk` device backups, and health grading. |
 | **Tier 4: Auditor** | `AuditorDashboard.tsx` | **Institutional Compliance.** Read-only forensic ledger inspection, SHA-256 chain verification, and automated NABARD Panchasutra grading. |
 
 ---
@@ -113,7 +113,7 @@ flowchart LR
 - The member's phone displays:
   > **बचत रक्कम पडताळणी (Savings Verification)**  
   > प्रमुखांनी तुमची बचत नोंदवली: **₹५००**  
-  > रक्कम बरोबर असल्यास हा कोड प्रमुखाला सांगा: **`[ 7 7 7 4 ]`**
+  > रक्कम बरोबर असल्यास हा कोड प्रमुखाला सांगा: **`[ 7 7 4 2 ]`**
 - The member physically hands the cash and reads out the code. Once typed by the leader, the transaction is permanently locked.
 
 ### 2. Cash Box Note Counter (Preventing Physical Cash Loss)
@@ -125,7 +125,106 @@ At the end of the meeting, the secretary enters the actual count of paper notes:
 
 ---
 
-## 3. Complete Feature Catalog
+## 3. Meeting Operational Modes & Dynamic Protocols
+
+SHGConnect accommodates both high-tech villages where members have smartphones and remote hamlets where only the leader carries a device.
+
+```mermaid
+flowchart TD
+    Start["Start Meeting"] --> Choice{"Meeting Operating Mode"}
+
+    Choice -->|Multiple Phones / Wi-Fi| LiveMode["Mode A: Multi-Device Live Meeting"]
+    Choice -->|Single Phone / Offline| SoloMode["Mode B: 4-Step Offline Conductor"]
+
+    subgraph LiveMode["Mode A: Multi-Device Live Meeting (थेट बैठक)"]
+        direction TB
+        A1["Leader starts session $\rightarrow$ 4-digit code generated"]
+        A2["Members join from their phones in real-time"]
+        A3["Real-time attendee roster via SSE & BroadcastChannel"]
+        A4["Mutual Handshake OTP per deposit"]
+        A5["Direct Ledger Bridge commits savings into Passbooks"]
+        A1 --> A2 --> A3 --> A4 --> A5
+    end
+
+    subgraph SoloMode["Mode B: Single-Device Conductor (बैठक विझार्ड)"]
+        direction TB
+        B1["1. Attendance Checklist (1-Tap Mark All & Reset)"]
+        B2["2. Savings & Cash Pool Collection"]
+        B3["3. Resolution Register & Loan Disbursals"]
+        B4["4. Statutory Quorum & Multi-Officer PIN Commit"]
+        B1 --> B2 --> B3 --> B4
+    end
+```
+
+### Mode A: Multi-Device Live Meeting (`LeadLiveMeeting` & `MemberLiveMeeting`)
+- **Transport Layer**: Powered by Server-Sent Events (SSE) with an autonomous fallback to local `BroadcastChannel` and `localStorage` for 100% offline local networks.
+- **Dynamic Heartbeat**: 15-second keep-alive pings monitor connection health. If a phone sleeps, the client auto-reconnects with a 1.5s backoff.
+- **Direct Ledger Commit Bridge**: When the leader completes the meeting, all verified deposits and attendance records automatically generate SHA-256 chained transaction blocks, update individual member passbooks, adjust group balances, and log outbox operations.
+
+### Mode B: Single-Device Meeting Conductor (`MeetingWizard`)
+- **2-Row × 2-Column Responsive Layout**: Optimized for mobile screens to eliminate cluttered horizontal scrolling.
+- **Attendance Checklist**: Quick presets with standard vector checkmarks, real-time presence tally, and instant reset.
+- **Dual Officer PIN Signatures**: Cryptographically proves that at least two designated officers (President, Secretary, or Treasurer) physically validated the cash and signed the ledger before sealing.
+
+---
+
+## 4. Member Lifecycle, Early Departures & Edge-Case Safeguards
+
+In rural village settings, meetings frequently encounter interruptions: infants crying, cattle feeding schedules, agricultural urgencies, or drained phone batteries. SHGConnect establishes strict accounting invariants for every departure scenario:
+
+```mermaid
+stateDiagram-v2
+    [*] --> InMeeting: Joins Meeting
+
+    InMeeting --> StateA: Full Attendance + Verified Cash
+    InMeeting --> StateB: Early Departure (Already Deposited)
+    InMeeting --> StateC: Early Departure (Zero Deposit)
+    InMeeting --> Disconnected: Network Drop / Tab Closed
+
+    StateA --> QuorumMet: Included in Quorum + Full Cash
+    StateB --> QuorumMet: Included in Quorum + Verified Cash Locked
+    StateC --> QuorumMet: Included in Quorum + ₹0 Cash
+    Disconnected --> Reconnected: Regains Network
+    Disconnected --> BatchConfirm: Offline Active Member (Leader Enters Cash)
+```
+
+### The 3 Canonical Member Departure States
+
+| State | Scenario | Attendance Quorum Status | Financial Ledger Status | UI Representation |
+| :--- | :--- | :--- | :--- | :--- |
+| **State A** | **Full Meeting Attendance** | Counted as present | Full verified deposit added to pool | Green checkmark, `Online` pill |
+| **State B** | **Early Departure (After Depositing)** | Preserved for statutory quorum | Verified deposit locked permanently; unaffected by departure | `[Left Early • ₹X Verified]` |
+| **State C** | **Early Departure (No Deposit)** | Preserved for statutory quorum | Strictly **₹0** (Zero deposit commitment) | `[Left Early]` + `[No Deposit (₹0)]` |
+
+### Detailed Edge-Case Protocols
+
+#### 1. Early Departure with No Deposit (State C)
+- If a member must leave before depositing, they tap **`बैठक सोडा (Leave Meeting)`**.
+- A modal requires selecting an inevitable rural reason:
+  - 👶 *बालक रडत आहे (Infant crying)*
+  - 🐄 *जनावरांची काळजी (Cattle / livestock care)*
+  - 🪫 *फोन बॅटरी संपत आहे (Phone battery depleted)*
+  - 🌾 *शेती / घरगुती तातडीचे काम (Urgent agricultural chores)*
+  - 📝 *इतर काम (Other urgent work)*
+- **Quorum Preservation**: Because the member was physically present, their attendance is **preserved** to satisfy statutory quorum requirements (minimum 50% attendance rule).
+- **Zero Phantom Money**: Savings is recorded strictly as **₹0**. No cash is added to the pool.
+
+#### 2. Accidental Tab Close, App Kill, or Browser Back Navigation
+- Handled by synchronized `beforeunload`, `pagehide`, and `popstate` listeners in `MemberLiveMeeting.tsx`.
+- Dispatches an asynchronous `navigator.sendBeacon` request directly to `/api/meeting/:code/leave`.
+- Any pending handshake OTP is instantly aborted (`savings_cancelled`).
+- Prevents hanging states: unverified savings automatically defaults to **₹0**, protecting the cash ledger from phantom entries.
+
+#### 3. Network Disconnects vs. Batch Confirm Safeguards
+- **Strict Activation Constraint**: The **Batch Confirm (`सर्व मंजूर करा`)** button is **strictly activated only if an active member is disconnected** due to poor village cellular coverage. If all members are connected, the button remains disabled.
+- **Exclusion of Departed Members**: Members who have checked out or left early (`leftEarly: true`) are **strictly excluded** from batch confirmation.
+- **Zero Phantom Default Guarantee**:
+  - The system **never invents default money** (all legacy `|| 250` or `|| 300` defaults have been completely eradicated).
+  - The leader must explicitly enter the physical cash amount received. If left blank, the app blocks execution and warns the leader: *"कृपया डिस्कनेक्ट सदस्याची रक्कम टाका (Please enter savings amount)"*.
+
+---
+
+## 5. Complete Feature Catalog
 
 ```mermaid
 mindmap
@@ -134,27 +233,28 @@ mindmap
       4-Digit Room Code
       Real-Time Member Roster
       Mutual Handshake OTP
+      Early Departure Engine
       Instant Digital Receipts
     Offline Conductor
-      4-Step Meeting Wizard
+      2x2 Meeting Wizard
       Attendance Checklist
-      Cash Box<br/>Note Counter
-      Biometric / PIN Quorum
+      Cash Box Note Counter
+      Biometric & PIN Quorum
     Financial Ledger
       Member Passbooks
-      Loan EMI Schedules
-      Panchasutra Compliance Radar
-      UPI QR Intent Deep-links
+      Loan EMI Radar
+      Panchasutra Compliance
+      UPI QR Deep-links
     Safety & Security
       SHA-256 Hash Chain
-      Single-Writer Master Lease
-      Encrypted Backup .shgbk
-      Operation Freeze on Conflict
+      Single-Writer Lease
+      Encrypted .shgbk Backup
+      Conflict Freeze Defense
 ```
 
 ---
 
-## 4. Technical Architecture
+## 6. Technical Architecture
 
 A local-first architecture engineered for zero-connectivity environments with optional upstream reconciliation:
 
@@ -188,10 +288,11 @@ flowchart LR
 - **Offline-First PWA:** Uses Service Workers with 10MB asset caching (`workbox`). Loads instantly without network.
 - **Persistent Storage:** Requests `navigator.storage.persist()` on boot so Android Chrome never clears group records under low storage.
 - **Audio Fallback Engine:** If an Android Go phone lacks Devanagari text-to-speech voice packs, the app uses the Web Audio API to synthesize melodic chimes (cash deposit chime, loan approval fanfare, warning buzz).
+- **Express vs. Vite Middleware Parity:** All 12 meeting endpoints (room management, handshake OTPs, early departure, batch confirmation, and SSE heartbeats) run identically in local Vite dev server and production Express servers.
 
 ---
 
-## 5. Verification & Test Results
+## 7. Verification & Test Results
 
 The codebase includes an automated invariant verification harness:
 
@@ -216,11 +317,12 @@ The codebase includes an automated invariant verification harness:
 Valid Chain Verification : PASS (All SHA-256 blocks valid, Merkle root intact)
 Tamper Simulation Attack : PASS (Altering block 0 amount from ₹500 to ₹50,000 
                                  immediately detected at index 0)
+Server Vitest Suite      : PASS (13/13 tests across sync.integration & otp.integration)
 ```
 
 ---
 
-## 6. Getting Started & Testing
+## 8. Getting Started & Testing
 
 ### Prerequisites
 - Node.js (version 18 or newer)
@@ -264,9 +366,18 @@ npm run dev -- --host 0.0.0.0 --port 3000
    - Phone 1 immediately shows both members appear with green **Online** badges.
    - On Phone 1, enter `500` for Phone 2 and tap **`नोंदवा (Save)`**.
    - Phone 2 chimes and displays the **Mutual Handshake Sheet**:
-     $$\text{₹५०० बचत} \quad\longrightarrow\quad \text{पडताळणी कोड: } [\mathbf{7774}]$$
-   - Phone 1 prompts for the code. Type `7774` and hit confirm.
+     $$\text{₹५०० बचत} \quad\longrightarrow\quad \text{पडताळणी कोड: } [\mathbf{7742}]$$
+   - Phone 1 prompts for the code. Type `7742` and hit confirm.
    - Both phones play a celebratory stamp sound, Phone 2 receives a **Verified ✅** badge, and the meeting cash box updates in real time.
+4. **Test Member Leaving Midway (Early Departure):**
+   - On Phone 3 (Anita), tap **`बैठक सोडा (Leave Meeting)`**.
+   - Select reason *"बालक रडत आहे (Infant crying)"* and confirm.
+   - Phone 1 immediately shows Anita updated to **`लवकर बाहेर पडली • बिनबचत (₹०)`**.
+   - Notice that **Batch Confirm** remains disabled, and Anita's deposit remains strictly ₹0 with no phantom cash added to the pool.
+5. **Complete Meeting & Verify Passbook:**
+   - On Phone 1, tap **`बैठक पूर्ण करा (Complete Meeting)`**.
+   - Check statutory quorum calculation (Anita is credited for presence, preserving quorum).
+   - Confirm and seal: verified savings are immediately committed to member passbooks and the group's cryptographic ledger.
 
 ---
 
