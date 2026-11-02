@@ -437,12 +437,15 @@ export const liveMeetingApi = {
   },
 
   /** Subscribe to real-time events via SSE + local BroadcastChannel fallback */
-  subscribe(code: string, handlers: LiveMeetingHandlers): any {
+  subscribe(code: string, handlers: LiveMeetingHandlers, memberId?: string): any {
     let es: EventSource | null = null;
     let bc: BroadcastChannel | null = null;
 
     try {
-      es = new EventSource(`${BASE}/api/meeting/${code}/stream`);
+      const streamUrl = memberId
+        ? `${BASE}/api/meeting/${code}/stream?memberId=${encodeURIComponent(memberId)}`
+        : `${BASE}/api/meeting/${code}/stream`;
+      es = new EventSource(streamUrl);
       es.addEventListener('snapshot', (e: MessageEvent) => handlers.onSnapshot?.(JSON.parse(e.data)));
       es.addEventListener('member_joined', (e: MessageEvent) => handlers.onMemberJoined?.(JSON.parse(e.data)));
       es.addEventListener('member_left', (e: MessageEvent) => handlers.onMemberLeft?.(JSON.parse(e.data)));

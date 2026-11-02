@@ -521,6 +521,7 @@ meetingRouter.get('/:code', (req: Request, res: Response) => {
 // GET /api/meeting/:code/stream (SSE with Instant Snapshot on (Re)Connect)
 meetingRouter.get('/:code/stream', (req: Request, res: Response) => {
   const code = req.params.code;
+  const memberId = (req.query.memberId as string) || '';
   const room = liveRooms.get(code);
 
   if (!room) {
@@ -532,6 +533,17 @@ meetingRouter.get('/:code/stream', (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Disable reverse-proxy chunk buffering
   res.flushHeaders?.();
+
+  // If memberId is specified, mark as CONNECTED
+  if (memberId && room.members[memberId] && room.status === 'OPEN') {
+    room.members[memberId].connectionStatus = 'CONNECTED';
+    broadcastToRoom(room, 'member_status_changed', {
+      memberId,
+      memberName: room.members[memberId].memberName,
+      connectionStatus: 'CONNECTED',
+      members: room.members
+    });
+  }
 
   // Instruct client EventSource to retry after 1.5s on screen-sleep reconnect
   res.write('retry: 1500\n\n');
@@ -554,5 +566,28 @@ meetingRouter.get('/:code/stream', (req: Request, res: Response) => {
   req.on('close', () => {
     room.subscribers.delete(res);
     clearInterval(hb);
+
+    // If member disconnected socket, immediately update their state
+    if (memberId && room.members[memberId] && room.status === 'OPEN') {
+      const mem = room.members[memberId];
+      if (mem.connectionStatus !== 'LEFT') {
+        mem.connectionStatus = 'DISCONNECTED';
+        if (mem.pendingSavings) {
+          delete mem.pendingSavings;
+          broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'socket_disconnect' });
+        }
+        if (!mem.verified) {
+          mem.savings = 0;
+        }
+        room.totalPool = Object.values(room.members).reduce((sum, m) => sum + (m.verified ? m.savings : 0), 0);
+        broadcastToRoom(room, 'member_status_changed', {
+          memberId,
+          memberName: mem.memberName,
+          connectionStatus: 'DISCONNECTED',
+          members: room.members
+        });
+        broadcastToRoom(room, 'snapshot', roomSnapshot(room));
+      }
+    }
   });
 });

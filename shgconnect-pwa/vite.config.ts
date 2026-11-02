@@ -554,8 +554,10 @@ function meetingRoomPlugin(): Plugin {
         }
 
         // ── GET /api/meeting/:code/stream (SSE) ───────────────────────────────
-        const streamMatch = url.match(/^\/api\/meeting\/(\d{4})\/stream$/);
+        const parsedUrl = new URL(url, 'http://localhost');
+        const streamMatch = parsedUrl.pathname.match(/^\/api\/meeting\/(\d{4})\/stream$/);
         if (streamMatch && req.method === 'GET') {
+          const memberId = parsedUrl.searchParams.get('memberId') || '';
           const room = liveRooms.get(streamMatch[1]);
           if (!room) { res.statusCode = 404; res.end(); return; }
           res.setHeader('Content-Type', 'text/event-stream');
@@ -564,14 +566,52 @@ function meetingRoomPlugin(): Plugin {
           res.setHeader('X-Accel-Buffering', 'no');
           res.setHeader('Access-Control-Allow-Origin', '*');
           res.flushHeaders?.();
+
+          // Mark member as CONNECTED if memberId is given
+          if (memberId && room.members[memberId] && room.status === 'OPEN') {
+            room.members[memberId].connectionStatus = 'CONNECTED';
+            broadcastToRoom(room, 'member_status_changed', {
+              memberId,
+              memberName: room.members[memberId].memberName,
+              connectionStatus: 'CONNECTED',
+              members: room.members
+            });
+          }
+
           // Instruct client EventSource to retry after 1.5s on screen-sleep reconnect
           res.write('retry: 1500\n\n');
           // Send current state immediately on connect
           res.write(`event: snapshot\ndata: ${JSON.stringify(roomSnapshot(room))}\n\n`);
           room.subscribers.add(res);
-          // Heartbeat every 20s
-          const hb = setInterval(() => { try { res.write(': ping\n\n'); } catch { clearInterval(hb); } }, 20000);
-          req.on('close', () => { room.subscribers.delete(res); clearInterval(hb); });
+          // Heartbeat every 15s
+          const hb = setInterval(() => { try { res.write(': ping\n\n'); } catch { clearInterval(hb); } }, 15000);
+          req.on('close', () => {
+            room.subscribers.delete(res);
+            clearInterval(hb);
+
+            // If member disconnected socket, update connectionStatus & ensure unverified savings is 0
+            if (memberId && room.members[memberId] && room.status === 'OPEN') {
+              const mem = room.members[memberId];
+              if (mem.connectionStatus !== 'LEFT') {
+                mem.connectionStatus = 'DISCONNECTED';
+                if (mem.pendingSavings) {
+                  delete mem.pendingSavings;
+                  broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'socket_disconnect' });
+                }
+                if (!mem.verified) {
+                  mem.savings = 0;
+                }
+                room.totalPool = Object.values(room.members).reduce((sum, m) => sum + (m.verified ? m.savings : 0), 0);
+                broadcastToRoom(room, 'member_status_changed', {
+                  memberId,
+                  memberName: mem.memberName,
+                  connectionStatus: 'DISCONNECTED',
+                  members: room.members
+                });
+                broadcastToRoom(room, 'snapshot', roomSnapshot(room));
+              }
+            }
+          });
           return;
         }
 

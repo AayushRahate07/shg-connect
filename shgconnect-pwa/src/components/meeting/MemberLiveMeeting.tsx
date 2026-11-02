@@ -55,6 +55,53 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
     };
   }, [code, memberId]);
 
+  // ── Intercept Android/Browser Back Button & Tab Close / Navigation ─────────
+  useEffect(() => {
+    if (phase !== 'LIVE' || !room?.code) return;
+
+    // Push dummy state to capture physical or browser back button
+    window.history.pushState({ inMeeting: true }, '');
+
+    const handlePopState = () => {
+      // User tapped hardware Back or browser Back button:
+      // Show clean Leave confirmation modal instead of silently quitting!
+      setShowLeaveModal(true);
+      // Re-push state so next back also doesn't abruptly close app
+      window.history.pushState({ inMeeting: true }, '');
+    };
+
+    // When tab is closed, refreshed, or switched away
+    const handleUnloadDeparture = () => {
+      // Use sendBeacon or keepalive fetch so the server reliably receives departure
+      const payload = JSON.stringify({
+        memberId,
+        reason: isMr ? 'टॅब बंद केला / मागे गेले' : 'Closed tab / Back'
+      });
+      const leaveUrl = `/api/meeting/${room.code}/leave`;
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(leaveUrl, blob);
+      } else {
+        fetch(leaveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('pagehide', handleUnloadDeparture);
+    window.addEventListener('beforeunload', handleUnloadDeparture);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pagehide', handleUnloadDeparture);
+      window.removeEventListener('beforeunload', handleUnloadDeparture);
+    };
+  }, [phase, room?.code, memberId, isMr]);
+
   // Cleanup SSE on unmount
   useEffect(() => () => { esRef.current?.close(); }, []);
 
@@ -145,7 +192,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         setError(t('बैठक समाप्त झाली किंवा वेळ संपली.', 'Meeting ended or session expired.'));
         setPhase('COMPLETED');
       },
-    });
+    }, memberId);
 
     es.onerror = () => {
       setIsReconnecting(true);
