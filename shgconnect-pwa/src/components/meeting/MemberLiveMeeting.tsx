@@ -35,15 +35,25 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
   // Monitor network connection drop / recovery
   useEffect(() => {
-    const handleOffline = () => setIsReconnecting(true);
-    const handleOnline = () => setIsReconnecting(false);
+    const handleOffline = () => {
+      setIsReconnecting(true);
+      if (code) {
+        liveMeetingApi.markMemberStatus(code, memberId, { connectionStatus: 'DISCONNECTED' }).catch(() => {});
+      }
+    };
+    const handleOnline = () => {
+      setIsReconnecting(false);
+      if (code) {
+        liveMeetingApi.markMemberStatus(code, memberId, { connectionStatus: 'CONNECTED' }).catch(() => {});
+      }
+    };
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
     return () => {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, []);
+  }, [code, memberId]);
 
   // Cleanup SSE on unmount
   useEffect(() => () => { esRef.current?.close(); }, []);

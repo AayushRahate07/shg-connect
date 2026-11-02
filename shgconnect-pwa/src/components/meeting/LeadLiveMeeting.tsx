@@ -232,11 +232,12 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   
   const handleBatchConfirmAll = async () => {
     if (!room?.code) return;
-    const currentList = Object.values(room.members);
-    const unverified = currentList.filter(m => !m.verified);
-    if (unverified.length === 0) {
+    const disconnectedList = Object.values(room.members).filter(m => 
+      !m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly)
+    );
+    if (disconnectedList.length === 0) {
       sound.playStampSound();
-      tts.speak(isMr ? 'सर्व सदस्यांची बचत आधीच मंजूर आहे' : 'All members already verified');
+      tts.speak(isMr ? 'कोणतेही सदस्य डिस्कनेक्ट नाहीत. थेट OTP वापरा.' : 'No members disconnected.');
       return;
     }
     try {
@@ -245,9 +246,9 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       if (res.ok && res.members) {
         setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
         sound.playStampSound();
-        const count = res.count || unverified.length;
+        const count = res.count || disconnectedList.length;
         setBatchNotice({ count, amount: defaultAmt });
-        tts.speak(isMr ? `सर्व ${count} सदस्यांची बचत मंजूर झाली` : `Approved savings for ${count} members`);
+        tts.speak(isMr ? `डिस्कनेक्ट सदस्यांची बचत मंजूर केली.` : `Batch confirmed savings for disconnected members.`);
         setTimeout(() => setBatchNotice(null), 6000);
       }
     } catch {
@@ -255,22 +256,40 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     }
   };
 
-  const handlePaperSlipConfirm = async (memberId: string) => {
-    if (!room?.code) return;
-    try {
-      const res = await liveMeetingApi.verifySavings(room.code, memberId, '9999', true);
-      if (res.ok && res.members) {
-        setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
-        sound.playStampSound();
-      }
-    } catch {}
-  };
+  
 
   const handleCancelHandshake = async () => {
     if (room && verifyModal.memberId) {
       await liveMeetingApi.cancelSavings(room.code, verifyModal.memberId);
     }
     setVerifyModal(prev => ({ ...prev, open: false }));
+  };
+
+  const handleToggleConnection = async (memberId: string) => {
+    if (!room) return;
+    const currentStatus = room.members[memberId]?.connectionStatus || 'CONNECTED';
+    const nextStatus = currentStatus === 'CONNECTED' ? 'DISCONNECTED' : 'CONNECTED';
+    try {
+      await liveMeetingApi.markMemberStatus(room.code, memberId, { connectionStatus: nextStatus });
+      setRoom(prev => {
+        if (!prev || !prev.members[memberId]) return prev;
+        return {
+          ...prev,
+          members: {
+            ...prev.members,
+            [memberId]: {
+              ...prev.members[memberId],
+              connectionStatus: nextStatus
+            }
+          }
+        };
+      });
+      sound.playStampSound();
+      tts.speak(isMr
+        ? (nextStatus === 'DISCONNECTED' ? `${room.members[memberId]?.memberName} डिस्कनेक्ट नोंदवले` : `${room.members[memberId]?.memberName} ऑनलाइन झाले`)
+        : `Connection status updated`
+      );
+    } catch {}
   };
 
   const handleConfirmMarkLeft = async () => {
@@ -330,6 +349,10 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
   const members = Object.values(room.members);
   const verifiedCount = members.filter(m => m.verified).length;
+  const disconnectedUnverified = members.filter(m => 
+    !m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly)
+  );
+  const isBatchConfirmActive = disconnectedUnverified.length > 0;
 
   return (
     <div className="min-h-screen bg-stone-50 text-stone-900 pb-8 relative select-none">
@@ -691,14 +714,28 @@ export const LeadLiveMeeting: React.FC<Props> = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleBatchConfirmAll}
-                className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 border border-amber-300 transition active:scale-95 shadow-2xs"
-                title={t('सर्व उपस्थित सदस्यांची बचत एकदम मंजूर करा', 'Batch Confirm All')}
-              >
-                <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
-              </button>
+              {isBatchConfirmActive ? (
+                <button
+                  type="button"
+                  onClick={handleBatchConfirmAll}
+                  className="bg-amber-400 hover:bg-amber-500 text-stone-950 px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 border border-amber-500 transition active:scale-95 shadow-xs cursor-pointer animate-pulse"
+                  title={t(`डिस्कनेक्ट सदस्यांसाठी बचत मंजूर करा (${disconnectedUnverified.length} सदस्य)`, `Batch confirm savings for disconnected members (${disconnectedUnverified.length})`)}
+                >
+                  <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
+                  <span className="bg-amber-900 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                    {disconnectedUnverified.length} {t('डिस्कनेक्ट', 'offline')}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={true}
+                  className="bg-stone-100 text-stone-400 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-stone-200 cursor-not-allowed opacity-60"
+                  title={t('सर्व सदस्य जोडलेले आहेत. केवळ सदस्य डिस्कनेक्ट असल्यास Batch Confirm सक्रिय होईल.', 'Active only if a member is disconnected.')}
+                >
+                  <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
+                </button>
+              )}
               <span className="text-xs font-black text-stone-600 bg-stone-100 px-2 py-0.5 rounded-lg">
                 {members.length} {t('सभासद', 'Members')}
               </span>
@@ -725,7 +762,30 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                         {m.memberName.slice(0, 1)}
                       </div>
                       <div>
-                        <span className="text-xs font-bold text-stone-800">{m.memberName}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-stone-800">{m.memberName}</span>
+                          {!m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleConnection(m.memberId)}
+                              className="text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition"
+                              title={isMr ? "सदस्य डिस्कनेक्ट आहे (टॅप करून ऑनलाइन करा)" : "Member disconnected (tap to set online)"}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping" />
+                              <span>{isMr ? 'डिस्कनेक्ट' : 'Offline'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleConnection(m.memberId)}
+                              className="text-[9.5px] text-stone-400 hover:text-stone-700 px-1 py-0.2 rounded flex items-center gap-1 cursor-pointer transition"
+                              title={isMr ? "टॅप करून डिस्कनेक्ट मार्क करा (उदा. बॅटरी संपली)" : "Tap to mark disconnected (e.g. dead battery)"}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>{isMr ? 'ऑनलाइन' : 'Online'}</span>
+                            </button>
+                          ))}
+                        </div>
                         {m.leftEarly ? (
                           <p className="text-[10px] text-amber-700 font-medium">
                             {m.verified
@@ -844,24 +904,14 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                           <span>{t('कोड टाका', 'OTP')}</span>
                         </button>
                       ) : (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleInitiateSavings(m.memberId)}
-                            disabled={!savingsInputs[m.memberId]}
-                            className="px-3.5 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            <span>{t('नोंदवा', 'Save')}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handlePaperSlipConfirm(m.memberId)}
-                            className="px-2.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold rounded-xl transition border border-stone-200 shrink-0 cursor-pointer"
-                            title={t('कागदी पावती (स्मार्टफोन नसलेल्या सदस्यांसाठी)', 'Paper Slip Mode')}
-                          >
-                            📄 {t('पावती', 'Slip')}
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleInitiateSavings(m.memberId)}
+                          disabled={!savingsInputs[m.memberId]}
+                          className="px-4 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <span>{t('नोंदवा', 'Save')}</span>
+                        </button>
                       )}
                     </div>
                   )}
