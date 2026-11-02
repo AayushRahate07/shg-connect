@@ -2,7 +2,7 @@
 
 # SHGCONNECT
 
-### Local-First Microfinance OS & Cryptographic Ledger for Rural SHGs
+### Local-First Microfinance & Cryptographic Ledger for Rural SHGs
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
