@@ -252,9 +252,20 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
         leadName={language === 'mr' ? 'कमलताई पाटील' : 'Kamalai Patil'}
         knownMembers={members}
         language={language}
-        onComplete={(completedRoom: LiveMeetingRoom) => {
+        onComplete={async (completedRoom: LiveMeetingRoom) => {
           setShowLiveMeeting(false);
-          tts.speak(language === 'mr' ? 'बैठक पूर्ण झाली' : 'Meeting completed successfully');
+          const attendance: Record<string, boolean> = {};
+          const savingsList: { memberId: string; amount: number }[] = [];
+          Object.values(completedRoom.members).forEach(m => {
+            attendance[m.memberId] = m.attended;
+            if (m.verified && m.savings > 0) {
+              savingsList.push({ memberId: m.memberId, amount: m.savings });
+            }
+          });
+          if (savingsList.length > 0 || Object.keys(attendance).length > 0) {
+            await onCompleteMeetingSession(attendance, savingsList);
+          }
+          tts.speak(language === 'mr' ? 'बैठक पूर्ण झाली व नोंदवहीत जतन झाली' : 'Meeting completed and saved to ledger');
         }}
         onCancel={() => setShowLiveMeeting(false)}
       />

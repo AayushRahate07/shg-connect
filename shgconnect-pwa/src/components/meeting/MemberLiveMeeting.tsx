@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SupportedLanguage } from '../../types/shg';
-import { liveMeetingApi, LiveMeetingRoom } from '../../services/liveMeeting';
+import { liveMeetingApi, LiveMeetingRoom, BASE } from '../../services/liveMeeting';
 import { tts } from '../../services/tts';
 import { sound } from '../../services/sound';
 import {
@@ -77,7 +77,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         memberId,
         reason: isMr ? 'टॅब बंद केला / मागे गेले' : 'Closed tab / Back'
       });
-      const leaveUrl = `/api/meeting/${room.code}/leave`;
+      const leaveUrl = `${BASE}/api/meeting/${room.code}/leave`;
       if (navigator.sendBeacon) {
         const blob = new Blob([payload], { type: 'application/json' });
         navigator.sendBeacon(leaveUrl, blob);

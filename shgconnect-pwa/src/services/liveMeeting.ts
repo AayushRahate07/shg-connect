@@ -68,7 +68,7 @@ const isLocalOrLan = typeof window !== 'undefined' && (
   window.location.port === '5173'
 );
 
-const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
+export const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
   ? (import.meta as any).env.VITE_LIVE_MEETING_SERVER_URL.replace(/\/+$/, '')
   : (isLocalOrLan ? '' : RENDER_PROD_URL);
 
@@ -221,7 +221,7 @@ export const liveMeetingApi = {
     if (!paperSlip && member.pendingSavings && member.pendingSavings.otp !== otp) {
       return { ok: false, error: 'चुकीचा कोड' };
     }
-    const amt = member.pendingSavings ? member.pendingSavings.amount : (member.savings || 300);
+    const amt = member.pendingSavings ? member.pendingSavings.amount : (member.savings > 0 ? member.savings : 0);
     member.savings = amt;
     member.verified = true;
     member.paperSlip = paperSlip;
