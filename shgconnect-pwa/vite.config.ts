@@ -52,20 +52,6 @@ function purgeExpiredRoom(code: string, reason = 'expired') {
   liveRooms.delete(code);
 }
 
-// Periodic cleanup sweep every 15 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [code, room] of liveRooms.entries()) {
-    const age = now - new Date(room.startedAt).getTime();
-    const isCompleted = room.status === 'COMPLETED';
-    const limit = isCompleted ? COMPLETED_ROOM_TTL_MS : ROOM_TTL_MS;
-
-    if (age > limit) {
-      purgeExpiredRoom(code, isCompleted ? 'completed_ttl' : 'stale_ttl');
-    }
-  }
-}, 15 * 60 * 1000);
-
 function broadcastToRoom(room: LiveMeeting, event: string, data: any) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   const dead: any[] = [];
@@ -98,6 +84,21 @@ function meetingRoomPlugin(): Plugin {
   return {
     name: 'meeting-room-server',
     configureServer(server) {
+      // Periodic cleanup sweep every 15 minutes (only runs during dev server)
+      const cleanupInterval = setInterval(() => {
+        const now = Date.now();
+        for (const [code, room] of liveRooms.entries()) {
+          const age = now - new Date(room.startedAt).getTime();
+          const isCompleted = room.status === 'COMPLETED';
+          const limit = isCompleted ? COMPLETED_ROOM_TTL_MS : ROOM_TTL_MS;
+
+          if (age > limit) {
+            purgeExpiredRoom(code, isCompleted ? 'completed_ttl' : 'stale_ttl');
+          }
+        }
+      }, 15 * 60 * 1000);
+      if (cleanupInterval.unref) cleanupInterval.unref();
+
       server.middlewares.use((req, res, next) => {
         const url = req.url || '';
 
