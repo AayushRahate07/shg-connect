@@ -52,12 +52,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     loading: false
   });
 
-  const [markLeftModal, setMarkLeftModal] = useState<{ open: boolean; memberId: string; memberName: string; reason: string }>({
-    open: false,
-    memberId: '',
-    memberName: '',
-    reason: 'बालक रडत आहे (Child crying)'
-  });
+  const [markLeftModal, setMarkLeftModal] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: '', memberName: '' });
 
   const [showCompleteQuorumModal, setShowCompleteQuorumModal] = useState(false);
   const esRef = useRef<EventSource | null>(null);
@@ -261,12 +256,11 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     if (!room || !markLeftModal.memberId) return;
     try {
       await liveMeetingApi.markMemberStatus(room.code, markLeftModal.memberId, {
-        leftEarly: true,
-        reason: markLeftModal.reason
+        leftEarly: true
       });
-      setMarkLeftModal({ open: false, memberId: '', memberName: '', reason: '' });
+      setMarkLeftModal({ open: false, memberId: '', memberName: '' });
       sound.playStampSound();
-      tts.speak(t(`${markLeftModal.memberName} यांची लवकर बाहेर पडल्याची नोंद झाली`, `Marked ${markLeftModal.memberName} as left early`));
+      tts.speak(isMr ? `${markLeftModal.memberName} बाहेर पडल्याची नोंद झाली` : `Marked ${markLeftModal.memberName} as left`);
     } catch {
       setError(t('नोंद अद्ययावत करता आली नाही.', 'Could not update status.'));
     }
@@ -436,83 +430,49 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
       {/* 📋 MARK MEMBER LEFT EARLY MODAL (FOR LEADER) */}
       {markLeftModal.open && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200">
-                  <LogOut className="w-4 h-4 text-amber-800" />
+        <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-stone-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200 shrink-0">
+                  <LogOut className="w-5 h-5 text-amber-800" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-black text-stone-900">
-                    {t('लवकर बाहेर पडल्याची नोंद', 'Mark Left Early')}
+                  <h3 className="text-base font-black text-stone-900 leading-tight">
+                    {isMr ? 'बाहेर पडल्याची नोंद करा' : 'Mark Left Early'}
                   </h3>
-                  <p className="text-[10px] text-stone-500 font-semibold">{markLeftModal.memberName}</p>
+                  <p className="text-xs text-stone-500 font-semibold mt-0.5">{markLeftModal.memberName}</p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => setMarkLeftModal({ open: false, memberId: '', memberName: '', reason: '' })}
-                className="w-7 h-7 rounded-full bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center"
+                onClick={() => setMarkLeftModal({ open: false, memberId: '', memberName: '' })}
+                className="w-8 h-8 rounded-full bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center cursor-pointer transition"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 leading-relaxed font-medium">
-              {t(
-                'सभासदाची उपस्थिती कायम "हजर" राहील. जर बचत पडताळलेली असेल तर ती सुरक्षित राहील; अन्यथा बचत शून्य (₹०) राहील.',
-                'Attendance remains locked as "Present" for statutory quorum. Verified deposits remain committed; unverified deposits remain ₹0.'
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-stone-700">
-                {t('बाहेर पडण्याचे कारण:', 'Reason for leaving early:')}
-              </label>
-              <div className="grid grid-cols-1 gap-1.5">
-                {[
-                  { mr: '👶 बालक रडत आहे', en: '👶 Child crying' },
-                  { mr: '🐄 जनावरांची काळजी', en: '🐄 Livestock tending' },
-                  { mr: '🪫 फोन बॅटरी संपली / बंद पडला', en: '🪫 Phone battery died' },
-                  { mr: '🌾 शेती / घरगुती तातडीचे काम', en: '🌾 Farm / domestic work' },
-                  { mr: '📝 इतर काम', en: '📝 Other' }
-                ].map(opt => {
-                  const label = isMr ? opt.mr : opt.en;
-                  const isSelected = markLeftModal.reason === label;
-                  return (
-                    <button
-                      key={opt.en}
-                      type="button"
-                      onClick={() => setMarkLeftModal(prev => ({ ...prev, reason: label }))}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between border ${
-                        isSelected
-                          ? 'bg-amber-50 border-amber-600 text-amber-950 shadow-xs'
-                          : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                      }`}
-                    >
-                      <span>{label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-amber-700" />}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 text-xs text-stone-600 leading-relaxed font-medium">
+              {isMr
+                ? 'या सदस्याची उपस्थिती कायम "हजर" राहील. जर बचत पडताळलेली असेल तर ती सुरक्षित राहील.'
+                : 'Attendance remains recorded for meeting quorum. Verified deposits remain saved.'}
             </div>
 
             <div className="space-y-2 pt-1">
               <button
                 type="button"
                 onClick={handleConfirmMarkLeft}
-                className="w-full bg-amber-700 hover:bg-amber-800 text-white font-black py-2.5 rounded-xl text-xs shadow-sm transition active:scale-95"
+                className="w-full bg-amber-700 hover:bg-amber-800 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm transition active:scale-95 cursor-pointer"
               >
-                {t('नोंद जतन करा (Confirm Left Early)', 'Confirm Left Early')}
+                {isMr ? 'होय, नोंद करा' : 'Confirm'}
               </button>
               <button
                 type="button"
-                onClick={() => setMarkLeftModal({ open: false, memberId: '', memberName: '', reason: '' })}
-                className="w-full text-xs text-stone-500 hover:text-stone-800 font-bold py-1 text-center"
+                onClick={() => setMarkLeftModal({ open: false, memberId: '', memberName: '' })}
+                className="w-full text-xs text-stone-500 hover:text-stone-800 font-bold py-1.5 text-center cursor-pointer"
               >
-                {t('रद्द करा', 'Cancel')}
+                {isMr ? 'रद्द करा' : 'Cancel'}
               </button>
             </div>
           </div>
@@ -748,8 +708,8 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                         {m.leftEarly ? (
                           <p className="text-[10px] text-amber-700 font-medium">
                             {m.verified
-                              ? t(`लवकर बाहेर पडली: ${m.leftReason || 'इतर कारण'} • बचत सुरक्षित`, `Left early: ${m.leftReason || 'Reason'} • Savings safe`)
-                              : t(`लवकर बाहेर पडली: ${m.leftReason || 'इतर कारण'} • बिनबचत`, `Left early: ${m.leftReason || 'Reason'} • No deposit`)}
+                              ? (isMr ? 'लवकर बाहेर पडली • बचत सुरक्षित' : 'Left early • Savings safe')
+                              : (isMr ? 'लवकर बाहेर पडली • बिनबचत' : 'Left early • No deposit')}
                           </p>
                         ) : null}
                       </div>
@@ -786,12 +746,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                       {!m.leftEarly && (
                         <button
                           type="button"
-                          onClick={() => setMarkLeftModal({
-                            open: true,
-                            memberId: m.memberId,
-                            memberName: m.memberName,
-                            reason: 'बालक रडत आहे (Child crying)'
-                          })}
+                          onClick={() => setMarkLeftModal({ open: true, memberId: m.memberId, memberName: m.memberName })}
                           className="text-[10px] text-stone-400 hover:text-amber-800 hover:bg-amber-50 px-1.5 py-0.5 rounded border border-stone-200 font-bold transition flex items-center gap-0.5"
                           title={t('लवकर बाहेर पडल्याची नोंद करा', 'Mark left early')}
                         >

@@ -192,11 +192,11 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
     }
     setIsLeaving(true);
     try {
-      await liveMeetingApi.leave(room.code, memberId, selectedReason);
+      await liveMeetingApi.leave(room.code, memberId);
     } catch {}
     esRef.current?.close();
     sound.playStampSound();
-    tts.speak(t('बैठकीतून बाहेर पडलात. उपस्थिती कायम राहील.', 'Left meeting. Attendance is preserved.'));
+    tts.speak(isMr ? 'बैठकीतून बाहेर पडलात.' : 'Left meeting.');
     setIsLeaving(false);
     setShowLeaveModal(false);
     onLeave();
@@ -344,108 +344,53 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
           </div>
         )}
 
-        {/* 🚪 RURAL VILLAGE LEAVE CONFIRMATION MODAL */}
+        {/* 🚪 Simple Leave Confirmation Modal */}
         {showLeaveModal && (
-          <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
-              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200">
-                    <LogOut className="w-4 h-4 text-amber-800" />
+          <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+            <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-stone-200 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center border border-rose-200 shrink-0">
+                    <LogOut className="w-5 h-5 text-rose-700" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-stone-900">
-                      {t('बैठक सोडायची आहे का?', 'Leave Meeting Early?')}
+                    <h3 className="text-base font-black text-stone-900 leading-tight">
+                      {isMr ? 'बैठक सोडायची आहे का?' : 'Leave Meeting?'}
                     </h3>
-                    <p className="text-[10px] text-stone-500 font-semibold">
-                      {t('ग्राम बैठकीतील अपरिहार्य कारण', 'Rural village contingency')}
+                    <p className="text-xs text-stone-500 font-medium mt-0.5">
+                      {isMr ? 'तुम्ही थेट बैठकीतून बाहेर पडू शकता.' : 'Are you sure you want to leave the meeting?'}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowLeaveModal(false)}
-                  className="w-7 h-7 rounded-full bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center"
+                  className="w-8 h-8 rounded-full bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center cursor-pointer transition"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* State-aware status explanation */}
+              {/* Status reassurance */}
               {myRecord?.verified ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-emerald-900 font-black text-xs">
-                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>{t('बचत सुरक्षित जमा! (State A: Verified)', 'Savings Committed! (State A)')}</span>
-                  </div>
-                  <p className="text-[11px] text-emerald-800 font-medium leading-relaxed">
-                    {t(
-                      `आपली ₹${myRecord.savings.toLocaleString('en-IN')} बचत अधिकृत पडताळली गेली आहे. तुमची उपस्थिती कायम 'हजर' राहील. डिजिटल पावती सुरक्षित आहे.`,
-                      `Your ₹${myRecord.savings.toLocaleString('en-IN')} deposit is committed. Your attendance is locked as 'Present'.`
-                    )}
-                  </p>
-                </div>
-              ) : pendingHandshake ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs">
-                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>{t('पडताळणी प्रक्रियेत आहे! (State B: Mid-Handshake)', 'Verification In-Flight! (State B)')}</span>
-                  </div>
-                  <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
-                    {t(
-                      'प्रमुखांनी रक्कम नोंदवली आहे पण कोड पडताळलेला नाही. आता बाहेर पडल्यास ही नोंद रद्द होईल (Zero Commitment — ₹० राहील).',
-                      'Handshake OTP not verified yet. If you leave now, the entry cancels with zero commitment (₹0).'
-                    )}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <p className="text-xs text-emerald-900 font-semibold leading-relaxed">
+                    {isMr
+                      ? `आपली ₹${myRecord.savings.toLocaleString('en-IN')} बचत आणि उपस्थिती सुरक्षित नोंदवली आहे.`
+                      : `Your ₹${myRecord.savings.toLocaleString('en-IN')} savings and attendance are safely recorded.`}
                   </p>
                 </div>
               ) : (
-                <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
-                  <div className="flex items-center gap-1.5 text-stone-800 font-black text-xs">
-                    <Check className="w-4 h-4 text-emerald-700 shrink-0" />
-                    <span>{t('उपस्थिती नोंद (State C: No Deposit)', 'Attendance Locked (State C)')}</span>
-                  </div>
-                  <p className="text-[11px] text-stone-600 font-medium leading-relaxed">
-                    {t(
-                      'आपली बैठकीतील उपस्थिती नोंदवली गेली आहे, पण बचत दिलेली नाही (आजची बचत ₹० राहील).',
-                      'Your attendance is locked as Present. Deposit remains ₹0.'
-                    )}
+                <div className="bg-stone-50 border border-stone-200 rounded-xl p-3 flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                  <p className="text-xs text-stone-700 font-medium leading-relaxed">
+                    {isMr
+                      ? 'आपली बैठकीतील उपस्थिती नोंदवलेली राहील.'
+                      : 'Your meeting attendance remains recorded.'}
                   </p>
                 </div>
               )}
-
-              {/* Quick reason selector chips */}
-              <div className="space-y-1.5">
-                <label className="block text-[11px] font-bold text-stone-700">
-                  {t('बाहेर पडण्याचे कारण निवडा:', 'Select reason for leaving:')}
-                </label>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {[
-                    { mr: '👶 बालक रडत आहे', en: '👶 Child crying' },
-                    { mr: '🐄 जनावरांची काळजी', en: '🐄 Livestock tending' },
-                    { mr: '🪫 फोन बॅटरी संपत आहे', en: '🪫 Phone battery low' },
-                    { mr: '🌾 शेती / घरगुती तातडीचे काम', en: '🌾 Urgent domestic / farm work' },
-                    { mr: '📝 इतर काम', en: '📝 Other work' }
-                  ].map(opt => {
-                    const label = isMr ? opt.mr : opt.en;
-                    const isSelected = selectedReason === label;
-                    return (
-                      <button
-                        key={opt.en}
-                        type="button"
-                        onClick={() => setSelectedReason(label)}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between border ${
-                          isSelected
-                            ? 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-xs'
-                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                        }`}
-                      >
-                        <span>{label}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-emerald-700" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Action buttons */}
               <div className="space-y-2 pt-1">
@@ -453,20 +398,26 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
                   type="button"
                   onClick={handleConfirmLeave}
                   disabled={isLeaving}
-                  className="w-full bg-rose-700 hover:bg-rose-800 disabled:opacity-50 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98]"
+                  className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm transition active:scale-[0.98] cursor-pointer"
                 >
                   {isLeaving ? (
-                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>{t('बाहेर पडत आहे...', 'Leaving...')}</span></>
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>{isMr ? 'बाहेर पडत आहे...' : 'Leaving...'}</span>
+                    </>
                   ) : (
-                    <><LogOut className="w-3.5 h-3.5" /><span>{t('होय, बैठक सोडा (Confirm Leave)', 'Yes, Leave Meeting')}</span></>
+                    <>
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>{isMr ? 'होय, बाहेर पडा' : 'Leave Meeting'}</span>
+                    </>
                   )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowLeaveModal(false)}
-                  className="w-full text-xs text-stone-500 hover:text-stone-800 font-bold py-1.5 text-center"
+                  className="w-full text-xs text-stone-500 hover:text-stone-800 font-bold py-1.5 text-center cursor-pointer"
                 >
-                  {t('नाही, बैठकीत रहा (Stay in Meeting)', 'No, Stay in Meeting')}
+                  {isMr ? 'नाही, बैठकीत रहा' : 'Stay in Meeting'}
                 </button>
               </div>
             </div>
@@ -478,7 +429,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
           <div className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between animate-pulse">
             <span className="flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
-              <span>{t('पुन्हा जोडत आहे... (Reconnecting network)', 'Reconnecting network...')}</span>
+              <span>{isMr ? 'पुन्हा जोडत आहे...' : 'Reconnecting network...'}</span>
             </span>
             <span className="text-[10px] uppercase font-mono font-bold bg-amber-200/70 px-2 py-0.5 rounded-md">
               auto-resync
@@ -588,7 +539,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
                       </p>
                       <p className="text-[10px] text-stone-400 font-medium truncate">
                         {m.leftEarly
-                          ? (m.verified ? t(`लवकर गेल्या (${m.leftReason || 'काम'})`, `Left early (${m.leftReason || 'Work'})`)
+                          ? (m.verified ? (isMr ? 'लवकर बाहेर पडली' : 'Left early')
                                         : t(`लवकर गेल्या (बिनबचत)`, `Left early (No deposit)`))
                           : (m.verified ? t('पडताळणी पूर्ण', 'Verified') : t('उपस्थित', 'Present'))}
                       </p>
