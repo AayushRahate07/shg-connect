@@ -271,7 +271,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   if (error) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-        <div className="max-w-sm w-full bg-white rounded-3xl p-6 border border-rose-200 shadow-xl space-y-4">
+        <div className="max-w-sm w-full bg-white rounded-lg p-6 border border-rose-200 shadow-xl space-y-4">
           <AlertCircle className="w-10 h-10 text-rose-500 mx-auto" />
           <p className="text-sm text-rose-700 font-bold text-center">{error}</p>
           <button onClick={onCancel} className="w-full py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-xl text-xs font-bold transition">
@@ -299,7 +299,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       {/* 🛡️ LEADER HANDSHAKE VERIFICATION MODAL (MINIMAL CLEAN PHONE UI) */}
       {verifyModal.open && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4">
+          <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 bg-emerald-50 text-emerald-800 rounded-xl flex items-center justify-center border border-emerald-100">
@@ -321,7 +321,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
             {/* Case B: Member Disconnected / Left Mid-Handshake Alert */}
             {room.members[verifyModal.memberId]?.leftEarly && (
-              <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3.5 space-y-2 text-left animate-pulse">
+              <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 space-y-2 text-left animate-pulse">
                 <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <span>{t(`⚠️ ${verifyModal.memberName} डिस्कनेक्ट झाली / लवकर बाहेर पडली`, `⚠️ ${verifyModal.memberName} disconnected / left early`)}</span>
@@ -375,7 +375,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                   setVerifyModal(prev => ({ ...prev, otpInput: val, error: '' }));
                 }}
                 placeholder="• • • •"
-                className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-2xl outline-none text-stone-900 transition"
+                className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-lg outline-none text-stone-900 transition"
                 autoFocus
               />
 
@@ -391,7 +391,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
               <button
                 onClick={handleConfirmOtp}
                 disabled={verifyModal.otpInput.length !== 4 || verifyModal.loading}
-                className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
+                className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-lg text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
               >
                 {verifyModal.loading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /><span>{t('पडताळत आहे...', 'Verifying...')}</span></>
@@ -414,7 +414,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       {/* 📋 MARK MEMBER LEFT EARLY MODAL (FOR LEADER) */}
       {markLeftModal.open && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4">
+          <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200">
@@ -436,7 +436,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
               </button>
             </div>
 
-            <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3 text-xs text-stone-600 leading-relaxed font-medium">
+            <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 leading-relaxed font-medium">
               {t(
                 'सभासदाची उपस्थिती कायम "हजर" राहील. जर बचत पडताळलेली असेल तर ती सुरक्षित राहील; अन्यथा बचत शून्य (₹०) राहील.',
                 'Attendance remains locked as "Present" for statutory quorum. Verified deposits remain committed; unverified deposits remain ₹0.'
@@ -499,7 +499,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       {/* 🏛️ QUORUM SAFEGUARD & END-OF-MEETING AUDIT REPORT MODAL */}
       {showCompleteQuorumModal && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4">
+          <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
             <div className="flex items-center justify-between border-b border-stone-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center border border-emerald-200">
@@ -533,7 +533,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
               return (
                 <div className="space-y-3">
-                  <div className={`p-3.5 rounded-2xl border text-xs ${
+                  <div className={`p-3.5 rounded-lg border text-xs ${
                     quorumMet ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'
                   }`}>
                     <div className="flex items-center justify-between font-black">
@@ -552,7 +552,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                   </div>
 
                   {/* Summary Breakdown Table */}
-                  <div className="bg-stone-50 rounded-2xl border border-stone-200 p-3 divide-y divide-stone-200/70 text-xs">
+                  <div className="bg-stone-50 rounded-lg border border-stone-200 p-3 divide-y divide-stone-200/70 text-xs">
                     <div className="py-1.5 flex justify-between items-center font-bold text-stone-700">
                       <span>{t('एकूण सभासद संख्या', 'Total Members')}</span>
                       <span className="font-black text-stone-900">{effectiveTotal}</span>
@@ -593,7 +593,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleFinalizeComplete}
-                className="w-full bg-[#14532D] hover:bg-emerald-900 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
+                className="w-full bg-[#14532D] hover:bg-emerald-900 text-white font-black py-3 rounded-lg text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
               >
                 <Flag className="w-4 h-4 text-amber-300" />
                 <span>{t('बैठक अधिकृत पूर्ण करा व सील करा', 'Confirm & Seal Meeting')}</span>
@@ -632,7 +632,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
       <div className="max-w-md mx-auto px-4 pt-3 space-y-3.5">
         {/* ── Meeting Code Sharing Card (Prominent & Minimal) ── */}
-        <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs space-y-2 text-center">
+        <div className="bg-gradient-to-br from-amber-50/50 via-white to-orange-50/20 rounded-lg p-5 border border-amber-200/80 shadow-2xs space-y-2 text-center">
           <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">
             {t('बैठक कोड — सभासदांना सांगा', 'Meeting Code — Share with Members')}
           </p>
@@ -650,7 +650,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
         {/* ── Metrics Summary Card ── */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs">
+          <div className="bg-gradient-to-br from-sky-50/70 via-white to-blue-50/30 rounded-lg p-4 border border-sky-200/80 shadow-2xs">
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
               {t('उपस्थित सभासद', 'Present Members')}
             </span>
@@ -662,7 +662,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
             </span>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs">
+          <div className="bg-gradient-to-br from-sky-50/70 via-white to-blue-50/30 rounded-lg p-4 border border-sky-200/80 shadow-2xs">
             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
               {t('एकूण जमा निधी', 'Pool Total')}
             </span>
@@ -676,7 +676,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
         </div>
 
         {/* ── Members Savings Entry Roster ── */}
-        <div className="bg-white rounded-3xl border border-stone-200 shadow-2xs overflow-hidden">
+        <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
           <div className="p-4 border-b border-stone-100 flex items-center justify-between">
             <div>
               <h3 className="text-xs font-black text-stone-900 uppercase tracking-wider">
@@ -857,7 +857,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
           <button
             onClick={handleComplete}
             disabled={phase === 'COMPLETING'}
-            className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.98]"
+            className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3.5 rounded-lg text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-[0.98]"
           >
             {phase === 'COMPLETING' ? (
               <><Loader2 className="w-4 h-4 animate-spin" /><span>{t('पूर्ण करत आहे...', 'Completing...')}</span></>

@@ -72,7 +72,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         </div>
 
         {/* Meeting Hero Banner */}
-        <div className="bg-teal-50/20 p-6 rounded-2xl border border-teal-200 shadow-card space-y-3">
+        <div className="bg-gradient-to-br from-teal-50/50 via-white to-emerald-50/30 p-6 rounded-lg border border-teal-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
               {language === 'mr' ? `बैठक क्रमांक #${selectedMeeting.meetingNumber}` : `Meeting #${selectedMeeting.meetingNumber}`}
@@ -93,7 +93,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         {/* Meeting Detail Grid Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Attendance Card */}
-          <div className="bg-white p-5 rounded-2xl border border-[#E7E5E4] shadow-card space-y-1">
+          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
               <Users className="w-4 h-4 text-[#0F766E]" />
               {language === 'mr' ? 'उपस्थिती' : 'Attendance'}
@@ -107,7 +107,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           </div>
 
           {/* Cash Reconciliation Card */}
-          <div className="bg-white p-5 rounded-2xl border border-[#E7E5E4] shadow-card space-y-1">
+          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
               {language === 'mr' ? 'रोख ताळमेळ (Reconciliation)' : 'Cash Reconciliation'}
@@ -122,7 +122,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           </div>
 
           {/* Savings Collected */}
-          <div className="bg-white p-5 rounded-2xl border border-[#E7E5E4] shadow-card space-y-1">
+          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
               <PiggyBank className="w-4 h-4 text-[#0F766E]" />
               {language === 'mr' ? 'जमा झालेली बचत' : 'Savings Collected'}
@@ -133,7 +133,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
           </div>
 
           {/* Loan Repayments Collected */}
-          <div className="bg-white p-5 rounded-2xl border border-[#E7E5E4] shadow-card space-y-1">
+          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
             <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
               <Landmark className="w-4 h-4 text-[#F97316]" />
               {language === 'mr' ? 'कर्ज परतफेड' : 'Loan Repayments'}
@@ -145,7 +145,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         </div>
 
         {/* Resolutions Passed Section */}
-        <div className="bg-white p-5 rounded-2xl border border-[#E7E5E4] shadow-card space-y-3">
+        <div className="bg-white p-5 rounded-lg border border-[#E7E5E4] shadow-card space-y-3">
           <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-[#F97316]" />
             {language === 'mr' ? 'बैठकीतील ठराव (Resolutions)' : 'Resolutions Passed'}
@@ -163,7 +163,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
         </div>
 
         {/* Cryptographic Audit Checkpoint */}
-        <div className="bg-[#FAFAF9] p-4 rounded-2xl border border-[#E7E5E4] flex flex-wrap items-center justify-between gap-2 text-xs text-[#78716C]">
+        <div className="bg-[#FAFAF9] p-4 rounded-lg border border-[#E7E5E4] flex flex-wrap items-center justify-between gap-2 text-xs text-[#78716C]">
           <span className="font-semibold">{language === 'mr' ? 'ऑडिट तपासणी (Hash Checkpoint):' : 'Audit Checkpoint:'}</span>
           <span className="font-mono text-[11px] font-bold text-[#0F766E]">
             {selectedMeeting.checkpointFingerprint || 'CHK-88F2-990A-331C'}
@@ -188,7 +188,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
 
       {/* Live Meeting Action Card */}
       {onJoinLiveMeeting && (
-        <div className="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-5 rounded-2xl shadow-lg border border-emerald-600 space-y-3">
+        <div className="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-5 rounded-lg shadow-lg border border-emerald-600 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping inline-block" />
@@ -222,7 +222,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
       )}
 
       {/* Upcoming Meeting Banner Card */}
-      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-[#E7E5E4] shadow-card space-y-3">
+      <div className="bg-gradient-to-br from-white via-amber-50/20 to-amber-50/40 p-5 sm:p-6 rounded-lg border border-amber-200/80 shadow-2xs space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
           <Calendar className="w-4 h-4 text-[#F97316]" />
           {language === 'mr' ? 'पुढील बैठक' : language === 'hi' ? 'अगली बैठक' : 'Next Scheduled Meeting'}
@@ -251,7 +251,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
       </div>
 
       {/* Past Meetings List */}
-      <Card className="p-0 border border-[#E7E5E4] shadow-card rounded-2xl overflow-hidden bg-white">
+      <Card className="p-0 border border-[#E7E5E4] shadow-card rounded-lg overflow-hidden bg-white">
         <div className="p-4 border-b border-[#E7E5E4] bg-[#FAFAF9]">
           <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
             {language === 'mr' ? 'मागील बैठका' : language === 'hi' ? 'पिछली बैठकें' : 'Past Completed Meetings'}

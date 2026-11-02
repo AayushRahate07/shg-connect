@@ -77,7 +77,7 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
       </div>
 
       {/* Main Savings Card */}
-      <div className="card-hero-green rounded-2xl p-5 sm:p-6 relative overflow-hidden space-y-3.5 border border-emerald-400/40">
+      <div className="card-hero-green rounded-lg p-5 sm:p-6 shadow-sm border border-emerald-500/30 relative overflow-hidden space-y-3.5 border border-emerald-400/40">
         <div className="flex items-center justify-between relative z-10">
           <span className="text-xs font-bold uppercase tracking-wider text-green-200">
             {isMr ? 'एकूण जमा बचत' : 'Total Personal Savings'}
@@ -111,7 +111,7 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
       </div>
 
       {/* ── Central Quorum Protocol Explanation Card ── */}
-      <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 text-xs space-y-1.5">
+      <div className="bg-gradient-to-r from-emerald-50/90 to-teal-50/60 border border-emerald-200 rounded-lg shadow-2xs p-4 text-xs space-y-1.5">
         <div className="font-extrabold text-emerald-950 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0" />
           <span>{isMr ? 'केंद्रीकृत बचत संकलन पद्धत (Central Quorum Verification)' : 'Centralized Savings Collection Protocol'}</span>
@@ -124,7 +124,7 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
       </div>
 
       {/* Savings Goal Section */}
-      <div className="bg-amber-50/20 p-5 sm:p-6 rounded-2xl border border-amber-200 shadow-sm space-y-3.5">
+      <div className="bg-gradient-to-br from-amber-50/60 via-white to-orange-50/30 p-5 sm:p-6 rounded-lg border border-amber-200/80 shadow-2xs space-y-3.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
             <Target className="w-4 h-4 text-amber-600" />
@@ -155,7 +155,7 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
       </div>
 
       {/* Savings Ledger History with Filter */}
-      <Card className="p-0 border border-stone-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+      <Card className="p-0 border border-stone-200 shadow-xs rounded-lg overflow-hidden bg-white">
         <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-stone-50">
           <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-[#14532D]" />

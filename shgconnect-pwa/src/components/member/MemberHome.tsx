@@ -124,7 +124,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
       {/* ── Hero Savings Card ── */}
       <div
-        className="rounded-2xl p-5 sm:p-6 relative overflow-hidden"
+        className="rounded-lg p-5 sm:p-6 relative overflow-hidden shadow-sm border border-emerald-600/30"
         style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 60%, #0F4230 100%)' }}
       >
         <div className="relative z-10">
@@ -161,7 +161,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
         {/* Next Meeting */}
         <button
           onClick={() => onNavigateTab('meetings')}
-          className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs text-left hover:bg-stone-50 transition active:scale-[0.98]"
+          className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/30 p-4 rounded-lg border border-amber-200/80 shadow-2xs text-left hover:border-amber-300 hover:shadow-xs transition active:scale-[0.98]"
         >
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
@@ -178,7 +178,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
         {/* Loan Due */}
         <button
           onClick={() => onNavigateTab('loans')}
-          className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs text-left hover:bg-stone-50 transition active:scale-[0.98]"
+          className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/30 p-4 rounded-lg border border-amber-200/80 shadow-2xs text-left hover:border-amber-300 hover:shadow-xs transition active:scale-[0.98]"
         >
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
@@ -214,7 +214,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
       <div className="grid grid-cols-3 gap-3">
         <button
           onClick={() => onNavigateTab('passbook')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-white hover:bg-emerald-50 rounded-2xl border border-stone-200 shadow-xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
         >
           <BookOpen className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
@@ -224,7 +224,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
         <button
           onClick={() => onNavigateTab('loans')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-white hover:bg-emerald-50 rounded-2xl border border-stone-200 shadow-xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
         >
           <Landmark className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
@@ -234,7 +234,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
         <button
           onClick={() => onNavigateTab('meetings')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-white hover:bg-emerald-50 rounded-2xl border border-stone-200 shadow-xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
         >
           <Calendar className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
@@ -245,7 +245,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
       {/* ── Active loan repay nudge (only when loan exists) ── */}
       {activeLoan && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-300/80 rounded-lg p-4 flex items-center justify-between gap-3 shadow-xs">
           <div>
             <p className="text-xs font-bold text-amber-800">
               {isMr ? 'थकीत हप्ता' : 'Loan Repayment Due'}
@@ -265,7 +265,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
       )}
 
       {/* ── Recent Transactions (last 3) ── */}
-      <Card className="p-0 border border-stone-200 shadow-xs rounded-2xl overflow-hidden bg-white">
+      <Card className="p-0 border border-stone-200/80 shadow-2xs rounded-lg overflow-hidden bg-white">
         <div className="px-4 py-3 border-b border-stone-100 flex items-center justify-between bg-stone-50">
           <span className="text-xs font-black text-stone-600 uppercase tracking-wider">
             {isMr ? 'अलीकडील व्यवहार' : 'Recent Transactions'}

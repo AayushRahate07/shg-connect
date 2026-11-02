@@ -268,7 +268,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
       </div>
 
       {/* ── Center Login Card (Pixel-perfect match to screenshot) ── */}
-      <div className="max-w-sm w-full mx-auto bg-white rounded-[28px] border border-stone-100 shadow-2xl p-6 sm:p-7 space-y-4 my-auto relative z-10">
+      <div className="max-w-sm w-full mx-auto bg-white rounded-lg border border-amber-200/60 shadow-[0_12px_40px_rgba(20,83,45,0.09)] bg-white/98 p-6 sm:p-7 space-y-4 my-auto relative z-10">
         {/* Brand: Circular Logo Seal, Title, Subtitle */}
         <div className="text-center space-y-1">
           <ShgLogo size={46} className="mx-auto" />
@@ -281,7 +281,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
         </div>
 
         {/* 4-Tier Segmented Control (Adequate line-height so Marathi matras never clip) */}
-        <div className="grid grid-cols-4 bg-stone-50/90 p-1 rounded-2xl border border-stone-200 gap-1">
+        <div className="grid grid-cols-4 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 gap-1">
           {TIERS.map((tier) => {
             const isSelected = selectedTierKey === tier.key;
             const Icon = tier.icon;

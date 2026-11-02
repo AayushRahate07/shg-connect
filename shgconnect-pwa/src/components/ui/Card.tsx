@@ -13,13 +13,13 @@ export const Card: React.FC<CardProps> = ({
   variant = 'default',
   onClick
 }) => {
-  const baseStyle = 'rounded-2xl transition duration-200';
+  const baseStyle = 'rounded-lg transition duration-200';
 
   const variantStyles: Record<string, string> = {
-    default: 'bg-white border border-[#E4E8EF] shadow-card hover:shadow-card-hover',
+    default: 'bg-white border border-[#E8ECEF] shadow-card hover:shadow-card-hover',
     accent: 'card-hero-green text-white',
-    surface: 'bg-[#F8FAFC] border border-[#E4E8EF]',
-    outlined: 'bg-transparent border-2 border-[#E4E8EF]',
+    surface: 'bg-[#FBF9F5] border border-[#E8ECEF]',
+    outlined: 'bg-transparent border-2 border-[#E8ECEF]',
     green: 'stat-green',
     saffron: 'stat-saffron',
     violet: 'stat-violet',
@@ -44,7 +44,7 @@ export const CardHeader: React.FC<{ children: React.ReactNode; className?: strin
   children,
   className = '',
 }) => (
-  <div className={`p-5 pb-3 flex items-center justify-between ${className}`} style={{ borderBottom: '1px solid #E4E8EF' }}>
+  <div className={`p-5 pb-3 flex items-center justify-between ${className}`} style={{ borderBottom: '1px solid #E8ECEF' }}>
     {children}
   </div>
 );

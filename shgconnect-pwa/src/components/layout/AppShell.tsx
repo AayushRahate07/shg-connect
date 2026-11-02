@@ -56,7 +56,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   onOpenNotifications
 }) => {
   return (
-    <div className="min-h-screen w-full flex font-sans relative" style={{ background: '#F4F6FA', color: '#111827' }}>
+    <div className="min-h-screen w-full flex font-sans relative" style={{ background: '#FAF8F5', color: '#111827' }}>
       {/* Desktop Sidebar */}
       <Sidebar
         currentRole={currentRole}

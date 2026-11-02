@@ -68,7 +68,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
       {outstanding > 0 ? (
         <div className="space-y-6">
           {/* Active Loan Hero Card */}
-          <div className="bg-blue-50/20 p-5 sm:p-6 rounded-2xl border border-blue-200 shadow-card space-y-3.5">
+          <div className="bg-gradient-to-br from-sky-50/60 via-white to-blue-50/30 p-5 sm:p-6 rounded-lg border border-sky-200/80 shadow-2xs space-y-3.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
                 {language === 'mr' ? 'सक्रिय कर्जाची शिल्लक' : language === 'hi' ? 'सक्रिय ऋण शेष' : 'Active Outstanding Loan'}
@@ -139,7 +139,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
           </div>
 
           {/* EMI Repayment History Table */}
-          <Card className="p-0 border border-[#E4E8EF] shadow-card rounded-2xl overflow-hidden bg-white">
+          <Card className="p-0 border border-[#E4E8EF] shadow-card rounded-lg overflow-hidden bg-white">
             <div className="p-4 border-b border-[#E4E8EF] flex items-center justify-between bg-[#F8FAFC]">
               <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
                 <History className="w-4 h-4 text-[#1D5FA8]" />
@@ -186,8 +186,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
       ) : (
         /* Case B: No Active Loan */
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-[#E4E8EF] shadow-card text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-[#EBF3FF] text-[#1D5FA8] flex items-center justify-center mx-auto">
+          <div className="bg-gradient-to-b from-white to-sky-50/20 p-6 rounded-lg border border-sky-100 shadow-2xs text-center space-y-3">
+            <div className="w-12 h-12 rounded-lg bg-[#EBF3FF] text-[#1D5FA8] flex items-center justify-center mx-auto">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <h3 className="text-base font-extrabold text-[#111827]">
@@ -200,7 +200,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
 
           {/* Display Historical Closed Loans if exist */}
           {closedLoans.length > 0 && (
-            <Card className="p-0 border border-[#E4E8EF] shadow-card rounded-2xl overflow-hidden bg-white">
+            <Card className="p-0 border border-[#E4E8EF] shadow-card rounded-lg overflow-hidden bg-white">
               <div className="p-4 border-b border-[#E4E8EF] bg-[#F8FAFC]">
                 <span className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
                   <History className="w-4 h-4 text-[#1A6B4A]" />

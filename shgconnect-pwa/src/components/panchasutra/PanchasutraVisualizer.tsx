@@ -27,7 +27,7 @@ export const PanchasutraVisualizer: React.FC<PanchasutraVisualizerProps> = ({
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-emerald-200 shadow-card overflow-hidden space-y-6">
+    <div className="bg-white rounded-lg border border-emerald-200/80 shadow-2xs overflow-hidden space-y-6">
       {/* Header */}
       <div className="bg-white p-5 border-b border-[#E7E5E4] flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -48,9 +48,9 @@ export const PanchasutraVisualizer: React.FC<PanchasutraVisualizerProps> = ({
 
       <div className="p-5 sm:p-6 space-y-6">
         {/* Main Score Banner */}
-        <div className="bg-[#FAFAF9] p-5 sm:p-6 rounded-2xl border border-[#E7E5E4] flex flex-wrap items-center justify-between gap-4">
+        <div className="bg-gradient-to-br from-emerald-50/60 via-teal-50/30 to-amber-50/20 p-5 sm:p-6 rounded-lg border border-emerald-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center space-x-4">
-            <div className="w-20 h-20 rounded-2xl bg-[#0F766E] text-white flex flex-col items-center justify-center shadow-xs border-2 border-[#F97316]">
+            <div className="w-20 h-20 rounded-lg bg-[#0F766E] text-white flex flex-col items-center justify-center shadow-xs border-2 border-[#F97316]">
               <span className="text-2xl font-black">{score.totalScore}</span>
               <span className="text-[10px] uppercase font-bold text-[#CCFBF1]">/ 100</span>
             </div>

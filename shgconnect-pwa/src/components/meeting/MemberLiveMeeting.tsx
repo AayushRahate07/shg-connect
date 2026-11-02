@@ -208,9 +208,9 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
   if (phase === 'ENTER_CODE' || phase === 'JOINING') {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm bg-white rounded-3xl shadow-xl border border-stone-200 p-6 space-y-5">
+        <div className="w-full max-w-sm bg-white rounded-lg shadow-xl border border-stone-200 p-6 space-y-5">
           <div className="text-center space-y-1.5">
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-lg flex items-center justify-center mx-auto border border-emerald-100">
               <Radio className="w-6 h-6 text-emerald-800" />
             </div>
             <h2 className="text-lg font-black text-stone-900 tracking-tight">
@@ -233,7 +233,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
                 value={code}
                 onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 4)); setError(''); }}
                 placeholder="• • • •"
-                className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-2xl outline-none text-stone-900 transition"
+                className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-lg outline-none text-stone-900 transition"
                 autoFocus
               />
             </div>
@@ -248,7 +248,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
             <button
               onClick={handleJoin}
               disabled={code.length !== 4 || phase === 'JOINING'}
-              className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
+              className="w-full bg-[#14532D] hover:bg-emerald-900 disabled:opacity-50 text-white font-black py-3 rounded-lg text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.98]"
             >
               {phase === 'JOINING' ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /><span>{t('जोडत आहे...', 'Joining...')}</span></>
@@ -280,8 +280,8 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         {/* 🛡️ DYNAMIC MUTUAL HANDSHAKE OTP MODAL (MINIMAL HIGH IMPACT) */}
         {pendingHandshake && (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4 text-center">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
+            <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4 text-center">
+              <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center mx-auto border border-emerald-100">
                 <ShieldCheck className="w-7 h-7 text-emerald-800" />
               </div>
 
@@ -301,7 +301,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
               </div>
 
               {/* High Contrast Legible OTP Box */}
-              <div className="bg-stone-900 text-amber-300 p-4 rounded-2xl border border-stone-800 shadow-inner">
+              <div className="bg-stone-900 text-amber-300 p-4 rounded-lg border border-stone-800 shadow-inner">
                 <p className="text-[10px] uppercase font-bold text-stone-400 tracking-widest mb-0.5">
                   {t('पडताळणी हँडशेक कोड', 'HANDSHAKE OTP')}
                 </p>
@@ -329,7 +329,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
         {/* Verified Success Toast */}
         {showVerifiedToast && (
-          <div className="bg-emerald-800 text-white p-3.5 rounded-2xl shadow-lg border border-emerald-700 flex items-center justify-between animate-in slide-in-from-top">
+          <div className="bg-emerald-800 text-white p-3.5 rounded-lg shadow-lg border border-emerald-700 flex items-center justify-between animate-in slide-in-from-top">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
                 <Check className="w-4 h-4 text-white" />
@@ -347,7 +347,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         {/* 🚪 RURAL VILLAGE LEAVE CONFIRMATION MODAL */}
         {showLeaveModal && (
           <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-            <div className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 space-y-4">
+            <div className="w-full max-w-sm bg-white rounded-lg p-6 shadow-2xl border border-stone-200 space-y-4">
               <div className="flex items-center justify-between border-b border-stone-100 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-800 flex items-center justify-center border border-amber-200">
@@ -373,7 +373,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
               {/* State-aware status explanation */}
               {myRecord?.verified ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 space-y-1">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3.5 space-y-1">
                   <div className="flex items-center gap-1.5 text-emerald-900 font-black text-xs">
                     <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                     <span>{t('बचत सुरक्षित जमा! (State A: Verified)', 'Savings Committed! (State A)')}</span>
@@ -386,7 +386,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
                   </p>
                 </div>
               ) : pendingHandshake ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-1">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3.5 space-y-1">
                   <div className="flex items-center gap-1.5 text-amber-900 font-black text-xs">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
                     <span>{t('पडताळणी प्रक्रियेत आहे! (State B: Mid-Handshake)', 'Verification In-Flight! (State B)')}</span>
@@ -399,7 +399,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
                   </p>
                 </div>
               ) : (
-                <div className="bg-stone-50 border border-stone-200 rounded-2xl p-3.5 space-y-1">
+                <div className="bg-stone-50 border border-stone-200 rounded-lg p-3.5 space-y-1">
                   <div className="flex items-center gap-1.5 text-stone-800 font-black text-xs">
                     <Check className="w-4 h-4 text-emerald-700 shrink-0" />
                     <span>{t('उपस्थिती नोंद (State C: No Deposit)', 'Attendance Locked (State C)')}</span>
@@ -475,7 +475,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
         {/* ── Reconnecting Status Banner ── */}
         {isReconnecting && (
-          <div className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-2 rounded-2xl text-xs font-bold flex items-center justify-between animate-pulse">
+          <div className="bg-amber-50 text-amber-900 border border-amber-200 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-between animate-pulse">
             <span className="flex items-center gap-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-700" />
               <span>{t('पुन्हा जोडत आहे... (Reconnecting network)', 'Reconnecting network...')}</span>
@@ -513,7 +513,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         </div>
 
         {/* ── SHG Context Header Card ── */}
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-1">
+        <div className="bg-gradient-to-br from-white to-emerald-50/40 rounded-lg p-4 border border-emerald-200/70 shadow-2xs space-y-1">
           <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">
             {t('बचत गट व प्रमुख', 'SHG Group & Lead')}
           </span>
@@ -526,7 +526,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         </div>
 
         {/* ── Hero Live Pool Card (High Impact, Legible) ── */}
-        <div className="bg-white rounded-2xl p-5 border border-stone-200 shadow-2xs space-y-3">
+        <div className="bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 rounded-lg p-5 border border-emerald-200/80 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
               <IndianRupee className="w-3.5 h-3.5 text-emerald-800" />
@@ -559,7 +559,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         </div>
 
         {/* ── Member Roster Roster ── */}
-        <div className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs space-y-2.5">
+        <div className="bg-white rounded-lg p-4 border border-stone-200/90 shadow-2xs space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-stone-800 uppercase tracking-wider flex items-center gap-1.5">
               <Users className="w-4 h-4 text-stone-500" />
@@ -638,8 +638,8 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
     return (
       <div className="min-h-screen bg-stone-50 text-stone-900 p-4 flex flex-col gap-4 max-w-md mx-auto">
-        <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm text-center space-y-2 mt-4">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
+        <div className="bg-white rounded-lg p-6 border border-stone-200 shadow-sm text-center space-y-2 mt-4">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-lg flex items-center justify-center mx-auto border border-emerald-100">
             <CheckCircle2 className="w-7 h-7 text-emerald-800" />
           </div>
           <h2 className="text-lg font-black text-stone-900">{t('बैठक यशस्वीरीत्या पूर्ण!', 'Meeting Completed!')}</h2>
@@ -647,7 +647,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
         </div>
 
         {/* Summary Card */}
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-xs divide-y divide-stone-100 text-xs">
+        <div className="bg-white rounded-lg border border-stone-200 shadow-xs divide-y divide-stone-100 text-xs">
           <div className="p-3.5 flex justify-between items-center">
             <span className="text-stone-500 font-bold">{t('माझी उपस्थिती', 'My Attendance')}</span>
             <span className="font-black text-emerald-800 flex items-center gap-1">
@@ -673,7 +673,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
 
         <button
           onClick={onLeave}
-          className="w-full bg-[#14532D] hover:bg-emerald-900 active:scale-[0.98] text-white font-black py-3 rounded-2xl text-xs shadow-md transition"
+          className="w-full bg-[#14532D] hover:bg-emerald-900 active:scale-[0.98] text-white font-black py-3 rounded-lg text-xs shadow-md transition"
         >
           {t('डॅशबोर्डवर परत जा', 'Back to Dashboard')}
         </button>

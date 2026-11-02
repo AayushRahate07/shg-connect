@@ -176,7 +176,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     const renderPendingRequestsCard = () => {
     if (pendingRequests.length === 0) return null;
     return (
-      <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 mb-4">
+      <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 sm:p-5 shadow-sm space-y-3 mb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-8 h-8 rounded-xl bg-amber-500 flex items-center justify-center text-white font-bold">
@@ -263,7 +263,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     return (
       <div className="space-y-4 animate-fadeIn">
         {/* Active Meeting Session Header */}
-        <div className="bg-white rounded-2xl border border-stone-200 p-3.5 sm:p-4 flex items-center justify-between shadow-2xs">
+        <div className="bg-white rounded-lg border border-stone-200 p-3.5 sm:p-4 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black flex-shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
@@ -303,7 +303,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     <div className="space-y-6">
             {/* ── Pending Membership Requests Alert Banner ── */}
       {unreadNotificationsCount > 0 && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-fadeIn mb-4">
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-fadeIn mb-4">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
               <Bell className="w-5 h-5 animate-bounce" />
@@ -335,7 +335,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
 
       {/* ── Group Hero Banner ── */}
       <div
-        className="rounded-2xl p-4 sm:p-5 relative overflow-hidden text-white shadow-sm"
+        className="rounded-lg p-4 sm:p-5 relative overflow-hidden text-white shadow-sm border border-emerald-600/30"
         style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 60%, #0F4230 100%)' }}
       >
         <div className="relative z-10">
@@ -399,7 +399,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
               {/* ── 3 Stat Cards in 3-Columns (fits on mobile without vertical stacking!) ── */}
               <div className="grid grid-cols-3 gap-2 sm:gap-4">
                 {/* Total Savings */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
                       <Banknote className="w-3 h-3" />
@@ -417,7 +417,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 </div>
 
                 {/* Active Loans */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-stone-100 text-stone-700">
                       <HandCoins className="w-3 h-3" />
@@ -435,7 +435,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 </div>
 
                 {/* Panchasutra Score */}
-                <div className="rounded-2xl p-3 sm:p-4 bg-white border border-stone-200/90 shadow-2xs text-left">
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
                       <Award className="w-3 h-3" />
@@ -454,7 +454,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
               </div>
 
               {/* ── Group Management (Spacious 2x2 on mobile, 4 on desktop) ── */}
-              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-stone-200/90 shadow-2xs">
+              <div className="bg-gradient-to-b from-white to-stone-50/30 rounded-lg p-3.5 sm:p-4 border border-stone-200/90 shadow-2xs">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                     {language === 'mr' ? 'गट व्यवस्थापन' : 'Group Management'}
@@ -575,7 +575,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                     <div
                       key={m.id}
                       onClick={() => setSelectedDossierMember(m)}
-                      className="bg-white p-4 rounded-2xl cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+                      className="bg-white p-4 rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
                       style={{ border: '1px solid #E4E8EF', boxShadow: '0 1px 4px rgba(17,24,39,0.05)' }}
                     >
                       <div className="flex items-start justify-between">
