@@ -22,7 +22,7 @@ import { verifyLedgerIntegrity } from '../services/hashChain';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Bell, Users, User, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck } from 'lucide-react';
+import { Bell, Users, User, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck, MapPin } from 'lucide-react';
 import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
 import { LiveMeetingRoom } from '../services/liveMeeting';
 
@@ -335,69 +335,49 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
         </div>
       )}
 
-      {/* ── Group Hero Banner ── */}
+      {/* ── Group Hero Banner: Strictly SHG Name, Location, Offline Meet, Live Meet, and Schedule ── */}
       <div
         className="rounded-lg p-4 sm:p-5 relative overflow-hidden text-white shadow-sm border border-emerald-600/30"
         style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 60%, #0F4230 100%)' }}
       >
-        <div className="relative z-10">
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-green-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">
-                {language === 'mr' ? 'गट प्रमुख डॅशबोर्ड' : 'SHG Lead'}
-              </span>
-              {onSwitchToPersonalSavings && (
-                <button
-                  type="button"
-                  onClick={onSwitchToPersonalSavings}
-                  className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-amber-400/90 hover:bg-amber-300 text-amber-950 px-2.5 py-0.5 rounded-full shadow-2xs transition active:scale-95 cursor-pointer"
-                >
-                  <User className="w-3 h-3" />
-                  <span>{language === 'mr' ? 'माझी वैयक्तिक बचत' : 'My Personal Savings'} →</span>
-                </button>
-              )}
-            </div>
-            <span className="text-xs text-green-200 font-semibold">
-              {members.length} {language === 'mr' ? 'सदस्य' : 'Members'}
-            </span>
-          </div>
-
-          <h1 className="text-lg sm:text-2xl font-black tracking-tight leading-snug">
+        <div className="relative z-10 space-y-1">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-snug">
             {language === 'mr' ? group.nameRegional : group.name}
           </h1>
-          <p className="text-xs text-green-200 mt-0.5 font-medium">
-            {group.village}, {group.district}
+          <p className="text-xs text-emerald-100 font-medium flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+            <span>{group.village}, {group.district}</span>
           </p>
         </div>
 
-        {/* ── 3 Action Buttons in a Clean Equal Grid ── */}
-        <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15 relative z-10">
+        {/* ── 3 Action Buttons: Offline Meet, Live Meet, Schedule ── */}
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-3.5 border-t border-white/15 relative z-10">
           <button
             type="button"
             onClick={() => setShowWizard(true)}
-            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white text-emerald-950 font-black text-[11px] sm:text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-            <span className="whitespace-nowrap">{language === 'mr' ? 'ऑफलाईन' : 'Offline Meet'}<span className="hidden sm:inline">{language === 'mr' ? ' बैठक' : ''}</span></span>
+            <span className="whitespace-nowrap">{language === 'mr' ? 'ऑफलाईन बैठक' : 'Offline Meet'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowLiveMeeting(true)}
-            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-[11px] sm:text-xs active:scale-[0.98] transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
           >
             <Radio className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="whitespace-nowrap">{language === 'mr' ? 'लाईव्ह' : 'Live Meet'}<span className="hidden sm:inline">{language === 'mr' ? ' बैठक' : ''}</span></span>
+            <span className="whitespace-nowrap">{language === 'mr' ? 'लाईव्ह बैठक' : 'Live Meet'}</span>
           </button>
 
           {onOpenScheduleMeeting && (
             <button
               type="button"
               onClick={onOpenScheduleMeeting}
-              className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-[11px] sm:text-xs active:scale-[0.98] transition cursor-pointer"
+              className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span className="whitespace-nowrap">{language === 'mr' ? 'नियोजन' : 'Schedule'}</span>
+              <span className="whitespace-nowrap">{language === 'mr' ? 'बैठक नियोजन' : 'Schedule'}</span>
             </button>
           )}
         </div>
@@ -410,58 +390,58 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
             <div className="space-y-3.5">
               {renderPendingRequestsCard()}
 
-              {/* ── 3 Stat Cards in 3-Columns (fits on mobile without vertical stacking!) ── */}
+              {/* ── 3 Stat Cards in 3-Columns: Subtle Themed Colors & High Contrast ── */}
               <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                {/* Total Savings */}
-                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
+                {/* Total Savings: Emerald / Mint Theme */}
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50 via-white to-teal-50/50 border border-emerald-300/80 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
                       <Banknote className="w-3 h-3" />
                     </div>
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-emerald-800 truncate">
                       {language === 'mr' ? 'एकूण बचत' : 'Savings'}
                     </span>
                   </div>
                   <div className="text-sm sm:text-xl font-black amount-display text-[#0F4230]">
                     {formatINR(totalGroupSavings)}
                   </div>
-                  <p className="text-[9.5px] font-medium mt-0.5 text-stone-400 truncate">
+                  <p className="text-[9.5px] font-semibold mt-0.5 text-emerald-700/80 truncate">
                     ₹{group.monthlyPoolRate || 300}/सदस्य
                   </p>
                 </div>
 
-                {/* Active Loans */}
-                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
+                {/* Active Loans: Warm Amber / Saffron Theme */}
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-amber-50/90 via-white to-orange-50/40 border border-amber-300/80 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-stone-100 text-stone-700">
+                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-amber-100 text-amber-800">
                       <HandCoins className="w-3 h-3" />
                     </div>
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-800 truncate">
                       {language === 'mr' ? 'कर्ज शिल्लक' : 'Loan Due'}
                     </span>
                   </div>
-                  <div className="text-sm sm:text-xl font-black amount-display text-stone-900">
+                  <div className="text-sm sm:text-xl font-black amount-display text-amber-950">
                     {formatINR(totalActiveLoansAmount)}
                   </div>
-                  <p className="text-[9.5px] font-medium mt-0.5 text-stone-400 truncate">
+                  <p className="text-[9.5px] font-semibold mt-0.5 text-amber-700/80 truncate">
                     {loans.length} {language === 'mr' ? 'खाती' : 'loans'}
                   </p>
                 </div>
 
-                {/* Panchasutra Score */}
-                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/40 border border-emerald-200/80 shadow-2xs text-left">
+                {/* Panchasutra Score: Soft Indigo / Sky Theme */}
+                <div className="rounded-lg p-3 sm:p-4 bg-gradient-to-br from-indigo-50/80 via-white to-sky-50/50 border border-indigo-200/90 shadow-2xs text-left">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-emerald-100 text-emerald-800">
+                    <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-indigo-100 text-indigo-800">
                       <Award className="w-3 h-3" />
                     </div>
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-stone-500 truncate">
+                    <span className="text-[9.5px] font-bold uppercase tracking-wider text-indigo-800 truncate">
                       {language === 'mr' ? 'पंचसूत्र' : 'Score'}
                     </span>
                   </div>
-                  <div className="text-sm sm:text-xl font-black text-emerald-800">
+                  <div className="text-sm sm:text-xl font-black text-indigo-950">
                     {mockPanchasutraScore.totalScore}/100
                   </div>
-                  <p className="text-[9.5px] font-bold mt-0.5 text-emerald-700 truncate">
+                  <p className="text-[9.5px] font-bold mt-0.5 text-indigo-700 truncate">
                     {mockPanchasutraScore.bankGrade}
                   </p>
                 </div>
@@ -477,7 +457,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                     <button
                       type="button"
                       onClick={onOpenAddMember}
-                      className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/60 transition active:scale-95 cursor-pointer"
+                      className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/60 transition active:scale-95 cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
                       <span>{language === 'mr' ? '+ नवीन सदस्य' : '+ Add Member'}</span>
@@ -493,7 +473,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                       subEn: `${members.length} Active`,
                       subMr: `${members.length} सभासद`,
                       icon: Users,
-                      badgeBg: 'bg-emerald-100 text-emerald-800'
+                      badgeBg: 'bg-emerald-100 text-emerald-800',
+                      cardBg: 'bg-emerald-50/40 hover:bg-emerald-100/60 border-emerald-200/70',
                     },
                     {
                       id: 'loans',
@@ -502,7 +483,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                       subEn: `${loans.length} Accounts`,
                       subMr: `${loans.length} खाती`,
                       icon: Landmark,
-                      badgeBg: 'bg-blue-100 text-blue-800'
+                      badgeBg: 'bg-amber-100 text-amber-800',
+                      cardBg: 'bg-amber-50/40 hover:bg-amber-100/60 border-amber-200/70',
                     },
                     {
                       id: 'panchasutra',
@@ -511,7 +493,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                       subEn: `${mockPanchasutraScore.totalScore}/100`,
                       subMr: `${mockPanchasutraScore.totalScore}/100`,
                       icon: Award,
-                      badgeBg: 'bg-amber-100 text-amber-800'
+                      badgeBg: 'bg-indigo-100 text-indigo-800',
+                      cardBg: 'bg-indigo-50/40 hover:bg-indigo-100/60 border-indigo-200/70',
                     },
                     {
                       id: 'resolutions',
@@ -520,7 +503,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                       subEn: `${meetings.length} Recorded`,
                       subMr: `${meetings.length} बैठका`,
                       icon: FileText,
-                      badgeBg: 'bg-purple-100 text-purple-800'
+                      badgeBg: 'bg-purple-100 text-purple-800',
+                      cardBg: 'bg-purple-50/40 hover:bg-purple-100/60 border-purple-200/70',
                     },
                   ].map(item => {
                     const Icon = item.icon;
@@ -529,7 +513,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                         key={item.id}
                         type="button"
                         onClick={() => handleNavigate(item.id)}
-                        className="flex items-center gap-2.5 p-3 rounded-xl bg-stone-50 hover:bg-emerald-50/60 active:scale-[0.98] border border-stone-200/80 transition text-left cursor-pointer group"
+                        className={`flex items-center gap-2.5 p-3 rounded-lg border transition text-left cursor-pointer group active:scale-[0.98] ${item.cardBg}`}
                       >
                         <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.badgeBg}`}>
                           <Icon className="w-4 h-4" />
@@ -549,7 +533,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
               </div>
 
               {/* Ledger integrity note (plain language) */}
-              <div className={`rounded-xl px-3.5 py-2.5 flex items-center gap-2 border text-xs font-semibold ${isChainValid ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
+              <div className={`rounded-lg px-3.5 py-2.5 flex items-center gap-2 border text-xs font-semibold ${isChainValid ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-300 text-amber-900'}`}>
                 <ShieldCheck className={`w-4 h-4 flex-shrink-0 ${isChainValid ? 'text-emerald-700' : 'text-amber-700'}`} />
                 <p className="text-[11px] truncate">
                   {isChainValid
@@ -562,54 +546,80 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           )}
 
           {activeTab === 'members' && (
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {renderPendingRequestsCard()}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#1D5FA8' }}>
-                    <Users className="w-4 h-4 text-white" />
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-700 text-white shadow-2xs">
+                    <Users className="w-4 h-4" />
                   </span>
-                  <h2 className="text-base font-bold text-gray-900">SHG Member Directory ({members.length})</h2>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-bold text-stone-900">
+                      {language === 'mr' ? `सदस्य यादी (${members.length})` : `SHG Member Directory (${members.length})`}
+                    </h2>
+                    <p className="text-[11px] text-stone-500 font-medium">
+                      {language === 'mr' ? 'तपशील पाहण्यासाठी सदस्याच्या नावावर टॅप करा' : 'Tap on any member to view full dossier'}
+                    </p>
+                  </div>
                 </div>
                 {onOpenAddMember && (
                   <button
                     onClick={onOpenAddMember}
-                    className="bg-[#14532D] hover:bg-emerald-900 text-white px-3.5 py-1.5 rounded-xl text-xs font-black shadow flex items-center space-x-1.5 transition active:scale-95"
+                    className="bg-[#14532D] hover:bg-emerald-900 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-xs flex items-center space-x-1 transition active:scale-95 cursor-pointer"
                   >
                     <span>+</span>
                     <span>{language === 'mr' ? 'नवीन सदस्य' : 'Add Member'}</span>
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+              {/* Compact Member Rows (Grid of 2 on tablet/desktop, 1 on mobile) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {members.map((m, idx) => {
-                  const avatarColors = ['#1A6B4A', '#1D5FA8', '#E8720C', '#6D28D9', '#BE185D'];
+                  const avatarColors = ['#1A6B4A', '#1D5FA8', '#B45309', '#6D28D9', '#BE185D', '#047857'];
                   const avatarColor = avatarColors[idx % avatarColors.length];
+                  const roleLabel = m.role === 'OFFICE_BEARER'
+                    ? (language === 'mr' ? 'अध्यक्ष/पदाधिकारी' : 'Office Bearer')
+                    : (language === 'mr' ? 'सदस्य' : 'Member');
+                  const isOfficer = m.role === 'OFFICE_BEARER';
+
                   return (
                     <div
                       key={m.id}
                       onClick={() => setSelectedDossierMember(m)}
-                      className="bg-white p-4 rounded-lg cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
-                      style={{ border: '1px solid #E4E8EF', boxShadow: '0 1px 4px rgba(17,24,39,0.05)' }}
+                      className="bg-white hover:bg-emerald-50/40 p-2.5 sm:p-3 rounded-lg border border-stone-200/90 hover:border-emerald-300 shadow-2xs flex items-center justify-between gap-2.5 transition active:scale-[0.99] cursor-pointer"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-base flex-shrink-0"
-                            style={{ background: avatarColor }}
-                          >
-                            {(language === 'mr' ? m.nameRegional : m.name).charAt(0)}
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs"
+                          style={{ background: avatarColor }}
+                        >
+                          {(language === 'mr' ? m.nameRegional : m.name).charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-stone-900 text-xs sm:text-sm truncate">
+                            {language === 'mr' ? m.nameRegional : m.name}
                           </div>
-                          <div>
-                            <div className="font-semibold text-gray-900 text-sm">{language === 'mr' ? m.nameRegional : m.name}</div>
-                            <div className="text-xs text-gray-400 font-medium mt-0.5">{m.role}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                              isOfficer ? 'bg-amber-100 text-amber-900 border border-amber-200' : 'bg-stone-100 text-stone-600'
+                            }`}>
+                              {roleLabel}
+                            </span>
+                            <span className="text-[10px] text-stone-500 font-semibold">
+                              {m.trustScore}/100
+                            </span>
                           </div>
                         </div>
-                        <Badge variant="saffron" size="sm">{m.trustScore}/100</Badge>
                       </div>
-                      <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: '1px solid #F4F6FA' }}>
-                        <span className="text-xs font-medium text-gray-400">Total Savings</span>
-                        <span className="text-sm font-bold amount-display" style={{ color: '#1A6B4A' }}>{formatINR(m.totalSavings)}</span>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-xs sm:text-sm font-black text-emerald-800 amount-display">
+                          {formatINR(m.totalSavings)}
+                        </div>
+                        <span className="text-[9.5px] text-stone-600 font-medium block">
+                          {language === 'mr' ? 'एकूण बचत' : 'Savings'}
+                        </span>
                       </div>
                     </div>
                   );
@@ -619,33 +629,170 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           )}
 
           {activeTab === 'loans' && (
-            <Card className="p-6 space-y-4">
-              <CardHeader className="p-0 border-none pb-2">
-                <CardTitle className="text-base">
-                  <Landmark className="w-5 h-5 text-amber-600" />
-                  <span>Active Group Loans ({loans.length})</span>
-                </CardTitle>
-              </CardHeader>
-              <div className="divide-y divide-stone-100">
-                {loans.map(l => (
-                  <div key={l.id} className="py-3 flex justify-between items-center text-xs">
-                    <div>
-                      <div className="font-bold text-stone-900">{l.memberName} (Loan #{l.id})</div>
-                      <div className="text-stone-500">Principal: {formatINR(l.principal)} • Disbursed: {l.dateDisbursed}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-black text-rose-700 text-sm">{formatINR(l.remainingBalance)} Remaining</div>
-                      <Badge variant={l.status === 'ACTIVE' ? 'warning' : 'success'} size="sm">{l.status}</Badge>
-                    </div>
+            <div className="space-y-4">
+              {/* Header with Outstanding Summary */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-amber-50 via-white to-orange-50/50 p-4 rounded-lg border border-amber-200/80 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-600 text-white shadow-2xs">
+                    <Landmark className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm sm:text-base font-black text-stone-900">
+                      {language === 'mr' ? `गटातील कर्जे (${loans.length})` : `Active Group Loans (${loans.length})`}
+                    </h2>
+                    <p className="text-xs text-stone-500 font-medium">
+                      {language === 'mr' ? 'व्याज दर: १.५% / महिना (शेकडा दीड रुपये)' : 'Interest Rate: 1.5% / month (Reducing)'}
+                    </p>
                   </div>
-                ))}
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 block">
+                    {language === 'mr' ? 'एकूण थकीत बाकी' : 'Total Outstanding'}
+                  </span>
+                  <div className="text-base sm:text-xl font-black text-rose-700 amount-display">
+                    {formatINR(totalActiveLoansAmount)}
+                  </div>
+                </div>
               </div>
-            </Card>
+
+              {/* Pending Loan Requests (if any) */}
+              {loans.filter(l => l.status === 'REQUESTED').length > 0 && (
+                <div className="bg-gradient-to-br from-amber-100/70 via-amber-50 to-orange-50 border-2 border-amber-400 rounded-lg p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center font-black text-xs">
+                        !
+                      </span>
+                      <h3 className="font-black text-sm text-amber-950">
+                        {language === 'mr' ? 'प्रलंबित कर्ज अर्ज' : 'Pending Loan Requests'} ({loans.filter(l => l.status === 'REQUESTED').length})
+                      </h3>
+                    </div>
+                    <Badge variant="warning">{loans.filter(l => l.status === 'REQUESTED').length} Pending</Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    {loans.filter(l => l.status === 'REQUESTED').map(pl => (
+                      <div key={pl.id} className="bg-white rounded-lg p-3 border border-amber-300 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="font-black text-sm text-stone-900">{pl.memberName}</div>
+                          <div className="text-xs text-stone-600 mt-0.5">
+                            {language === 'mr' ? 'मागितलेले कर्ज:' : 'Requested:'} <span className="font-black text-amber-900">{formatINR(pl.principal)}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowWizard(true)}
+                          className="px-3 py-1.5 rounded-lg bg-[#14532D] hover:bg-emerald-900 text-white text-xs font-black shadow-xs transition active:scale-95 cursor-pointer"
+                        >
+                          {language === 'mr' ? 'बैठकीत मंजूर करा' : 'Approve in Meeting'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Individual High-Contrast Loan Cards */}
+              <div className="space-y-3">
+                {loans.filter(l => l.status !== 'REQUESTED').map(l => {
+                  const repaidAmt = Math.max(0, l.principal - l.remainingBalance);
+                  const repaidPercent = Math.min(100, Math.round((repaidAmt / (l.principal || 1)) * 100));
+
+                  return (
+                    <div
+                      key={l.id}
+                      className="rounded-lg bg-gradient-to-br from-amber-50/70 via-white to-orange-50/30 border-2 border-amber-300/90 p-4 sm:p-5 shadow-2xs hover:border-amber-400 hover:shadow-xs transition space-y-3"
+                    >
+                      {/* Top Row: Borrower Info + Outstanding Amount */}
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-black text-sm sm:text-base text-stone-950">
+                              {l.memberName}
+                            </h3>
+                            <span className="text-[10px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-200/90 px-2 py-0.5 rounded">
+                              #{l.id.replace('loan-', '')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-stone-500 font-medium mt-0.5">
+                            {language === 'mr' ? 'वाटप दिनांक:' : 'Disbursed:'} {l.dateDisbursed}
+                          </p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          <div className="text-base sm:text-xl font-black text-rose-700 amount-display">
+                            {formatINR(l.remainingBalance)}
+                          </div>
+                          <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">
+                            {language === 'mr' ? 'बाकी रक्कम' : 'Remaining Due'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Repayment Progress Bar */}
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[11px] font-semibold text-stone-600">
+                          <span>
+                            {language === 'mr' ? 'परतफेड:' : 'Repaid:'} <strong className="text-emerald-800">{formatINR(repaidAmt)}</strong> ({repaidPercent}%)
+                          </span>
+                          <span>
+                            {language === 'mr' ? 'एकूण मुद्दल:' : 'Principal:'} {formatINR(l.principal)}
+                          </span>
+                        </div>
+                        <div className="w-full h-2 bg-stone-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-emerald-600 to-teal-500 rounded-full transition-all duration-300"
+                            style={{ width: `${repaidPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* High Contrast Key-Value Grid */}
+                      <div className="grid grid-cols-3 gap-2 pt-2 border-t border-amber-200/60 text-xs">
+                        <div className="bg-white/85 p-2 rounded-lg border border-amber-200/60">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block">
+                            {language === 'mr' ? 'मूळ कर्ज' : 'Principal'}
+                          </span>
+                          <span className="font-black text-stone-900 text-xs sm:text-sm amount-display">
+                            {formatINR(l.principal)}
+                          </span>
+                        </div>
+
+                        <div className="bg-white/85 p-2 rounded-lg border border-amber-200/60">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block">
+                            {language === 'mr' ? 'मासिक व्याज' : 'Monthly Rate'}
+                          </span>
+                          <span className="font-black text-amber-900 text-xs sm:text-sm">
+                            {l.interestRateMonthly || 1.5}% <span className="text-[10px] font-normal text-stone-500 hidden sm:inline">(१.५%)</span>
+                          </span>
+                        </div>
+
+                        <div className="bg-white/85 p-2 rounded-lg border border-amber-200/60">
+                          <span className="text-[10px] font-bold text-stone-500 uppercase block">
+                            {language === 'mr' ? 'स्थिती' : 'Status'}
+                          </span>
+                          <span className="inline-block mt-0.5 font-black text-xs text-emerald-800">
+                            {l.status === 'ACTIVE' ? (language === 'mr' ? 'सक्रिय ✔' : 'ACTIVE') : l.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {loans.length === 0 && (
+                  <div className="bg-white rounded-lg p-8 text-center border border-stone-200 text-xs text-stone-500">
+                    {language === 'mr' ? 'सध्या कोणतेही सक्रिय कर्ज नाही.' : 'No active loans in this group.'}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
           {activeTab === 'meetings' && (
             <div className="space-y-4">
-              <Card className="p-6 text-center space-y-3">
+              <div className="bg-gradient-to-br from-teal-50/60 via-white to-sky-50/40 p-6 text-center space-y-3 rounded-lg border border-teal-200/80 shadow-2xs">
                 <Calendar className="w-8 h-8 text-emerald-700 mx-auto" />
                 <h3 className="font-black text-stone-900 text-base">Monthly Meeting Session Mode</h3>
                 <p className="text-xs text-stone-500 max-w-md mx-auto">
@@ -654,7 +801,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 <Button variant="secondary" size="md" icon={<Sparkles className="w-4 h-4 text-amber-950" />} onClick={() => setShowWizard(true)}>
                   Launch Step-by-Step Meeting Wizard
                 </Button>
-              </Card>
+              </div>
             </div>
           )}
 

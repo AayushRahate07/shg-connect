@@ -211,14 +211,14 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
       {/* ── 2. Card: NEXT MEETING (पुढील बैठक) ── */}
       <button
         onClick={() => onNavigateTab('meetings')}
-        className="w-full bg-gradient-to-br from-white via-amber-50/30 to-amber-100/20 p-4 sm:p-5 rounded-lg border border-amber-200 shadow-2xs text-left hover:border-amber-300 transition active:scale-[0.99] cursor-pointer group"
+        className="w-full bg-gradient-to-br from-amber-50/70 via-white to-orange-50/40 p-4 sm:p-5 rounded-lg border-2 border-amber-200/90 shadow-2xs text-left hover:border-amber-300 transition active:scale-[0.99] cursor-pointer group"
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 flex items-center justify-center shrink-0 border border-amber-200">
               <Calendar className="w-4 h-4" />
             </div>
-            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">
               {isMr ? 'पुढील बैठक' : 'Next Meeting'}
             </span>
           </div>
@@ -239,20 +239,32 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
       </button>
 
       {/* ── 3. Card: OWED (थकीत कर्ज + या महिन्याचा हप्ता) ── */}
-      <div className="bg-white p-4 sm:p-5 rounded-lg border border-stone-200 shadow-2xs">
+      <div className={`p-4 sm:p-5 rounded-lg border-2 shadow-2xs transition ${
+        activeLoan
+          ? 'bg-gradient-to-br from-rose-50/50 via-white to-amber-50/30 border-rose-200/80'
+          : 'bg-gradient-to-br from-emerald-50/50 via-white to-teal-50/30 border-emerald-200/80'
+      }`}>
         <div className="flex items-center justify-between mb-2 border-b border-stone-100 pb-2">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+              activeLoan
+                ? 'bg-rose-100 text-rose-900 border-rose-200'
+                : 'bg-emerald-100 text-emerald-900 border-emerald-200'
+            }`}>
               <Landmark className="w-4 h-4" />
             </div>
-            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+            <span className={`text-xs font-bold uppercase tracking-wider ${
+              activeLoan ? 'text-rose-900' : 'text-emerald-900'
+            }`}>
               {isMr ? 'थकीत कर्ज' : 'Loan Due'}
             </span>
           </div>
 
           <button
             onClick={() => onNavigateTab('loans')}
-            className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1"
+            className={`text-xs font-bold hover:underline flex items-center gap-1 ${
+              activeLoan ? 'text-rose-800' : 'text-emerald-800'
+            }`}
           >
             <span>{isMr ? 'कर्ज खाते' : 'Loan Account'}</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -295,13 +307,13 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
               <p className="text-base font-black text-emerald-900 leading-snug">
                 {isMr ? 'काही नाही' : 'No Active Loan'}
               </p>
-              <p className="text-xs text-stone-500 font-medium mt-0.5">
+              <p className="text-xs text-emerald-700/80 font-medium mt-0.5">
                 {isMr ? 'सर्व हप्ते पूर्ण ✔ (कोणतेही कर्ज थकीत नाही)' : 'All loans cleared ✔'}
               </p>
             </div>
             <button
               onClick={() => onNavigateTab('loans')}
-              className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-lg transition active:scale-95 cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-lg transition active:scale-95 cursor-pointer shadow-2xs"
             >
               {isMr ? 'कर्ज मागा' : 'Apply'}
             </button>
