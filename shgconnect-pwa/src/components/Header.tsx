@@ -1,9 +1,10 @@
 import React from 'react';
 import { Role, SupportedLanguage, FederationScope } from '../types/shg';
 import { ShgLogo } from './common/ShgLogo';
-import { ArrowLeft, LogOut, Bell } from 'lucide-react';
+import { ArrowLeft, LogOut, Bell, Crown, User } from 'lucide-react';
 
 interface HeaderProps {
+  isLeadUser?: boolean;
   currentRole?: Role;
   onRoleChange?: (role: Role) => void;
   language: SupportedLanguage;
@@ -27,6 +28,9 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentRole,
+  onRoleChange,
+  isLeadUser,
   language,
   onLanguageChange,
   shgName,
@@ -78,6 +82,36 @@ export const Header: React.FC<HeaderProps> = ({
         {/* ── Right: Notification Bell + Language Switch (अ/A) + Logout ── */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
           
+          {/* Dual-Role Switcher for SHG Leads */}
+          {isLeadUser && onRoleChange && (
+            <button
+              type="button"
+              onClick={() => onRoleChange(currentRole === 'MEMBER' ? 'OFFICE_BEARER' : 'MEMBER')}
+              className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border transition active:scale-95 cursor-pointer font-bold text-xs shadow-2xs ${
+                currentRole === 'MEMBER'
+                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300 ring-1 ring-amber-300/50'
+                  : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-950 border-emerald-300 ring-1 ring-emerald-300/50'
+              }`}
+              title={
+                currentRole === 'MEMBER'
+                  ? (isMr ? 'गट प्रमुख डॅशबोर्डवर जा (Switch to Lead Operations)' : 'Switch to Group Operations')
+                  : (isMr ? 'माझी वैयक्तिक बचत पहा (Switch to Personal Savings)' : 'Switch to Personal Savings')
+              }
+            >
+              {currentRole === 'MEMBER' ? (
+                <>
+                  <Crown className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">{isMr ? 'गट व्यवस्थापन' : 'Lead Mode'}</span>
+                </>
+              ) : (
+                <>
+                  <User className="w-3.5 h-3.5 text-emerald-800 shrink-0" />
+                  <span className="hidden xs:inline sm:inline">{isMr ? 'माझी बचत' : 'My Savings'}</span>
+                </>
+              )}
+            </button>
+          )}
+
           {/* High-Visibility Notification Bell Button */}
           {onOpenNotifications && (
             <button

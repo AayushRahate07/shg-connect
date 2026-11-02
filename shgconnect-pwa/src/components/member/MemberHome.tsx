@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 
 interface MemberHomeProps {
+  isLeadUser?: boolean;
+  onSwitchToLead?: () => void;
   member: Member;
   transactions: Transaction[];
   loans: Loan[];
@@ -29,6 +31,8 @@ interface MemberHomeProps {
 }
 
 export const MemberHome: React.FC<MemberHomeProps> = ({
+  isLeadUser,
+  onSwitchToLead,
   member,
   transactions,
   loans,
@@ -85,6 +89,32 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
   return (
     <div className="space-y-4 max-w-2xl mx-auto">
+
+      {/* ── Dual-Role Lead Quick Banner ── */}
+      {isLeadUser && onSwitchToLead && (
+        <div className="bg-gradient-to-r from-amber-50 via-amber-100/40 to-orange-50 border border-amber-200 rounded-lg p-3 sm:p-3.5 flex items-center justify-between shadow-2xs gap-3 animate-fadeIn">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
+              👑
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-amber-950 truncate leading-tight">
+                {isMr ? 'तुम्ही या बचत गटाच्या प्रमुख (अध्यक्ष) आहात' : 'You are the SHG Lead for this group'}
+              </p>
+              <p className="text-[10px] text-amber-800 font-medium truncate mt-0.5">
+                {isMr ? 'हे तुमचे वैयक्तिक बचत खाते आहे. संपूर्ण गट व्यवस्थापनासाठी स्विच करा.' : 'This is your individual savings. Switch to manage group funds & meetings.'}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onSwitchToLead}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-black rounded-lg shadow-2xs transition cursor-pointer shrink-0"
+          >
+            {isMr ? 'गट संचालन →' : 'Group Operations →'}
+          </button>
+        </div>
+      )}
 
       {/* ── Greeting row ── */}
       <div className="flex items-center justify-between">

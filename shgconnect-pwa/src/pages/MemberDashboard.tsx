@@ -30,6 +30,8 @@ import { MemberLiveMeeting } from '../components/meeting/MemberLiveMeeting';
 import { Radio } from 'lucide-react';
 
 interface MemberDashboardProps {
+  isLeadUser?: boolean;
+  onSwitchToLead?: () => void;
   group?: GroupInfo | null;
   members: Member[];
   transactions: Transaction[];

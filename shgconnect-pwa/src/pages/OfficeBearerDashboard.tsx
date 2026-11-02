@@ -22,11 +22,12 @@ import { verifyLedgerIntegrity } from '../services/hashChain';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Bell, Users, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck } from 'lucide-react';
+import { Bell, Users, User, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck } from 'lucide-react';
 import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
 import { LiveMeetingRoom } from '../services/liveMeeting';
 
 interface OfficeBearerDashboardProps {
+  onSwitchToPersonalSavings?: () => void;
   group: GroupInfo;
   members: Member[];
   transactions: Transaction[];
@@ -71,6 +72,7 @@ interface OfficeBearerDashboardProps {
 }
 
 export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
+  onSwitchToPersonalSavings,
   group,
   members,
   transactions,
@@ -340,9 +342,21 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
       >
         <div className="relative z-10">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-green-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">
-              {language === 'mr' ? 'गट प्रमुख डॅशबोर्ड' : 'SHG Lead'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-green-200 bg-white/10 px-2 py-0.5 rounded-full border border-white/15">
+                {language === 'mr' ? 'गट प्रमुख डॅशबोर्ड' : 'SHG Lead'}
+              </span>
+              {onSwitchToPersonalSavings && (
+                <button
+                  type="button"
+                  onClick={onSwitchToPersonalSavings}
+                  className="inline-flex items-center gap-1 text-[11px] font-extrabold bg-amber-400/90 hover:bg-amber-300 text-amber-950 px-2.5 py-0.5 rounded-full shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <User className="w-3 h-3" />
+                  <span>{language === 'mr' ? 'माझी वैयक्तिक बचत' : 'My Personal Savings'} →</span>
+                </button>
+              )}
+            </div>
             <span className="text-xs text-green-200 font-semibold">
               {members.length} {language === 'mr' ? 'सदस्य' : 'Members'}
             </span>

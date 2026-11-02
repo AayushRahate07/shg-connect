@@ -27,7 +27,7 @@ interface LoginViewProps {
   members: Member[];
   language: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
-  onLoginSuccess: (session: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => void;
+  onLoginSuccess: (session: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string; originalRole?: Role }) => void;
   onNavigateRegister?: () => void;
 }
 
@@ -176,9 +176,14 @@ export const LoginView: React.FC<LoginViewProps> = ({
       if (match) {
         setMatchedUser(match);
         setError('');
+        // If user is currently on MEMBER tab and enters a Lead PIN, allow them to stay on MEMBER tab
+        // so they can access their personal savings account!
         const matchingTier = TIERS.find(t => t.pin === enteredPin);
         if (matchingTier) {
-          setSelectedTierKey(matchingTier.key);
+          const isLead = match.role === 'OFFICE_BEARER' || match.user.role === 'OFFICE_BEARER';
+          if (!isLead || selectedTierKey !== 'MEMBER') {
+            setSelectedTierKey(matchingTier.key);
+          }
         }
       } else {
         setMatchedUser(null);
@@ -197,12 +202,19 @@ export const LoginView: React.FC<LoginViewProps> = ({
       ? userSession.user.nameRegional || userSession.user.name
       : userSession.user.name;
 
+    const isLeadUser = userSession.user.role === 'OFFICE_BEARER' || userSession.role === 'OFFICE_BEARER';
+    // If Lead enters via Member tab, active role is MEMBER (personal savings), otherwise their administrative role
+    const activeRole: Role = (isLeadUser && selectedTierKey === 'MEMBER')
+      ? 'MEMBER'
+      : userSession.role;
+
     tts.speak(isMr ? `${displayName}, स्वागत आहे.` : `Welcome, ${displayName}.`);
 
     onLoginSuccess({
       memberId: userSession.user.id,
       phone: UNIVERSAL_PHONE,
-      role: userSession.role,
+      role: activeRole,
+      originalRole: userSession.user.role || userSession.role,
       memberName: displayName,
       shgId: userSession.shgId
     });
@@ -345,8 +357,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span className="truncate">{isMr ? (matchedUser.user.nameRegional || matchedUser.user.name) : matchedUser.user.name}</span>
                 <span className="text-[10px] text-emerald-700 font-semibold opacity-90">
-                  · {matchedUser.role === 'OFFICE_BEARER'
-                    ? (isMr ? 'गट प्रमुख' : 'Lead')
+                  · {((matchedUser.role === 'OFFICE_BEARER' || matchedUser.user.role === 'OFFICE_BEARER') && selectedTierKey === 'MEMBER')
+                    ? (isMr ? 'सभासद (वैयक्तिक खाते)' : 'Member (Personal Account)')
+                    : matchedUser.role === 'OFFICE_BEARER'
+                    ? (isMr ? 'गट प्रमुख (गट खाते)' : 'SHG Lead (Group Mode)')
                     : matchedUser.role === 'ANIMATOR' || matchedUser.role === 'OFFICER'
                     ? (isMr ? 'अधिकारी' : 'Officer')
                     : matchedUser.role === 'AUDITOR'
@@ -418,7 +432,13 @@ export const LoginView: React.FC<LoginViewProps> = ({
         >
           <span className="truncate">
             {matchedUser
-              ? (isMr ? `${matchedUser.user.nameRegional || matchedUser.user.name} म्हणून प्रवेश करा` : `Sign In as ${matchedUser.user.name}`)
+              ? ((matchedUser.role === 'OFFICE_BEARER' || matchedUser.user.role === 'OFFICE_BEARER') && selectedTierKey === 'MEMBER'
+                  ? (isMr
+                      ? `${matchedUser.user.nameRegional || matchedUser.user.name} (वैयक्तिक बचत) म्हणून प्रवेश करा`
+                      : `Sign In as ${matchedUser.user.name} (Personal Member)`)
+                  : (isMr
+                      ? `${matchedUser.user.nameRegional || matchedUser.user.name} म्हणून प्रवेश करा`
+                      : `Sign In as ${matchedUser.user.name}`))
               : (isMr ? 'प्रवेश करा (Sign In)' : 'Sign In')}
           </span>
           <ArrowRight className="w-4 h-4 text-stone-300 shrink-0" />

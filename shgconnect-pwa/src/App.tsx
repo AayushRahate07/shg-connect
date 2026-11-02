@@ -23,7 +23,7 @@ export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<Role>('MEMBER');
   // Privacy & Banking Security: Session is memory-only. Refreshing or reopening lands securely on Login screen.
-  const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string; shgId?: string } | null>(null);
+  const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string; shgId?: string; originalRole?: Role } | null>(null);
   const [authPage, setAuthPage] = useState<'LOGIN' | 'NEW_USER'>('LOGIN');
   const [showNotificationsModal, setShowNotificationsModal] = useState<boolean>(false);
   const [membershipRequests, setMembershipRequests] = useState<MembershipRequest[]>([]);
@@ -46,7 +46,7 @@ export default function App() {
   const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
   const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState<boolean>(false);
 
-  const handleLoginSuccess = async (newSession: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => {
+  const handleLoginSuccess = async (newSession: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string; originalRole?: Role }) => {
     if (newSession.shgId) {
       setCurrentShgId(newSession.shgId);
     }
@@ -753,6 +753,7 @@ export default function App() {
   return (
     <AppShell
       userName={session?.memberName}
+      isLeadUser={session?.originalRole === 'OFFICE_BEARER' || session?.role === 'OFFICE_BEARER' || currentRole === 'OFFICE_BEARER'}
       currentRole={currentRole}
       onRoleChange={handleRoleChange}
       activeTab={activeTab}
@@ -796,6 +797,8 @@ export default function App() {
           onOpenBackupModal={() => setShowBackupModal(true)}
           onResetData={handleResetData}
           loggedInMemberId={session?.memberId}
+          isLeadUser={session?.originalRole === 'OFFICE_BEARER' || session?.role === 'OFFICE_BEARER'}
+          onSwitchToLead={() => handleRoleChange('OFFICE_BEARER')}
         />
       ) : (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD') ? (
         <OfficeBearerDashboard
@@ -822,6 +825,7 @@ export default function App() {
           onOpenScheduleMeeting={() => setShowScheduleMeetingModal(true)}
           onMemberAdded={(newMem) => setMembers(prev => [...prev, newMem])}
           onRecordTransaction={handleRecordTransaction}
+          onSwitchToPersonalSavings={() => handleRoleChange('MEMBER')}
           unreadNotificationsCount={unreadNotificationsCount}
           onOpenNotifications={() => { refreshMembershipRequests(); setShowNotificationsModal(true); }}
         />

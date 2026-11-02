@@ -7,6 +7,7 @@ import { OfflineBanner } from '../OfflineBanner';
 import { InstallPrompt } from '../InstallPrompt';
 
 interface AppShellProps {
+  isLeadUser?: boolean;
   userName?: string;
   children: React.ReactNode;
   currentRole: Role;
