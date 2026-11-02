@@ -6,7 +6,7 @@ import { tts } from '../../services/tts';
 import { sound } from '../../services/sound';
 import {
   Radio, Users, IndianRupee, CheckCircle2, Loader2,
-  Copy, Check, AlertCircle, Flag, ShieldCheck, KeyRound, Sparkles,
+  Copy, Check, AlertCircle, Flag, ShieldCheck, KeyRound,
   ArrowRight, X, Clock
 } from 'lucide-react';
 
@@ -26,7 +26,6 @@ interface VerifyModalState {
   memberId: string;
   memberName: string;
   amount: number;
-  expectedOtp: string;
   otpInput: string;
   error: string;
   loading: boolean;
@@ -48,7 +47,6 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     memberId: '',
     memberName: '',
     amount: 0,
-    expectedOtp: '',
     otpInput: '',
     error: '',
     loading: false
@@ -169,13 +167,12 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
     try {
       const res = await liveMeetingApi.initiateSavings(room.code, memberId, amount);
-      if (res.ok && res.otp) {
+      if (res.ok) {
         setVerifyModal({
           open: true,
           memberId,
           memberName,
           amount,
-          expectedOtp: res.otp,
           otpInput: '',
           error: '',
           loading: false
@@ -309,18 +306,6 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                 className="w-full text-center text-3xl font-black tracking-[0.4em] py-3 bg-stone-50 border-2 border-stone-300 focus:border-emerald-700 rounded-2xl outline-none text-stone-900 transition"
                 autoFocus
               />
-
-              {/* Quick assist demo chip */}
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setVerifyModal(prev => ({ ...prev, otpInput: prev.expectedOtp }))}
-                  className="text-[10px] font-black text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 flex items-center gap-1 transition"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span>{t(`सभासद कोड: ${verifyModal.expectedOtp} (येथे भरा)`, `Auto-fill: ${verifyModal.expectedOtp}`)}</span>
-                </button>
-              </div>
 
               {verifyModal.error && (
                 <div className="flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-xl p-2.5">
@@ -508,7 +493,6 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                             memberId: m.memberId,
                             memberName: m.memberName,
                             amount: m.pendingSavings!.amount,
-                            expectedOtp: m.pendingSavings!.otp,
                             otpInput: '',
                             error: '',
                             loading: false
