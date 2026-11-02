@@ -348,6 +348,61 @@ function meetingRoomPlugin(): Plugin {
           return;
         }
 
+        // ── POST /api/meeting/:code/batch-confirm ─────────────────────────────
+        const batchMatch = url.match(/^\/api\/meeting\/(\d{4})\/batch-confirm$/);
+        if (batchMatch && req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            const room = liveRooms.get(batchMatch[1]);
+            if (!room) {
+              res.statusCode = 404;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: false, error: 'Meeting not found' }));
+              return;
+            }
+            try {
+              const { defaultAmount = 250 } = JSON.parse(body || '{}');
+              const amt = Number(defaultAmount) || 250;
+              let confirmedCount = 0;
+
+              for (const mem of Object.values(room.members)) {
+                if (!mem.verified) {
+                  mem.savings = mem.savings > 0 ? mem.savings : amt;
+                  mem.verified = true;
+                  delete mem.pendingSavings;
+                  confirmedCount++;
+                }
+              }
+
+              room.totalPool = Object.values(room.members).reduce((s, m) => s + (m.savings || 0), 0);
+
+              broadcastToRoom(room, 'batch_confirmed', {
+                totalPool: room.totalPool,
+                members: room.members,
+                amount: amt,
+                count: confirmedCount
+              });
+              broadcastToRoom(room, 'snapshot', roomSnapshot(room));
+
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(JSON.stringify({
+                ok: true,
+                totalPool: room.totalPool,
+                members: room.members,
+                count: confirmedCount,
+                amount: amt
+              }));
+            } catch {
+              res.statusCode = 400;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: false, error: 'Bad request' }));
+            }
+          });
+          return;
+        }
+
         // ── POST /api/meeting/:code/leave ─────────────────────────────────────
         const leaveMatch = url.match(/^\/api\/meeting\/(\d{4})\/leave$/);
         if (leaveMatch && req.method === 'POST') {

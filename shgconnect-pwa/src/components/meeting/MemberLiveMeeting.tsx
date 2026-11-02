@@ -54,7 +54,17 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
     esRef.current?.close();
     const es = liveMeetingApi.subscribe(roomCode, {
       onSnapshot: (r) => {
-        setRoom(r);
+        setRoom(prev => {
+          const wasVerified = prev?.members[memberId]?.verified;
+          const isNowVerified = r.members[memberId]?.verified;
+          if (!wasVerified && isNowVerified) {
+            setShowVerifiedToast({ amount: r.members[memberId].savings || 250 });
+            sound.playStampSound();
+            tts.speak(isMr ? `आपली ₹${r.members[memberId].savings || 250} बचत जमा झाली` : `Your savings is verified`);
+            setTimeout(() => setShowVerifiedToast(null), 6000);
+          }
+          return r;
+        });
         setIsReconnecting(false);
         if (r.status === 'COMPLETED') {
           setPhase('COMPLETED');
@@ -97,6 +107,17 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
           sound.playStampSound();
           tts.speak(t(`${data.amount} रुपयांची बचत पडताळली आणि जमा झाली`, `Savings of ${data.amount} rupees verified and deposited`));
           setTimeout(() => setShowVerifiedToast(null), 5000);
+        }
+      },
+      onBatchConfirmed: (data) => {
+        setRoom(prev => prev ? { ...prev, members: data.members, totalPool: data.totalPool } : prev);
+        const myRec = data.members[memberId];
+        if (myRec?.verified) {
+          setPendingHandshake(null);
+          setShowVerifiedToast({ amount: myRec.savings || data.amount });
+          sound.playStampSound();
+          tts.speak(isMr ? `आपली ₹${myRec.savings || data.amount} बचत प्रमुखांनी मंजूर केली` : `Your savings of ₹${myRec.savings || data.amount} is approved`);
+          setTimeout(() => setShowVerifiedToast(null), 6000);
         }
       },
       onSavingsCancelled: (data) => {

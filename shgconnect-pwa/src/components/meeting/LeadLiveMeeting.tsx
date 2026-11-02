@@ -55,6 +55,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   const [markLeftModal, setMarkLeftModal] = useState<{ open: boolean; memberId: string; memberName: string }>({ open: false, memberId: '', memberName: '' });
 
   const [showCompleteQuorumModal, setShowCompleteQuorumModal] = useState(false);
+  const [batchNotice, setBatchNotice] = useState<{ count: number; amount: number } | null>(null);
   const esRef = useRef<EventSource | null>(null);
 
   useEffect(() => () => { esRef.current?.close(); }, []);
@@ -91,6 +92,12 @@ export const LeadLiveMeeting: React.FC<Props> = ({
         setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
         sound.playStampSound();
         tts.speak(t(`${memberName} यांची ₹${amount} बचत पडताळली`, `Verified ₹${amount} savings for ${memberName}`));
+      },
+      onBatchConfirmed: ({ members, totalPool, count, amount }) => {
+        setRoom(prev => prev ? { ...prev, members, totalPool } : prev);
+        sound.playStampSound();
+        setBatchNotice({ count, amount });
+        setTimeout(() => setBatchNotice(null), 6000);
       },
       onSavingsCancelled: ({ memberId }) => {
         setRoom(prev => {
@@ -225,13 +232,27 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   
   const handleBatchConfirmAll = async () => {
     if (!room?.code) return;
+    const currentList = Object.values(room.members);
+    const unverified = currentList.filter(m => !m.verified);
+    if (unverified.length === 0) {
+      sound.playStampSound();
+      tts.speak(isMr ? 'सर्व सदस्यांची बचत आधीच मंजूर आहे' : 'All members already verified');
+      return;
+    }
     try {
-      const res = await liveMeetingApi.batchConfirmAll(room.code, 300);
+      const defaultAmt = 250;
+      const res = await liveMeetingApi.batchConfirmAll(room.code, defaultAmt, room.members);
       if (res.ok && res.members) {
         setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
         sound.playStampSound();
+        const count = res.count || unverified.length;
+        setBatchNotice({ count, amount: defaultAmt });
+        tts.speak(isMr ? `सर्व ${count} सदस्यांची बचत मंजूर झाली` : `Approved savings for ${count} members`);
+        setTimeout(() => setBatchNotice(null), 6000);
       }
-    } catch {}
+    } catch {
+      setError(isMr ? 'बचत एकदम मंजूर करता आली नाही.' : 'Could not batch confirm.');
+    }
   };
 
   const handlePaperSlipConfirm = async (memberId: string) => {

@@ -50,17 +50,27 @@ export interface LiveMeetingHandlers {
   onSavingsHandshakeInitiated?: (data: { memberId: string; memberName: string; amount: number; otp: string }) => void;
   onSavingsVerified?: (data: { memberId: string; memberName: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
   onSavingsCancelled?: (data: { memberId: string; reason?: string }) => void;
+  onBatchConfirmed?: (data: { totalPool: number; members: Record<string, LiveMember>; amount: number; count: number }) => void;
   onMeetingCompleted?: (room: LiveMeetingRoom) => void;
   onRoomClosed?: (data: { reason: string }) => void;
 }
 
 const RENDER_PROD_URL = 'https://shg-connect.onrender.com';
 
+const isLocalOrLan = typeof window !== 'undefined' && (
+  window.location.hostname.includes('localhost') ||
+  window.location.hostname.startsWith('127.') ||
+  window.location.hostname.startsWith('192.') ||
+  window.location.hostname.startsWith('10.') ||
+  window.location.hostname.startsWith('172.') ||
+  window.location.hostname.startsWith('25.') ||
+  window.location.port === '3000' ||
+  window.location.port === '5173'
+);
+
 const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_LIVE_MEETING_SERVER_URL)
   ? (import.meta as any).env.VITE_LIVE_MEETING_SERVER_URL.replace(/\/+$/, '')
-  : (typeof window !== 'undefined' && !window.location.hostname.includes('localhost') && !window.location.hostname.startsWith('127.') && !window.location.hostname.startsWith('192.') && !window.location.hostname.startsWith('10.')
-      ? RENDER_PROD_URL
-      : '');
+  : (isLocalOrLan ? '' : RENDER_PROD_URL);
 
 // Local fallback state helpers
 function getLocalRoom(code: string): LiveMeetingRoom | null {
@@ -249,21 +259,55 @@ export const liveMeetingApi = {
   },
 
   /** Direct batch confirm all attended members */
-  async batchConfirmAll(code: string, defaultAmount = 300): Promise<{ ok: boolean; totalPool?: number; members?: Record<string, LiveMember> }> {
+  async batchConfirmAll(code: string, defaultAmount = 250, currentMembers?: Record<string, LiveMember>): Promise<{ ok: boolean; totalPool?: number; members?: Record<string, LiveMember>; count?: number }> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(`${BASE}/api/meeting/${code}/batch-confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ defaultAmount }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const local = getLocalRoom(code);
+        if (local && data.members) {
+          local.members = data.members;
+          local.totalPool = data.totalPool;
+          saveLocalRoom(local);
+        }
+        return data;
+      }
+    } catch {}
+
+    // Autonomous client fallback
     const room = getLocalRoom(code);
-    if (!room) return { ok: false };
-    for (const mem of Object.values(room.members)) {
+    const membersToUse = (room && Object.keys(room.members).length > 0)
+      ? room.members
+      : (currentMembers ? { ...currentMembers } : {});
+
+    let count = 0;
+    for (const mem of Object.values(membersToUse)) {
       if (!mem.verified) {
-        mem.savings = mem.savings || defaultAmount;
+        mem.savings = mem.savings > 0 ? mem.savings : defaultAmount;
         mem.verified = true;
         mem.paperSlip = true;
         delete mem.pendingSavings;
+        count++;
       }
     }
-    room.totalPool = Object.values(room.members).reduce((s, m) => s + (m.verified ? m.savings : 0), 0);
-    saveLocalRoom(room);
-    broadcastLocalEvent(code, 'snapshot', room);
-    return { ok: true, totalPool: room.totalPool, members: room.members };
+
+    const totalPool = Object.values(membersToUse).reduce((s, m) => s + (m.verified ? m.savings : 0), 0);
+    if (room) {
+      room.members = membersToUse;
+      room.totalPool = totalPool;
+      saveLocalRoom(room);
+    }
+    broadcastLocalEvent(code, 'batch_confirmed', { totalPool, members: membersToUse, count, amount: defaultAmount });
+    broadcastLocalEvent(code, 'snapshot', room || { code, members: membersToUse, totalPool });
+    return { ok: true, totalPool, members: membersToUse, count };
   },
 
   /** Member or Leader: record member departure / left early */
@@ -406,6 +450,7 @@ export const liveMeetingApi = {
       es.addEventListener('savings_handshake_initiated', (e: MessageEvent) => handlers.onSavingsHandshakeInitiated?.(JSON.parse(e.data)));
       es.addEventListener('savings_verified', (e: MessageEvent) => handlers.onSavingsVerified?.(JSON.parse(e.data)));
       es.addEventListener('savings_cancelled', (e: MessageEvent) => handlers.onSavingsCancelled?.(JSON.parse(e.data)));
+      es.addEventListener('batch_confirmed', (e: MessageEvent) => handlers.onBatchConfirmed?.(JSON.parse(e.data)));
       es.addEventListener('meeting_completed', (e: MessageEvent) => handlers.onMeetingCompleted?.(JSON.parse(e.data)));
       es.addEventListener('room_closed', (e: MessageEvent) => handlers.onRoomClosed?.(JSON.parse(e.data)));
     } catch {}
@@ -418,6 +463,7 @@ export const liveMeetingApi = {
         else if (type === 'member_joined') handlers.onMemberJoined?.(payload);
         else if (type === 'member_left') handlers.onMemberLeft?.(payload);
         else if (type === 'member_status_changed') handlers.onMemberStatusChanged?.(payload);
+        else if (type === 'batch_confirmed') handlers.onBatchConfirmed?.(payload);
         else if (type === 'savings_updated') handlers.onSavingsUpdated?.(payload);
         else if (type === 'savings_handshake_initiated') handlers.onSavingsHandshakeInitiated?.(payload);
         else if (type === 'savings_verified') handlers.onSavingsVerified?.(payload);

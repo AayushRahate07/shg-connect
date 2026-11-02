@@ -311,6 +311,51 @@ meetingRouter.post('/:code/savings', (req: Request, res: Response) => {
   }
 });
 
+// POST /api/meeting/:code/batch-confirm
+meetingRouter.post('/:code/batch-confirm', (req: Request, res: Response) => {
+  const code = req.params.code;
+  const room = liveRooms.get(code);
+
+  if (!room) {
+    return res.status(404).json({ ok: false, error: 'Meeting not found' });
+  }
+
+  try {
+    const { defaultAmount = 250 } = req.body || {};
+    const amt = Number(defaultAmount) || 250;
+    let confirmedCount = 0;
+
+    for (const mem of Object.values(room.members)) {
+      if (!mem.verified) {
+        mem.savings = mem.savings > 0 ? mem.savings : amt;
+        mem.verified = true;
+        delete mem.pendingSavings;
+        confirmedCount++;
+      }
+    }
+
+    room.totalPool = Object.values(room.members).reduce((s, m) => s + (m.savings || 0), 0);
+
+    broadcastToRoom(room, 'batch_confirmed', {
+      totalPool: room.totalPool,
+      members: room.members,
+      amount: amt,
+      count: confirmedCount
+    });
+    broadcastToRoom(room, 'snapshot', roomSnapshot(room));
+
+    res.json({
+      ok: true,
+      totalPool: room.totalPool,
+      members: room.members,
+      count: confirmedCount,
+      amount: amt
+    });
+  } catch (err: any) {
+    res.status(400).json({ ok: false, error: err.message || 'Bad request' });
+  }
+});
+
 // POST /api/meeting/:code/leave (Graceful Member Departure - Rural village exception)
 meetingRouter.post('/:code/leave', (req: Request, res: Response) => {
   const code = req.params.code;
