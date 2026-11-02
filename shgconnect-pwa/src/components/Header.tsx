@@ -1,10 +1,10 @@
 import React from 'react';
 import { Role, SupportedLanguage, FederationScope } from '../types/shg';
 import { ShgLogo } from './common/ShgLogo';
-import { ArrowLeft, Globe, LogOut } from 'lucide-react';
+import { ArrowLeft, LogOut, Bell } from 'lucide-react';
 
 interface HeaderProps {
-  currentRole: Role;
+  currentRole?: Role;
   onRoleChange?: (role: Role) => void;
   language: SupportedLanguage;
   onLanguageChange: (lang: SupportedLanguage) => void;
@@ -22,10 +22,11 @@ interface HeaderProps {
   onGoBack?: () => void;
   parentTabLabel?: string;
   onLogout?: () => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  currentRole,
   language,
   onLanguageChange,
   shgName,
@@ -35,82 +36,32 @@ export const Header: React.FC<HeaderProps> = ({
   onGoBack,
   parentTabLabel,
   onLogout,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
 }) => {
   const isInnerScreen = activeTab !== 'home';
   const isMr = language === 'mr';
 
-  // Desktop Role Label
-  const getRoleLabel = () => {
-    switch (currentRole) {
-      case 'OFFICE_BEARER':
-      case 'SHG_LEAD' as any:
-        return isMr ? 'कमलताई • गट प्रमुख (SHG Lead)' : 'Kamal-tai • SHG Lead (Single SHG)';
-      case 'MEMBER':
-        return isMr ? 'मीनाबाई • सभासद' : 'Meena-bai • SHG Member';
-      case 'ANIMATOR':
-      case 'OFFICER' as any:
-        return isMr ? 'सुनिताबाई • प्रभाग अधिकारी (Officer)' : 'Sunita-bai • Officer (Multi-SHG)';
-      case 'AUDITOR':
-        return isMr ? 'शासकीय वरिष्ठ अधिकारी (Auditor)' : 'Govt Senior Official (Auditor)';
-      default:
-        return 'User';
-    }
-  };
-
-  // Compact Mobile Role Label (Fits cleanly on mobile without ugly truncation)
-  const getRoleShortLabel = () => {
-    switch (currentRole) {
-      case 'OFFICE_BEARER':
-      case 'SHG_LEAD' as any:
-        return isMr ? 'गट प्रमुख' : 'SHG Lead';
-      case 'MEMBER':
-        return isMr ? 'सभासद' : 'Member';
-      case 'ANIMATOR':
-      case 'OFFICER' as any:
-        return isMr ? 'अधिकारी' : 'Officer';
-      case 'AUDITOR':
-        return isMr ? 'लेखापरीक्षक' : 'Auditor';
-      default:
-        return 'User';
-    }
-  };
-
-  const getRoleBadgeStyle = () => {
-    switch (currentRole) {
-      case 'OFFICE_BEARER':
-      case 'SHG_LEAD' as any:
-        return 'bg-emerald-50 text-emerald-900 border-emerald-200';
-      case 'MEMBER':
-        return 'bg-emerald-100 text-emerald-900 border-emerald-300';
-      case 'ANIMATOR':
-        return 'bg-blue-100 text-blue-900 border-blue-300';
-      case 'AUDITOR':
-        return 'bg-purple-100 text-purple-900 border-purple-300';
-      default:
-        return 'bg-stone-100 text-stone-900 border-stone-300';
-    }
-  };
-
   return (
     <header className="bg-white sticky top-0 z-40 border-b border-stone-200 shadow-2xs print:hidden select-none">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-3">
 
         {/* ── Left: Back button or Brand Identity ── */}
-        <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
           {isInnerScreen && onGoBack ? (
             <button
               onClick={onGoBack}
-              className="flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-xl transition active:scale-95 border border-stone-200"
+              className="flex items-center gap-1.5 text-xs font-bold text-stone-700 bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-xl transition active:scale-95 border border-stone-200 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate max-w-[120px] sm:max-w-xs">
+              <span className="truncate max-w-[140px] sm:max-w-xs">
                 {parentTabLabel || (isMr ? 'मागे' : 'Back')}
               </span>
             </button>
           ) : (
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="flex-shrink-0">
-                <ShgLogo size={28} />
+                <ShgLogo size={30} />
               </div>
               <div className="min-w-0">
                 <h1 className="font-black text-xs sm:text-sm text-stone-900 tracking-tight truncate leading-tight">
@@ -124,25 +75,47 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* ── Right: Role Badge + Language Toggle + Logout ── */}
+        {/* ── Right: Notification Bell + Language Switch (अ/A) + Logout ── */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          
+          {/* High-Visibility Notification Bell Button */}
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className={`relative inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border transition active:scale-95 cursor-pointer font-bold text-xs shadow-2xs ${
+                unreadNotificationsCount > 0
+                  ? 'bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-400 ring-2 ring-amber-300/50'
+                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border-stone-200'
+              }`}
+              title={isMr ? 'सूचना व प्रलंबित विनंत्या (Notifications & Requests)' : 'Notifications & Requests'}
+              aria-label="Notifications"
+            >
+              <Bell className={`w-4 h-4 shrink-0 ${unreadNotificationsCount > 0 ? 'text-amber-800' : 'text-stone-600'}`} />
+              <span className="hidden xs:inline sm:inline font-bold">
+                {isMr ? 'सूचना' : 'Notice'}
+              </span>
+              {unreadNotificationsCount !== undefined && unreadNotificationsCount > 0 ? (
+                <span className="min-w-[18px] h-[18px] px-1 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center shadow-xs border-2 border-white animate-pulse">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              ) : (
+                <span className="text-[10px] text-stone-400 font-semibold hidden sm:inline">0</span>
+              )}
+            </button>
+          )}
 
-          {/* Static Role Tag (Full on desktop, compact on mobile) */}
-          <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2 sm:px-2.5 py-1 rounded-full border whitespace-nowrap ${getRoleBadgeStyle()}`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-current inline-block flex-shrink-0" />
-            <span className="hidden sm:inline">{getRoleLabel()}</span>
-            <span className="inline sm:hidden">{getRoleShortLabel()}</span>
-          </span>
-
-          {/* Language Toggle Pill */}
+          {/* Language Toggle Pill (अ/A) */}
           <button
             type="button"
             onClick={() => onLanguageChange(language === 'mr' ? 'en' : 'mr')}
-            className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg border border-stone-300 transition"
-            title="Switch Language"
+            className="inline-flex items-center justify-center font-bold text-xs px-2.5 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition active:scale-95 cursor-pointer"
+            title={isMr ? 'Switch to English' : 'मराठी निवडा'}
+            aria-label={isMr ? 'Switch to English' : 'मराठी निवडा'}
           >
-            <Globe className="w-3 h-3 text-stone-500" />
-            <span>{language === 'mr' ? 'EN' : 'मराठी'}</span>
+            <span className={language === 'mr' ? 'text-emerald-800 font-black' : 'text-stone-400 font-semibold'}>अ</span>
+            <span className="text-stone-300 mx-1">/</span>
+            <span className={language === 'en' ? 'text-emerald-800 font-black' : 'text-stone-400 font-semibold'}>A</span>
           </button>
 
           {/* Logout Button */}
@@ -150,14 +123,13 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={onLogout}
-              className="inline-flex items-center gap-1 text-[11px] font-bold p-1.5 sm:px-2.5 sm:py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition active:scale-95"
+              className="inline-flex items-center justify-center p-2 rounded-xl bg-stone-100 hover:bg-rose-50 text-stone-600 hover:text-rose-600 border border-stone-200 hover:border-rose-200 transition active:scale-95 cursor-pointer"
               title={isMr ? 'बाहेर पडा (Log Out)' : 'Log Out'}
+              aria-label="Log Out"
             >
-              <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline">{isMr ? 'बाहेर पडा' : 'Log Out'}</span>
+              <LogOut className="w-4 h-4" />
             </button>
           )}
-
         </div>
 
       </div>

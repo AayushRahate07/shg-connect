@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution, PaymentMode, SettlementStatus, OfficerSignature } from './types/shg';
-import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, saveResolutions, saveGroupInfo, saveScheduledMeeting, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO } from './services/db';
+import { Member, Transaction, Loan, Meeting, Role, SupportedLanguage, Resolution, PaymentMode, SettlementStatus, OfficerSignature, MembershipRequest } from './types/shg';
+import { seedInitialDataIfNeeded, GroupInfo, saveMembers, saveTransactions, saveLoans, saveMeetings, saveResolutions, saveGroupInfo, saveScheduledMeeting, resetToDemoData, queueMutation, setCurrentShgId, INITIAL_GROUP_INFO, getMembershipRequests, updateMembershipRequestStatus, updateShgLeadership } from './services/db';
 import { INITIAL_RESOLUTIONS } from './components/ResolutionRegister';
 import { computeBlockHash, generateCheckpointFingerprint } from './services/hashChain';
 import { tts } from './services/tts';
@@ -16,12 +16,35 @@ import { SyncCenterModal } from './components/sync/SyncCenterModal';
 import { AddMemberModal } from './components/member/AddMemberModal';
 import { ScheduleMeetingModal } from './components/meeting/ScheduleMeetingModal';
 import { LoginView } from './components/auth/LoginView';
+import { NewUserRegistrationView } from './components/auth/NewUserRegistrationView';
+import { NotificationsModal } from './components/common/NotificationsModal';
 
 export default function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentRole, setCurrentRole] = useState<Role>('MEMBER');
   // Privacy & Banking Security: Session is memory-only. Refreshing or reopening lands securely on Login screen.
   const [session, setSession] = useState<{ memberId: string; phone: string; role: Role; memberName?: string; shgId?: string } | null>(null);
+  const [authPage, setAuthPage] = useState<'LOGIN' | 'NEW_USER'>('LOGIN');
+  const [showNotificationsModal, setShowNotificationsModal] = useState<boolean>(false);
+  const [membershipRequests, setMembershipRequests] = useState<MembershipRequest[]>([]);
+
+  // Core SHG Data State (declared early to prevent TDZ ReferenceError)
+  const [group, setGroup] = useState<GroupInfo | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loans, setLoans] = useState<Loan[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [resolutions, setResolutions] = useState<Resolution[]>(INITIAL_RESOLUTIONS);
+
+  const [activeTab, setActiveTab] = useState<string>('home');
+  const [navStack, setNavStack] = useState<string[]>(['home']);
+  const [language, setLanguage] = useState<SupportedLanguage>('mr');
+  const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
+  const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
+  const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
+  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
+  const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState<boolean>(false);
 
   const handleLoginSuccess = async (newSession: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => {
     if (newSession.shgId) {
@@ -39,9 +62,89 @@ export default function App() {
     setSession(null);
     setCurrentRole('MEMBER');
     setActiveTab('home');
+    setAuthPage('LOGIN');
     try {
       localStorage.removeItem('shg_auth_session_v1');
     } catch (e) {}
+  };
+
+  const refreshMembershipRequests = () => {
+    setMembershipRequests(getMembershipRequests());
+  };
+
+  useEffect(() => {
+    refreshMembershipRequests();
+    const handleUpdate = () => refreshMembershipRequests();
+    window.addEventListener('shg_requests_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    return () => {
+      window.removeEventListener('shg_requests_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+    };
+  }, [session, currentRole]);
+
+  // Compute unread pending requests for the active role & group
+  const unreadNotificationsCount = membershipRequests.filter(r => {
+    if (r.status !== 'PENDING') return false;
+    if (currentRole === 'OFFICER' || currentRole === 'ANIMATOR') {
+      return true; // Officer oversees all pending requests across all SHGs
+    }
+    if (currentRole === 'OFFICE_BEARER' || currentRole === 'SHG_LEAD') {
+      return !r.shgId || r.shgId === group?.shgCode || !group?.shgCode || r.shgId === 'SHG-MH-SAT-2024-0089';
+    }
+    if (currentRole === 'MEMBER') {
+      return !r.shgId || r.shgId === group?.shgCode;
+    }
+    return false;
+  }).length;
+
+  const handleApproveMembershipRequest = async (req: MembershipRequest) => {
+    updateMembershipRequestStatus(req.id, 'APPROVED');
+    const avatarColors = ['bg-amber-500', 'bg-emerald-600', 'bg-blue-600', 'bg-purple-600', 'bg-rose-600'];
+    const newMember: Member = {
+      id: 'mem-' + Date.now(),
+      shgId: req.shgId || group?.shgCode || 'SHG-MH-SAT-2024-0089',
+      name: req.name,
+      nameRegional: req.nameRegional || req.name,
+      phone: req.phone,
+      role: 'MEMBER',
+      totalSavings: 0,
+      activeLoanBalance: 0,
+      trustScore: 90,
+      occupation: req.occupation || 'सभासद',
+      joinedDate: new Date().toISOString().split('T')[0],
+      avatarColor: avatarColors[members.length % avatarColors.length],
+      entityVersion: 1
+    };
+
+    const updatedMembers = [...members, newMember];
+    setMembers(updatedMembers);
+    await saveMembers(updatedMembers);
+    refreshMembershipRequests();
+    sound.playCashDepositChime();
+    tts.speak(
+      language === 'mr'
+        ? `${req.name} यांना बचत गटात समाविष्ट करण्यात आले आहे.`
+        : `${req.name} has been approved into the SHG.`
+    );
+  };
+
+  const handleRejectMembershipRequest = (reqId: string) => {
+    updateMembershipRequestStatus(reqId, 'REJECTED');
+    refreshMembershipRequests();
+  };
+
+  const handleSaveLeadership = async (
+    shgCode: string,
+    assignments: {
+      presidentMemberId: string;
+      treasurerMemberId: string;
+      secretaryMemberId?: string;
+    }
+  ) => {
+    const updatedAllMembers = await updateShgLeadership(shgCode, assignments);
+    setMembers(updatedAllMembers);
+    await reloadAllData();
   };
 
   const handleRoleChange = (role: Role) => {
@@ -51,23 +154,7 @@ export default function App() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<string>('home');
-  const [navStack, setNavStack] = useState<string[]>(['home']);
-  const [language, setLanguage] = useState<SupportedLanguage>('mr');
-  const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
-  const [showBackupModal, setShowBackupModal] = useState<boolean>(false);
-  const [showConflictModal, setShowConflictModal] = useState<boolean>(false);
-  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
-  const [showAddMemberModal, setShowAddMemberModal] = useState<boolean>(false);
-  const [showScheduleMeetingModal, setShowScheduleMeetingModal] = useState<boolean>(false);
 
-  // App state
-  const [group, setGroup] = useState<GroupInfo | null>(null);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [resolutions, setResolutions] = useState<Resolution[]>(INITIAL_RESOLUTIONS);
 
   const reloadAllData = async () => {
     setLoading(true);
@@ -637,13 +724,25 @@ export default function App() {
     );
   }
 
-    if (!session) {
+  if (!session) {
+    if (authPage === 'NEW_USER') {
+      return (
+        <NewUserRegistrationView
+          language={language}
+          onLanguageChange={handleLanguageChange}
+          onBackToLogin={() => setAuthPage('LOGIN')}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      );
+    }
+
     return (
       <LoginView
         members={members}
         language={language}
         onLanguageChange={handleLanguageChange}
         onLoginSuccess={handleLoginSuccess}
+        onNavigateRegister={() => setAuthPage('NEW_USER')}
       />
     );
   }
@@ -669,6 +768,11 @@ export default function App() {
       onGoBack={handleGoBack}
       parentTabLabel={parentTabLabel}
       onLogout={handleLogout}
+      unreadNotificationsCount={unreadNotificationsCount}
+      onOpenNotifications={() => {
+        refreshMembershipRequests();
+        setShowNotificationsModal(true);
+      }}
     >
       {currentRole === 'MEMBER' ? (
         <MemberDashboard
@@ -715,6 +819,8 @@ export default function App() {
           onOpenScheduleMeeting={() => setShowScheduleMeetingModal(true)}
           onMemberAdded={(newMem) => setMembers(prev => [...prev, newMem])}
           onRecordTransaction={handleRecordTransaction}
+          unreadNotificationsCount={unreadNotificationsCount}
+          onOpenNotifications={() => { refreshMembershipRequests(); setShowNotificationsModal(true); }}
         />
       ) : (currentRole === 'ANIMATOR' || currentRole === 'OFFICER') ? (
         <AnimatorDashboard
@@ -732,6 +838,9 @@ export default function App() {
           onOpenAddMember={() => setShowAddMemberModal(true)}
           onSwitchShg={handleSwitchShgGroup}
           onCompleteMeetingSession={handleCompleteMeetingSession}
+          onSaveLeadership={handleSaveLeadership}
+          unreadNotificationsCount={unreadNotificationsCount}
+          onOpenNotifications={() => { refreshMembershipRequests(); setShowNotificationsModal(true); }}
         />
       ) : (
         <AuditorDashboard
@@ -790,6 +899,17 @@ export default function App() {
         isOpen={showSyncModal}
         onClose={() => setShowSyncModal(false)}
         onOpenConflictModal={() => setShowConflictModal(true)}
+      />
+
+      {/* Notifications Desk Modal */}
+      <NotificationsModal
+        isOpen={showNotificationsModal}
+        onClose={() => setShowNotificationsModal(false)}
+        language={language}
+        currentRole={currentRole}
+        currentGroupCode={group?.shgCode || 'SHG-MH-SAT-2024-0089'}
+        onApprove={handleApproveMembershipRequest}
+        onReject={handleRejectMembershipRequest}
       />
     </AppShell>
   );

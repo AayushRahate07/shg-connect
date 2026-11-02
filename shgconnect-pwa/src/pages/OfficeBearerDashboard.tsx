@@ -22,7 +22,7 @@ import { verifyLedgerIntegrity } from '../services/hashChain';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { Users, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck } from 'lucide-react';
+import { Bell, Users, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck } from 'lucide-react';
 import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
 import { LiveMeetingRoom } from '../services/liveMeeting';
 
@@ -56,6 +56,8 @@ interface OfficeBearerDashboardProps {
   onOpenAddMember?: () => void;
   onOpenScheduleMeeting?: () => void;
   onMemberAdded?: (newMember: Member) => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
   onRecordTransaction?: (
     memberId: string,
     amount: number,
@@ -91,6 +93,8 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
   onOpenAddMember,
   onOpenScheduleMeeting,
   onMemberAdded,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
   onRecordTransaction
 }) => {
   const t = translations[language] || translations.en;
@@ -297,6 +301,38 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+            {/* ── Pending Membership Requests Alert Banner ── */}
+      {unreadNotificationsCount > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs animate-fadeIn mb-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <h3 className="font-black text-sm text-amber-950">
+                {language === 'mr'
+                  ? `${unreadNotificationsCount} नवीन सभासद नोंदणी विनंती प्रलंबित आहे!`
+                  : `${unreadNotificationsCount} New Membership Applications Pending!`}
+              </h3>
+              <p className="text-xs text-amber-800 font-medium">
+                {language === 'mr'
+                  ? 'नवीन सदस्यांची माहिती तपासा आणि बचत गटात समाविष्ट करण्यासाठी त्वरित मंजुरी द्या.'
+                  : 'Review applicant credentials and approve entry into this SHG.'}
+              </p>
+            </div>
+          </div>
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-black text-xs rounded-xl shadow-xs transition active:scale-95 shrink-0 cursor-pointer"
+            >
+              {language === 'mr' ? 'तपासा व मंजूर करा' : 'Review & Approve'}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Group Hero Banner ── */}
       <div
         className="rounded-2xl p-4 sm:p-5 relative overflow-hidden text-white shadow-sm"
@@ -320,34 +356,34 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           </p>
         </div>
 
-        {/* ── 3 Action Buttons in a Clean Equal Grid (NO ORANGE!) ── */}
+        {/* ── 3 Action Buttons in a Clean Equal Grid ── */}
         <div className="grid grid-cols-3 gap-2 mt-3.5 pt-3 border-t border-white/15 relative z-10">
           <button
             type="button"
             onClick={() => setShowWizard(true)}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white text-emerald-950 font-black text-[11px] sm:text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-            <span className="truncate">{language === 'mr' ? 'बैठक घ्या' : 'Start Meeting'}</span>
+            <span className="whitespace-nowrap">{language === 'mr' ? 'ऑफलाईन' : 'Offline Meet'}<span className="hidden sm:inline">{language === 'mr' ? ' बैठक' : ''}</span></span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowLiveMeeting(true)}
-            className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
+            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-[11px] sm:text-xs active:scale-[0.98] transition cursor-pointer"
           >
             <Radio className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="truncate">{language === 'mr' ? 'थेट बैठक' : 'Live Meeting'}</span>
+            <span className="whitespace-nowrap">{language === 'mr' ? 'लाईव्ह' : 'Live Meet'}<span className="hidden sm:inline">{language === 'mr' ? ' बैठक' : ''}</span></span>
           </button>
 
           {onOpenScheduleMeeting && (
             <button
               type="button"
               onClick={onOpenScheduleMeeting}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-1.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
+              className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-xl bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-[11px] sm:text-xs active:scale-[0.98] transition cursor-pointer"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span className="truncate">{language === 'mr' ? 'नियोजन' : 'Schedule'}</span>
+              <span className="whitespace-nowrap">{language === 'mr' ? 'नियोजन' : 'Schedule'}</span>
             </button>
           )}
         </div>
@@ -417,9 +453,9 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                 </div>
               </div>
 
-              {/* ── Quick Nav Grid (4 compact tiles) ── */}
-              <div className="bg-white rounded-2xl p-3.5 border border-stone-200/90 shadow-2xs">
-                <div className="flex items-center justify-between mb-2.5">
+              {/* ── Group Management (Spacious 2x2 on mobile, 4 on desktop) ── */}
+              <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-stone-200/90 shadow-2xs">
+                <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                     {language === 'mr' ? 'गट व्यवस्थापन' : 'Group Management'}
                   </span>
@@ -427,19 +463,51 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                     <button
                       type="button"
                       onClick={onOpenAddMember}
-                      className="text-[10.5px] font-bold text-emerald-800 hover:underline flex items-center gap-1"
+                      className="text-xs font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-200/60 transition active:scale-95 cursor-pointer"
                     >
-                      <UserPlus className="w-3 h-3 text-emerald-700" />
+                      <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
                       <span>{language === 'mr' ? '+ नवीन सदस्य' : '+ Add Member'}</span>
                     </button>
                   )}
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[
-                    { id: 'members', labelEn: `Members (${members.length})`, labelMr: `सदस्य (${members.length})`, icon: Users },
-                    { id: 'loans', labelEn: 'Loans', labelMr: 'कर्जे', icon: Landmark },
-                    { id: 'panchasutra', labelEn: 'Panchasutra', labelMr: 'पंचसूत्र', icon: Award },
-                    { id: 'resolutions', labelEn: 'Register', labelMr: 'नोंदवही', icon: FileText },
+                    {
+                      id: 'members',
+                      titleEn: 'Members',
+                      titleMr: 'सदस्य',
+                      subEn: `${members.length} Active`,
+                      subMr: `${members.length} सभासद`,
+                      icon: Users,
+                      badgeBg: 'bg-emerald-100 text-emerald-800'
+                    },
+                    {
+                      id: 'loans',
+                      titleEn: 'Loans',
+                      titleMr: 'कर्जे',
+                      subEn: `${loans.length} Accounts`,
+                      subMr: `${loans.length} खाती`,
+                      icon: Landmark,
+                      badgeBg: 'bg-blue-100 text-blue-800'
+                    },
+                    {
+                      id: 'panchasutra',
+                      titleEn: 'Panchasutra',
+                      titleMr: 'पंचसूत्र',
+                      subEn: `${mockPanchasutraScore.totalScore}/100`,
+                      subMr: `${mockPanchasutraScore.totalScore}/100`,
+                      icon: Award,
+                      badgeBg: 'bg-amber-100 text-amber-800'
+                    },
+                    {
+                      id: 'resolutions',
+                      titleEn: 'Register',
+                      titleMr: 'नोंदवही',
+                      subEn: `${meetings.length} Recorded`,
+                      subMr: `${meetings.length} बैठका`,
+                      icon: FileText,
+                      badgeBg: 'bg-purple-100 text-purple-800'
+                    },
                   ].map(item => {
                     const Icon = item.icon;
                     return (
@@ -447,12 +515,19 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                         key={item.id}
                         type="button"
                         onClick={() => handleNavigate(item.id)}
-                        className="flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-xl bg-stone-50 hover:bg-emerald-50 active:scale-[0.97] border border-stone-200/80 transition text-center"
+                        className="flex items-center gap-2.5 p-3 rounded-xl bg-stone-50 hover:bg-emerald-50/60 active:scale-[0.98] border border-stone-200/80 transition text-left cursor-pointer group"
                       >
-                        <Icon className="w-4 h-4 text-[#14532D]" />
-                        <span className="text-[10.5px] font-bold text-stone-700 truncate w-full">
-                          {language === 'mr' ? item.labelMr : item.labelEn}
-                        </span>
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.badgeBg}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-stone-800 leading-tight">
+                            {language === 'mr' ? item.titleMr : item.titleEn}
+                          </div>
+                          <div className="text-[10px] font-semibold text-stone-500 leading-tight mt-0.5">
+                            {language === 'mr' ? item.subMr : item.subEn}
+                          </div>
+                        </div>
                       </button>
                     );
                   })}

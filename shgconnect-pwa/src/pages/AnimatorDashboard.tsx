@@ -4,7 +4,7 @@ import { SupportedLanguage, Member, Resolution, OfficerSignature } from '../type
 import { SettingsView } from '../components/settings/SettingsView';
 import { AnimatorMultiSHGView } from './AnimatorMultiSHGView';
 import { MeetingWizard } from '../components/MeetingWizard';
-import { Calendar, Users, Building2, Sparkles, ChevronRight, Activity, ArrowLeft } from 'lucide-react';
+import { Bell, Calendar, Users, Building2, Sparkles, ChevronRight, Activity, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 interface AnimatorDashboardProps {
@@ -29,6 +29,16 @@ interface AnimatorDashboardProps {
     signatories?: OfficerSignature[],
     signatureProof?: string
   ) => Promise<void> | void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
+  onSaveLeadership?: (
+    shgCode: string,
+    assignments: {
+      presidentMemberId: string;
+      treasurerMemberId: string;
+      secretaryMemberId?: string;
+    }
+  ) => Promise<void> | void;
 }
 
 export const AnimatorDashboard: React.FC<AnimatorDashboardProps> = ({
@@ -45,7 +55,10 @@ export const AnimatorDashboard: React.FC<AnimatorDashboardProps> = ({
   onResetData = () => {},
   onOpenAddMember,
   onSwitchShg,
-  onCompleteMeetingSession
+  onCompleteMeetingSession,
+  unreadNotificationsCount = 0,
+  onOpenNotifications,
+  onSaveLeadership
 }) => {
   const isMr = language === 'mr';
 

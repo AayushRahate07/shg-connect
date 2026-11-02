@@ -4,7 +4,8 @@ import { SupportedLanguage, Member, Loan } from '../types/shg';
 import { formatINR } from '../theme/tokens';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { Building2, Users, AlertTriangle, ShieldCheck, Search, ChevronRight, Activity, ArrowUpRight, CheckCircle2, X, Sparkles } from 'lucide-react';
+import { Building2, Users, AlertTriangle, ShieldCheck, Search, ChevronRight, Activity, ArrowUpRight, CheckCircle2, X, Sparkles, ArrowRightLeft } from 'lucide-react';
+import { SwitchLeadershipModal } from '../components/office/SwitchLeadershipModal';
 
 interface PortfolioSHG {
   id: string;
@@ -29,6 +30,14 @@ interface AnimatorMultiSHGViewProps {
   onSelectSHG?: (shgId: string) => void;
   onOpenAddMember?: () => void;
   onStartMeetingForSHG?: (shgId: string) => void;
+  onSaveLeadership?: (
+    shgCode: string,
+    assignments: {
+      presidentMemberId: string;
+      treasurerMemberId: string;
+      secretaryMemberId?: string;
+    }
+  ) => Promise<void> | void;
 }
 
 export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
@@ -36,11 +45,13 @@ export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
   language,
   onSelectSHG,
   onOpenAddMember,
-  onStartMeetingForSHG
+  onStartMeetingForSHG,
+  onSaveLeadership
 }) => {
   const isMr = language === 'mr';
 
   const [selectedShgModal, setSelectedShgModal] = useState<PortfolioSHG | null>(null);
+  const [switchLeadershipGroup, setSwitchLeadershipGroup] = useState<GroupInfo | null>(null);
   const [cachedGroups, setCachedGroups] = useState<GroupInfo[]>([]);
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const [allLoans, setAllLoans] = useState<Loan[]>([]);
@@ -231,7 +242,7 @@ export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
                         e.stopPropagation();
                         onStartMeetingForSHG(shg.code);
                       }}
-                      className="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-900 font-black py-1.5 px-2 rounded-xl text-[11px] shadow-xs flex items-center justify-center gap-1 transition"
+                      className="flex-1 bg-amber-400 hover:bg-amber-300 text-stone-900 font-black py-1.5 px-2 rounded-xl text-[11px] shadow-xs flex items-center justify-center gap-1 transition cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3 text-stone-900" />
                       <span>{isMr ? 'बैठक चालवा' : 'Run Meeting'}</span>
@@ -241,9 +252,22 @@ export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      const targetGroup = cachedGroups.find(c => c.shgCode === shg.code) || currentGroup;
+                      setSwitchLeadershipGroup(targetGroup);
+                    }}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 font-bold py-1.5 px-2 rounded-xl text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
+                    title={isMr ? 'पदाधिकारी व खजिनदार बदला' : 'Switch Leadership / Treasurer'}
+                  >
+                    <ArrowRightLeft className="w-3 h-3 text-blue-700" />
+                    <span>{isMr ? 'पदाधिकारी' : 'Officers'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (onSelectSHG) onSelectSHG(shg.code);
                     }}
-                    className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-1.5 px-2 rounded-xl text-[11px] flex items-center justify-center gap-1 transition"
+                    className="bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold py-1.5 px-2 rounded-xl text-[11px] flex items-center justify-center gap-1 transition cursor-pointer"
                   >
                     <span>{isMr ? 'डॅशबोर्ड' : 'Manage'}</span>
                     <ChevronRight className="w-3 h-3" />
@@ -254,6 +278,24 @@ export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
           })}
         </div>
       </div>
+
+      {/* Switch Leadership Modal (Tier 3 Authority) */}
+      {switchLeadershipGroup && (
+        <SwitchLeadershipModal
+          isOpen={!!switchLeadershipGroup}
+          onClose={() => setSwitchLeadershipGroup(null)}
+          language={language}
+          group={switchLeadershipGroup}
+          members={allMembers}
+          onSaveLeadership={async (shgCode, assignments) => {
+            if (onSaveLeadership) {
+              await onSaveLeadership(shgCode, assignments);
+            }
+            const updated = await getMembers();
+            setAllMembers(updated);
+          }}
+        />
+      )}
 
       {/* SHG Inspection Modal */}
       {selectedShgModal && (
@@ -311,6 +353,18 @@ export const AnimatorMultiSHGView: React.FC<AnimatorMultiSHGViewProps> = ({
 
             {/* Actions */}
             <div className="pt-2 flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetGroup = cachedGroups.find(c => c.shgCode === selectedShgModal.code) || currentGroup;
+                  setSelectedShgModal(null);
+                  setSwitchLeadershipGroup(targetGroup);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 rounded-2xl text-xs shadow transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ArrowRightLeft className="w-4 h-4 text-amber-300" />
+                <span>{isMr ? 'पदाधिकारी व खजिनदार बदला' : 'Switch Leads / Treasurer'}</span>
+              </button>
               {onStartMeetingForSHG && (
                 <button
                   onClick={() => {

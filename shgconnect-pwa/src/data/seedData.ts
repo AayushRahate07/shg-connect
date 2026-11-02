@@ -4424,6 +4424,26 @@ export function findUserByCredentials(phone: string, pin: string): Authenticated
     };
   }
 
+  // If Lead Tier 2 (1001) - Meenatai leads the primary Satara SHG
+  if (matchedUser.role === 'OFFICE_BEARER' || cleanPin === '1001') {
+    return {
+      user: { ...matchedUser, shgId: SEED_GROUPS[1].shgCode },
+      group: SEED_GROUPS[1],
+      role: 'OFFICE_BEARER',
+      shgId: SEED_GROUPS[1].shgCode
+    };
+  }
+
+  // If Member Tier 1 (1002) - Anita Patil belongs to primary Satara SHG
+  if (cleanPin === '1002') {
+    return {
+      user: { ...matchedUser, shgId: SEED_GROUPS[1].shgCode },
+      group: SEED_GROUPS[1],
+      role: 'MEMBER',
+      shgId: SEED_GROUPS[1].shgCode
+    };
+  }
+
   // Find their group
   const group = SEED_GROUPS.find(g => g.shgCode === matchedUser.shgId) || SEED_GROUPS[0];
   return {

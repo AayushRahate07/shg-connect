@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100..900&family=Mukta:wght@400;500;600;700;800&display=swap');
+
+@import url('https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,100..900;1,100..900&family=Carme&family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Unicase:wght@300;400;500;600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Figtree:ital,wght@0,300..900;1,300..900&family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Fontdiner+Swanky&family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=Geologica:wght,CRSV@100..900,0&family=Goudy+Bookletter+1911&family=Josefin+Sans:ital,wght@0,100..700;1,100..700&family=Lexend+Deca:wght@100..900&family=MedievalSharp&family=Metamorphous&family=Modern+Antiqua&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oldenburg&family=Playwrite+PL:wght@100..400&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Prata&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -22,7 +23,7 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Geologica', 'Mukta', system-ui, -apple-system, sans-serif;
+    font-family: 'Lexend','Geologica', 'Mukta', system-ui, -apple-system, sans-serif;
     line-height: 1.55;
     background-color: #F4F6FA;
     color: #111827;
@@ -48,7 +49,7 @@
   :root[lang="en"] body,
   [lang="en"],
   .font-english {
-    font-family: 'Geologica', system-ui, sans-serif;
+    font-family: 'Lexend','Geologica', system-ui, sans-serif;
   }
 
   input, select, textarea {
@@ -63,7 +64,7 @@
 
   * {
     box-sizing: border-box;
-    font-family: 'Geologica', 'Mukta', system-ui, sans-serif;
+    font-family: 'Lexend','Geologica', 'Mukta', system-ui, sans-serif;
   }
 
   :focus-visible {

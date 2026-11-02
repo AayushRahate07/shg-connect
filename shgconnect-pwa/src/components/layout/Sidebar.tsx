@@ -18,7 +18,8 @@ import {
   ChevronRight,
   LogOut,
   UserCheck,
-  Activity
+  Activity,
+  Bell
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,8 @@ interface SidebarProps {
   language: SupportedLanguage;
   onRoleChange?: (role: Role) => void;
   onLogout?: () => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -35,7 +38,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   language,
-  onLogout
+  onLogout,
+  unreadNotificationsCount = 0,
+  onOpenNotifications
 }) => {
   const t = translations[language] || translations.en;
   const isMr = language === 'mr';
@@ -49,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'passbook', label: isMr ? 'माझे पासबुक' : 'My Passbook', icon: BookOpen, color: '#6D28D9' },
         { id: 'meetings', label: isMr ? 'माझ्या बैठका' : 'My Meetings', icon: Calendar, color: '#D97706' },
         { id: 'calculator', label: isMr ? 'बचत ध्येय' : 'Savings Goal', icon: Target, color: '#14532D' },
+        { id: 'notifications', label: isMr ? 'सूचना' : 'Notifications', icon: Bell, color: '#D97706', badge: unreadNotificationsCount },
       ];
     }
 
@@ -59,6 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'loans', label: isMr ? 'कर्ज व्यवस्थापन' : 'Loans Register', icon: Landmark, color: '#1D5FA8' },
         { id: 'meetings', label: isMr ? 'मासिक बैठक' : 'Meetings', icon: Calendar, color: '#D97706' },
         { id: 'passbook', label: isMr ? 'डिजिटल पासबुक' : 'Passbook', icon: BookOpen, color: '#6D28D9' },
+        { id: 'notifications', label: isMr ? 'सूचना व विनंत्या' : 'Notifications', icon: Bell, color: '#D97706', badge: unreadNotificationsCount },
       ];
     }
 
@@ -67,6 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'home', label: isMr ? 'सर्व ७ गट (Multi-SHG)' : 'Multi-SHG Portfolio', icon: Activity, color: '#1D5FA8' },
         { id: 'meetings', label: isMr ? 'बैठक संचालन' : 'Orchestrate Meeting', icon: Calendar, color: '#1D5FA8' },
         { id: 'members', label: isMr ? 'सर्व ७० सभासद' : 'All 70 Beneficiaries', icon: Users, color: '#1D5FA8' },
+        { id: 'notifications', label: isMr ? 'सूचना व विनंत्या' : 'Notifications', icon: Bell, color: '#D97706', badge: unreadNotificationsCount },
         { id: 'sync', label: isMr ? 'डेटा सिंक केंद्र' : 'Sync Center', icon: RefreshCw, color: '#1D5FA8' },
         { id: 'settings', label: isMr ? 'सेटिंग्ज' : 'Settings', icon: Settings, color: '#1D5FA8' },
       ];
@@ -156,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => onSelectTab(item.id)}
+              onClick={() => { if (item.id === 'notifications' && onOpenNotifications) { onOpenNotifications(); } else { onSelectTab(item.id); } }}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left ${
                 isActive
                   ? 'bg-emerald-50 text-[#14532D] font-black border border-emerald-200'
@@ -167,9 +175,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <Icon className={`w-4 h-4 ${isActive ? 'text-[#14532D]' : 'text-stone-400'}`} />
                 <span>{item.label}</span>
               </div>
-              {isActive && (
-                <ChevronRight className="w-3.5 h-3.5 text-[#14532D]" />
-              )}
+              <div className="flex items-center gap-1.5">
+                {(item as any).badge !== undefined && (item as any).badge > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-pulse shadow-xs">
+                    {(item as any).badge}
+                  </span>
+                )}
+                {isActive && (
+                  <ChevronRight className="w-3.5 h-3.5 text-[#14532D]" />
+                )}
+              </div>
             </button>
           );
         })}

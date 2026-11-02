@@ -316,6 +316,8 @@ export interface MembershipRequest {
   id: string;
   shgId: string;
   shgName?: string;
+  district?: string;
+  village?: string;
   name: string;
   nameRegional?: string;
   phone: string;

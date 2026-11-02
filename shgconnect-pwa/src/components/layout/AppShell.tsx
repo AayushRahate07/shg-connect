@@ -27,6 +27,8 @@ interface AppShellProps {
   parentTabLabel?: string;
   demoMode?: boolean;
   onLogout?: () => void;
+  unreadNotificationsCount?: number;
+  onOpenNotifications?: () => void;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({
@@ -49,7 +51,9 @@ export const AppShell: React.FC<AppShellProps> = ({
   onGoBack,
   parentTabLabel,
   demoMode = true,
-  onLogout
+  onLogout,
+  unreadNotificationsCount,
+  onOpenNotifications
 }) => {
   return (
     <div className="min-h-screen w-full flex font-sans relative" style={{ background: '#F4F6FA', color: '#111827' }}>
@@ -61,6 +65,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         language={language}
         onRoleChange={onRoleChange}
         onLogout={onLogout}
+        unreadNotificationsCount={unreadNotificationsCount}
+        onOpenNotifications={onOpenNotifications}
       />
 
       {/* Main Container */}
@@ -86,6 +92,8 @@ export const AppShell: React.FC<AppShellProps> = ({
           onGoBack={onGoBack}
           parentTabLabel={parentTabLabel}
           onLogout={onLogout}
+          unreadNotificationsCount={unreadNotificationsCount}
+          onOpenNotifications={onOpenNotifications}
         />
 
         {/* Page Content */}

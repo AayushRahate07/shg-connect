@@ -888,6 +888,105 @@ export async function saveGroupInfo(group: GroupInfo): Promise<void> {
   });
 }
 
+/**
+ * Persists a newly created SHG and registers its founding lead member.
+ */
+export async function saveNewShgGroup(group: GroupInfo, leadMember: Member): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['group_info', 'members', 'officers'], 'readwrite');
+    tx.objectStore('group_info').put(group);
+    tx.objectStore('members').put(leadMember);
+    
+    // Register officer record for President
+    const officerRecord: Officer = {
+      id: `off-pres-${group.shgCode}`,
+      shgId: group.shgCode,
+      role: 'PRESIDENT',
+      displayName: leadMember.name,
+      pinHash: '0e7517141fb53f21ee439b355b5a1d0a520954f91e4b096d24669aa5ab7a856f',
+      status: 'ACTIVE'
+    };
+    tx.objectStore('officers').put(officerRecord);
+
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * Tier 3 Officer Action: Reassign leadership roles (President/Lead, Treasurer, Secretary) among members of an SHG
+ */
+export async function updateShgLeadership(
+  shgCode: string,
+  assignments: {
+    presidentMemberId: string;
+    treasurerMemberId: string;
+    secretaryMemberId?: string;
+  }
+): Promise<Member[]> {
+  const db = await openDatabase();
+  const allMembers = await getAllFromStore<Member>('members');
+  const groupMembers = allMembers.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === shgCode);
+
+  const updatedGroupMembers = groupMembers.map(m => {
+    if (m.id === assignments.presidentMemberId) {
+      return { ...m, role: 'OFFICE_BEARER' as Role };
+    }
+    return { ...m, role: 'MEMBER' as Role };
+  });
+
+  const updatedAllMembers = allMembers.map(m => {
+    const matched = updatedGroupMembers.find(gm => gm.id === m.id);
+    return matched || m;
+  });
+
+  const presMember = groupMembers.find(m => m.id === assignments.presidentMemberId);
+  const treasMember = groupMembers.find(m => m.id === assignments.treasurerMemberId);
+  const secMember = assignments.secretaryMemberId ? groupMembers.find(m => m.id === assignments.secretaryMemberId) : null;
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['members', 'officers'], 'readwrite');
+    const membersStore = tx.objectStore('members');
+    updatedAllMembers.forEach(m => membersStore.put(m));
+
+    const officersStore = tx.objectStore('officers');
+    if (presMember) {
+      officersStore.put({
+        id: `off-pres-${shgCode}`,
+        shgId: shgCode,
+        role: 'PRESIDENT',
+        displayName: presMember.name,
+        pinHash: '0e7517141fb53f21ee439b355b5a1d0a520954f91e4b096d24669aa5ab7a856f',
+        status: 'ACTIVE'
+      });
+    }
+    if (treasMember) {
+      officersStore.put({
+        id: `off-treas-${shgCode}`,
+        shgId: shgCode,
+        role: 'TREASURER',
+        displayName: treasMember.name,
+        pinHash: '1134a654e58b8ef4d6d6c6a7e04f0390a19e5d99b1a0e3678512530a6f80a311',
+        status: 'ACTIVE'
+      });
+    }
+    if (secMember) {
+      officersStore.put({
+        id: `off-sec-${shgCode}`,
+        shgId: shgCode,
+        role: 'SECRETARY',
+        displayName: secMember.name,
+        pinHash: 'edee29f882543b956620b26d0fc0e7314715d92c9704e6fe84a6c42a2223788a',
+        status: 'ACTIVE'
+      });
+    }
+
+    tx.oncomplete = () => resolve(updatedAllMembers);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function saveScheduledMeeting(scheduled: {
   shgId: string;
   date: string;
@@ -935,14 +1034,68 @@ import type { MembershipRequest } from '../types/shg';
 
 const MEMBERSHIP_REQUESTS_STORAGE_KEY = 'shg_membership_requests_v1';
 
+export const INITIAL_DEMO_MEMBERSHIP_REQUESTS: MembershipRequest[] = [
+  {
+    id: 'req-seed-001',
+    shgId: 'SHG-MH-SAT-2024-0089',
+    shgName: 'सावित्री महिला बचत गट',
+    district: 'Satara',
+    village: 'Shirwal',
+    name: 'अनिता रमेश पाटील',
+    nameRegional: 'अनिता रमेश पाटील',
+    phone: '9890122334',
+    occupation: 'शिवणकाम व शिलाई काम',
+    status: 'PENDING',
+    requestedAt: new Date(Date.now() - 3600000 * 3).toISOString(),
+    notes: 'नवीन सभासद अर्ज - सावित्री महिला बचत गट'
+  },
+  {
+    id: 'req-seed-002',
+    shgId: 'SHG-MH-SAT-2024-0090',
+    shgName: 'जिजाऊ महिला बचत गट',
+    district: 'Satara',
+    village: 'Lonand',
+    name: 'प्रिया शरद जगताप',
+    nameRegional: 'प्रिया शरद जगताप',
+    phone: '9765432109',
+    occupation: 'दुग्ध व्यवसाय व संकलन',
+    status: 'PENDING',
+    requestedAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+    notes: 'नवीन सभासद अर्ज - जिजाऊ महिला बचत गट'
+  },
+  {
+    id: 'req-seed-003',
+    shgId: 'SHG-MH-SAT-2024-0089',
+    shgName: 'सावित्री महिला बचत गट',
+    district: 'Satara',
+    village: 'Shirwal',
+    name: 'रुपाली विकास देशमुख',
+    nameRegional: 'रुपाली विकास देशमुख',
+    phone: '9822334455',
+    occupation: 'कृषी प्रक्रिया व भाजीपाला विक्री',
+    status: 'PENDING',
+    requestedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
+    notes: 'नवीन सभासद अर्ज - सावित्री महिला बचत गट'
+  }
+];
+
 export function getMembershipRequests(): MembershipRequest[] {
   try {
-    if (typeof localStorage === 'undefined') return [];
+    if (typeof localStorage === 'undefined') return INITIAL_DEMO_MEMBERSHIP_REQUESTS;
     const raw = localStorage.getItem(MEMBERSHIP_REQUESTS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) {
+      localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_MEMBERSHIP_REQUESTS));
+      return INITIAL_DEMO_MEMBERSHIP_REQUESTS;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(INITIAL_DEMO_MEMBERSHIP_REQUESTS));
+      return INITIAL_DEMO_MEMBERSHIP_REQUESTS;
+    }
+    return parsed;
   } catch (e) {
     console.error('Failed to load membership requests:', e);
-    return [];
+    return INITIAL_DEMO_MEMBERSHIP_REQUESTS;
   }
 }
 
@@ -952,6 +1105,9 @@ export function saveMembershipRequest(req: MembershipRequest): void {
     const current = getMembershipRequests();
     const updated = [req, ...current.filter(r => r.id !== req.id)];
     localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('shg_requests_updated'));
+    }
   } catch (e) {
     console.error('Failed to save membership request:', e);
   }
@@ -963,6 +1119,9 @@ export function updateMembershipRequestStatus(id: string, status: 'APPROVED' | '
     const current = getMembershipRequests();
     const updated = current.map(r => r.id === id ? { ...r, status } : r);
     localStorage.setItem(MEMBERSHIP_REQUESTS_STORAGE_KEY, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('shg_requests_updated'));
+    }
   } catch (e) {
     console.error('Failed to update membership request status:', e);
   }
