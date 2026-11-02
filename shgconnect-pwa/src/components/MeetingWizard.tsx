@@ -13,6 +13,7 @@ import { masterLeaseService } from '../services/masterLease';
 
 interface MeetingWizardProps {
   members: Member[];
+  groupName?: string;
   language: SupportedLanguage;
   monthlySavingsAmount: number;
   onCompleteMeeting: (
@@ -28,6 +29,7 @@ interface MeetingWizardProps {
 
 export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   members,
+  groupName,
   language,
   monthlySavingsAmount,
   onCompleteMeeting,
@@ -333,105 +335,166 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
   }
 
   return (
-    <div className="bg-[#FDFBF7] rounded-3xl shadow-xl border border-emerald-900/20 overflow-hidden mb-12 sm:mb-6">
-      {/* Wizard Step Progress Header - Interactive Tab Buttons */}
-      <div className="bg-[#14532D] text-white p-4 sm:p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-black flex items-center gap-2">
-            {language === 'mr' ? 'मासिक बैठक सत्र (Meeting Session Mode)' : 'Monthly Meeting Session'}
-          </h2>
-          <span className="text-xs bg-emerald-900 text-amber-300 px-3 py-1 rounded-full font-bold border border-emerald-700">
-            Step {step} of 4
-          </span>
+    <div className="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden mb-6 animate-fadeIn">
+      {/* Sleek Integrated Header with Progress & Exit (Single Unified Header) */}
+      <div className="bg-[#14532D] text-white p-3.5 sm:p-4 rounded-t-lg">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center shrink-0 border border-emerald-700/80 shadow-2xs">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-black truncate leading-tight">
+                {language === 'mr' ? 'मासिक बैठक सत्र' : 'Monthly Meeting Session'}
+              </h2>
+              {groupName && (
+                <p className="text-[11px] text-emerald-200 truncate mt-0.5 font-medium">
+                  {groupName}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] bg-emerald-900/90 text-amber-300 px-2.5 py-0.5 rounded font-black border border-emerald-700/80">
+              {language === 'mr' ? 'टप्पा' : 'Step'} {step}/4
+            </span>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-2.5 py-1 text-xs font-bold text-emerald-100 hover:text-white bg-white/10 hover:bg-white/20 rounded-lg transition active:scale-95 cursor-pointer flex items-center gap-1 border border-white/15"
+            >
+              <span>✕</span>
+              <span className="hidden sm:inline">{language === 'mr' ? 'बाहेर पडा' : 'Exit'}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Step Indicators - Interactive Clickable Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 text-center text-[11px] sm:text-xs font-black">
-          <button
-            type="button"
-            onClick={() => { sound.playStampSound(); setStep(1); }}
-            className={`p-2 rounded-xl border transition truncate ${step === 1 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
-          >
-            1. {language === 'mr' ? 'उपस्थिती' : 'Attendance'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { sound.playStampSound(); setStep(2); }}
-            className={`p-2 rounded-xl border transition truncate ${step === 2 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
-          >
-            2. {language === 'mr' ? 'बचत व रोकड' : 'Savings & Cash'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { sound.playStampSound(); setStep(3); }}
-            className={`p-2 rounded-xl border transition truncate ${step === 3 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
-          >
-            3. {language === 'mr' ? 'इतिवृत्त व कर्ज' : 'Resolutions & Loan'}
-          </button>
-          <button
-            type="button"
-            onClick={() => { sound.playStampSound(); setStep(4); }}
-            className={`p-2 rounded-xl border transition truncate ${step === 4 ? 'bg-amber-400 text-stone-900 border-amber-500 shadow-xs font-black' : 'bg-emerald-950/70 text-emerald-200 border-emerald-800 hover:bg-emerald-900'}`}
-          >
-            4. {language === 'mr' ? 'कोरम व जतन' : 'Quorum & Commit'}
-          </button>
+        {/* Compressed 4-Step Stepper (Single horizontal row on all devices!) */}
+        <div className="grid grid-cols-4 gap-1 sm:gap-1.5 text-center text-[10px] sm:text-xs">
+          {[
+            { s: 1, mr: '१. उपस्थिती', en: '1. Attendance' },
+            { s: 2, mr: '२. बचत', en: '2. Savings' },
+            { s: 3, mr: '३. ठराव/कर्ज', en: '3. Resol.' },
+            { s: 4, mr: '४. स्वाक्षरी', en: '4. Sign' },
+          ].map(tab => {
+            const isActive = step === tab.s;
+            const isDone = step > tab.s;
+            return (
+              <button
+                key={tab.s}
+                type="button"
+                onClick={() => { sound.playStampSound(); setStep(tab.s as any); }}
+                className={`py-1.5 px-1 rounded-lg font-bold transition truncate cursor-pointer ${
+                  isActive
+                    ? 'bg-amber-400 text-stone-950 font-black shadow-xs'
+                    : isDone
+                    ? 'bg-emerald-900 text-emerald-200 border border-emerald-700/80 hover:bg-emerald-800'
+                    : 'bg-white/10 text-emerald-200/70 hover:bg-white/15'
+                }`}
+              >
+                {language === 'mr' ? tab.mr : tab.en} {isDone && '✓'}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="p-4 sm:p-6">
-        {/* STEP 1: Attendance Checklist */}
+      <div className="p-3.5 sm:p-5">
+        {/* STEP 1: Attendance Checklist (Sleek & Compressed) */}
         {step === 1 && (
-          <div>
-            <div className="mb-4">
-              <h3 className="text-base font-black text-[#1C1917] flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-[#14532D]" />
-                {language === 'mr' ? '१. उपस्थिती नोंदवा (Attendance Checklist)' : 'Step 1: Attendance Checklist'}
-              </h3>
-              <p className="text-xs text-stone-600">
-                {language === 'mr' ? 'उपस्थित असणाऱ्या सभासदांवर क्लिक करा.' : 'Tap to toggle present (green) or absent (gray).'}
-              </p>
+          <div className="space-y-3">
+            {/* Helper Toolbar: Summary & 1-Tap Quick Mark */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-stone-100/80 p-2.5 rounded-lg border border-stone-200">
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-emerald-800 shrink-0" />
+                <span className="text-xs font-black text-stone-900">
+                  {language === 'mr' ? `उपस्थिती: ${totalPresent} / ${members.length} हजर` : `Attendance: ${totalPresent} / ${members.length} Present`}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playStampSound();
+                    const allPres: Record<string, boolean> = {};
+                    const allSav: Record<string, number> = {};
+                    members.forEach(m => {
+                      allPres[m.id] = true;
+                      allSav[m.id] = monthlySavingsAmount;
+                    });
+                    setAttendance(allPres);
+                    setSavingsAmounts(allSav);
+                  }}
+                  className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  {language === 'mr' ? '✓ सर्वांना हजर करा' : '✓ Mark All Present'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playStampSound();
+                    const allAbs: Record<string, boolean> = {};
+                    const zeroSav: Record<string, number> = {};
+                    members.forEach(m => {
+                      allAbs[m.id] = false;
+                      zeroSav[m.id] = 0;
+                    });
+                    setAttendance(allAbs);
+                    setSavingsAmounts(zeroSav);
+                  }}
+                  className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-[11px] font-semibold transition active:scale-95 cursor-pointer"
+                >
+                  {language === 'mr' ? 'रीसेट' : 'Reset'}
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            {/* Compact Member Rows (40px each, fits 6-8 on screen!) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {members.map(member => {
                 const isPresent = attendance[member.id];
                 return (
                   <div
                     key={member.id}
                     onClick={() => toggleAttendance(member.id)}
-                    className={`p-4 rounded-2xl border-2 flex items-center justify-between text-left transition transform active:scale-98 cursor-pointer ${
+                    className={`p-2 sm:p-2.5 rounded-lg border-2 flex items-center justify-between text-left transition active:scale-[0.99] cursor-pointer ${
                       isPresent
-                        ? 'bg-emerald-50/80 border-[#14532D] text-[#1C1917] shadow-xs'
-                        : 'bg-[#F7F4EC] border-[#E2DDD3] text-stone-400'
+                        ? 'bg-emerald-50/70 border-emerald-600 text-stone-900 shadow-2xs'
+                        : 'bg-stone-50 border-stone-200 text-stone-400'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-2xl ${member.avatarColor} text-white font-black flex items-center justify-center text-sm shadow-xs`}>
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg ${member.avatarColor || 'bg-emerald-700'} text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs`}>
                         {member.name.charAt(0)}
                       </div>
-                      <div>
-                        <div className="font-extrabold text-sm text-[#1C1917]">
+                      <div className="min-w-0">
+                        <div className={`font-black text-xs sm:text-sm truncate ${isPresent ? 'text-stone-950' : 'text-stone-500'}`}>
                           {language === 'mr' ? member.nameRegional : member.name}
                         </div>
-                        <div className="text-xs text-stone-500 font-semibold">{member.role}</div>
+                        <div className="text-[10px] text-stone-500 font-medium truncate">
+                          {member.role === 'OFFICE_BEARER' ? (language === 'mr' ? 'अध्यक्ष' : 'Officer') : (language === 'mr' ? 'सदस्य' : 'Member')}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+
+                    <div className="flex items-center space-x-1.5 shrink-0 ml-2">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setOtpMember(member);
                         }}
-                        className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[10px] font-bold border border-amber-300"
+                        className="px-1.5 py-0.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded text-[9.5px] font-bold border border-amber-300"
                         title="Offline 2-OTP Verification"
                       >
                         OTP
                       </button>
-                      <div className={`px-3 py-1.5 rounded-full text-xs font-black flex items-center space-x-1 ${
-                        isPresent ? 'bg-[#14532D] text-white' : 'bg-stone-300 text-stone-600'
+                      <div className={`px-2.5 py-1 rounded-lg text-xs font-black flex items-center space-x-1 transition shadow-2xs ${
+                        isPresent ? 'bg-[#14532D] text-white' : 'bg-stone-200 text-stone-600'
                       }`}>
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="w-3 h-3" />
                         <span>{isPresent ? (language === 'mr' ? 'हजर' : 'Present') : (language === 'mr' ? 'गैरहजर' : 'Absent')}</span>
                       </div>
                     </div>
@@ -454,75 +517,96 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
               />
             )}
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#E2DDD3]">
+            <div className="flex justify-between items-center pt-3 border-t border-stone-200">
               <button
+                type="button"
                 onClick={onCancel}
-                className="px-4 py-2 border border-[#E2DDD3] rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+                className="px-3.5 py-2 border border-stone-300 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-100 transition active:scale-95"
               >
                 {language === 'mr' ? 'रद्द करा' : 'Cancel'}
               </button>
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(2); }}
-                className="bg-[#14532D] hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center space-x-2 shadow"
+                className="bg-[#14532D] hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-xs font-black flex items-center space-x-1.5 shadow-xs transition active:scale-95 cursor-pointer"
               >
-                <span>{language === 'mr' ? 'बचत व रोकड पेटीकडे जा' : 'Next: Bulk Savings & Cash Box'}</span>
+                <span>{language === 'mr' ? 'पुढील: बचत व रोकड' : 'Next: Savings & Cash'}</span>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: Bulk Savings Collection & Cash Box Reconciliation */}
+        {/* STEP 2: Bulk Savings Collection & Cash Box Reconciliation (Sleek & Compressed) */}
         {step === 2 && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-base font-black text-[#1C1917] flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-[#14532D]" />
-                {language === 'mr' ? '२. मासिक बचत संकलन (Bulk Savings Collection)' : 'Step 2: Bulk Savings Collection'}
-              </h3>
-              <p className="text-xs text-stone-600">
-                {language === 'mr' ? 'प्रत्येक सभासदाची बचत रक्कम प्रविष्ट करा आणि आवाजाद्वारे खात्री करा.' : 'Verify savings deposit amounts per member.'}
-              </p>
+          <div className="space-y-4">
+            {/* Header Toolbar: Pool Total + 1-Tap Quota Fill */}
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-gradient-to-r from-emerald-50 via-white to-teal-50 p-2.5 sm:p-3 rounded-lg border border-emerald-200/90 shadow-2xs">
+              <div>
+                <span className="text-[10px] font-bold text-stone-500 uppercase block">
+                  {language === 'mr' ? 'एकूण गोळा बचत' : 'Total Savings Collected'}
+                </span>
+                <span className="text-base sm:text-lg font-black text-emerald-950 amount-display">
+                  ₹{totalSavingsCollected.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playStampSound();
+                  const allQuota: Record<string, number> = {};
+                  members.forEach(m => {
+                    allQuota[m.id] = attendance[m.id] ? monthlySavingsAmount : 0;
+                  });
+                  setSavingsAmounts(allQuota);
+                }}
+                className="px-2.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+              >
+                {language === 'mr' ? `सर्व हजर सदस्यांचे ₹${monthlySavingsAmount} भरा` : `Auto-fill ₹${monthlySavingsAmount} for present`}
+              </button>
             </div>
 
-            <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+            {/* Compact Member Rows */}
+            <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
               {members.map(member => {
                 const isPresent = attendance[member.id];
                 const amt = savingsAmounts[member.id] || 0;
                 return (
                   <div
                     key={member.id}
-                    className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-3 ${
-                      isPresent ? 'bg-white border-[#E2DDD3]' : 'bg-[#F7F4EC] border-[#E2DDD3] opacity-60'
+                    className={`p-2 rounded-lg border flex items-center justify-between gap-2 ${
+                      isPresent ? 'bg-white border-stone-200' : 'bg-stone-50 border-stone-200 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-xl ${member.avatarColor} text-white font-bold flex items-center justify-center text-xs shadow-xs`}>
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg ${member.avatarColor || 'bg-emerald-700'} text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-2xs`}>
                         {member.name.charAt(0)}
                       </div>
-                      <div>
-                        <span className="font-extrabold text-sm text-[#1C1917]">
+                      <div className="min-w-0">
+                        <span className="font-bold text-xs sm:text-sm text-stone-900 truncate block">
                           {language === 'mr' ? member.nameRegional : member.name}
                         </span>
-                        {!isPresent && <span className="ml-2 text-xs text-rose-600 font-bold">(Absent)</span>}
+                        {!isPresent && <span className="text-[10px] text-rose-600 font-semibold">(Absent)</span>}
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1.5 shrink-0">
                       <span className="text-xs font-bold text-stone-500">₹</span>
                       <input
                         type="number"
                         disabled={!isPresent}
                         value={amt}
                         onChange={(e) => handleSavingsAmountChange(member.id, parseFloat(e.target.value) || 0)}
-                        className="w-28 px-3 py-1.5 border border-[#E2DDD3] rounded-xl text-sm font-extrabold text-right focus:ring-2 focus:ring-[#14532D] outline-none"
+                        className="w-20 sm:w-24 px-2 py-1 border border-stone-300 rounded-lg text-xs font-black text-right focus:ring-1 focus:ring-emerald-700 outline-none"
                       />
                       <button
+                        type="button"
                         onClick={() => handleTriggerTtsAnnouncement(member, amt)}
-                        className="p-2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl transition shadow-xs"
-                        title="Announce amount aloud via TTS"
+                        className="p-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg transition shadow-2xs cursor-pointer"
+                        title="Announce amount aloud"
                       >
-                        <Volume2 className="w-4 h-4" />
+                        <Volume2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -536,48 +620,70 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
               language={language}
             />
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#E2DDD3]">
+            <div className="flex justify-between items-center pt-3 border-t border-stone-200">
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(1); }}
-                className="px-4 py-2 border border-[#E2DDD3] rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center space-x-1"
+                className="px-3.5 py-2 border border-stone-300 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center space-x-1 transition active:scale-95"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{language === 'mr' ? 'मागे' : 'Back'}</span>
               </button>
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(3); }}
-                className="bg-[#14532D] hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center space-x-2 shadow"
+                className="bg-[#14532D] hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-xs font-black flex items-center space-x-1.5 shadow-xs transition active:scale-95 cursor-pointer"
               >
-                <span>{language === 'mr' ? 'इतिवृत्त व कर्जाकडे जा' : 'Next: Resolutions & Loan'}</span>
+                <span>{language === 'mr' ? 'पुढील: ठराव व कर्ज' : 'Next: Resolutions & Loan'}</span>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3: Resolutions & Loan Disbursal */}
+        {/* STEP 3: Resolutions & Loan Disbursal (Sleek & Compressed) */}
         {step === 3 && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-base font-black text-[#1C1917] flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#14532D]" />
-                {language === 'mr' ? '३. बैठक इतिवृत्त व कर्ज मंजूर (Resolutions & Loan)' : 'Step 3: Resolutions & Loan Disbursal'}
-              </h3>
-              <p className="text-xs text-stone-600">
-                {language === 'mr' ? 'बैठकीत संमत झालेले नवीन ठराव नोंदवा आणि कर्ज मंजूर करा.' : 'Log meeting proceedings resolutions and optional micro-loan disbursal.'}
-              </p>
-            </div>
-
-            {/* Simplified Proceedings Logger */}
-            <div className="bg-white border border-[#E2DDD3] p-4 rounded-2xl space-y-3">
-              <label className="block text-xs font-bold text-stone-700">
-                {language === 'mr' ? 'बैठकीचे मुख्य निर्णय (Meeting Decisions / Resolutions)' : 'Meeting Decisions / Resolutions'}
+          <div className="space-y-4">
+            {/* Quick Resolutions Logger */}
+            <div className="bg-white border border-stone-200 p-3.5 sm:p-4 rounded-lg space-y-2.5 shadow-2xs">
+              <label className="block text-xs font-bold text-stone-800">
+                {language === 'mr' ? 'बैठकीचे मुख्य निर्णय व ठराव' : 'Meeting Decisions / Resolutions'}
               </label>
-              <div className="flex gap-2">
+
+              {/* Instant Decision Chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { mr: 'मासिक बचत जमा ठराव', en: 'Monthly savings deposited' },
+                  { mr: 'नियमित हिशोब संमत', en: 'Accounts audited & verified' },
+                  { mr: 'पुढील बैठक ठरली', en: 'Next meeting scheduled' },
+                  { mr: 'कर्ज वाटप मंजुरी', en: 'Internal loan sanctioned' }
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      handleAddSessionResolution({
+                        date: new Date().toISOString().split('T')[0],
+                        title: language === 'mr' ? chip.mr : chip.en,
+                        category: 'LIVELIHOOD',
+                        description: language === 'mr' ? chip.mr : chip.en,
+                        proposedBy: 'Officer',
+                        secondedBy: 'Group',
+                        approvedUnanimously: true
+                      });
+                    }}
+                    className="px-2 py-0.5 bg-stone-100 hover:bg-emerald-100 hover:text-emerald-900 border border-stone-200 rounded text-[11px] font-bold text-stone-700 transition cursor-pointer"
+                  >
+                    + {language === 'mr' ? chip.mr : chip.en}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-2 pt-1">
                 <input
                   type="text"
-                  placeholder={language === 'mr' ? 'उदा. मासिक बचत जमा करण्याचा ठराव...' : 'e.g. Resolved to collect savings...'}
-                  className="flex-1 bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-sm font-medium text-[#1C1917] outline-none"
+                  placeholder={language === 'mr' ? 'नवीन ठराव लिहून Enter दाबा...' : 'Type custom resolution & press Enter...'}
+                  className="flex-1 bg-stone-50 border border-stone-200 rounded-lg px-3 py-1.5 text-xs font-medium text-stone-900 outline-none focus:ring-1 focus:ring-emerald-700"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                       handleAddSessionResolution({
@@ -594,12 +700,11 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                   }}
                 />
               </div>
-              <p className="text-[10px] text-stone-500">{language === 'mr' ? 'नोंदवण्यासाठी Enter दाबा' : 'Press Enter to add'}</p>
 
               {sessionResolutions.length > 0 && (
-                <ul className="space-y-2 mt-3 max-h-[150px] overflow-y-auto">
+                <ul className="space-y-1.5 mt-2 max-h-[140px] overflow-y-auto pt-1 border-t border-stone-100">
                   {sessionResolutions.map((res, idx) => (
-                    <li key={idx} className="text-xs bg-[#FDFBF7] p-2 rounded-lg border border-[#E2DDD3] flex items-start gap-2">
+                    <li key={idx} className="text-xs bg-emerald-50/60 p-2 rounded-lg border border-emerald-200/80 flex items-start gap-2">
                       <span className="text-emerald-700 font-black mt-0.5">•</span>
                       <span className="font-semibold text-stone-800">{res.title}</span>
                     </li>
@@ -609,240 +714,166 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
             </div>
 
             {/* Loan Disbursal Form */}
-            <div className="bg-white border border-[#E2DDD3] p-4 rounded-2xl">
-              {!masterLeaseService.isMasterDevice() && (
-                <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl text-xs text-amber-950 font-bold mb-3 flex items-start gap-2 shadow-xs">
-                  <AlertCircle className="w-4 h-4 text-amber-600 inline mr-1" />
-                  <div>
-                    <span className="block font-black">
-                      {language === 'mr' ? 'गौण (Secondary) डिव्हाइस - कर्ज वाटप मर्यादा' : 'Secondary Device: Read-Only Cash Box'}
-                    </span>
-                    <span className="font-medium text-amber-900 block mt-0.5">
-                      {language === 'mr'
-                        ? `रोख कर्ज वाटप केवळ मुख्य नोंदवही डिव्हाइसवरून (${masterLeaseService.getMasterDeviceName()}) करता येऊ शकते.`
-                        : `Cash disbursals are locked to the Master Device (${masterLeaseService.getMasterDeviceName()}) to prevent offline double-spending.`}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <label className={`flex items-center space-x-3 mb-3 ${masterLeaseService.isMasterDevice() ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+            <div className="bg-white border border-stone-200 p-3.5 sm:p-4 rounded-lg shadow-2xs">
+              <label className="flex items-center space-x-2.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  disabled={!masterLeaseService.isMasterDevice()}
                   checked={disburseLoan}
                   onChange={(e) => setDisburseLoan(e.target.checked)}
-                  className="w-5 h-5 text-[#14532D] rounded focus:ring-[#14532D]"
+                  className="w-4 h-4 text-emerald-800 rounded focus:ring-emerald-700"
                 />
-                <span className="font-extrabold text-sm text-[#1C1917]">
-                  {language === 'mr' ? 'या बैठकीत नवीन कर्ज वाटप करायचे आहे' : 'Disburse a new micro-loan in this meeting'}
+                <span className="font-black text-xs sm:text-sm text-stone-900">
+                  {language === 'mr' ? 'या बैठकीत नवीन अंतर्गत कर्ज मंजूर करायचे आहे' : 'Disburse a new micro-loan in this meeting'}
                 </span>
               </label>
 
               {disburseLoan && (
-                <div className="space-y-3 pt-3 border-t border-[#E2DDD3]">
+                <div className="space-y-2.5 pt-3 mt-2 border-t border-stone-200 text-xs">
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                    <label className="block text-[11px] font-bold text-stone-600 mb-1">
                       {language === 'mr' ? 'कर्जदार सभासद निवडा' : 'Select Borrower Member'}
                     </label>
                     <select
                       value={selectedLoanMemberId}
                       onChange={(e) => setSelectedLoanMemberId(e.target.value)}
-                      className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-sm font-bold text-[#1C1917] outline-none"
+                      className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-bold text-stone-900 outline-none"
                     >
                       <option value="">-- {language === 'mr' ? 'सभासद निवडा' : 'Select Member'} --</option>
                       {members.map(m => (
                         <option key={m.id} value={m.id}>
-                          {language === 'mr' ? m.nameRegional : m.name} (Trust Score: {m.trustScore}%)
+                          {language === 'mr' ? m.nameRegional : m.name} (Trust: {m.trustScore}%)
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      {language === 'mr' ? 'कर्ज रक्कम (Loan Amount ₹)' : 'Loan Amount (₹)'}
-                    </label>
-                    <input
-                      type="number"
-                      step="500"
-                      value={loanAmount}
-                      onChange={(e) => setLoanAmount(parseFloat(e.target.value) || 0)}
-                      className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-sm font-extrabold text-[#1C1917] outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      {language === 'mr' ? 'कर्जाचे कारण' : 'Purpose / Notes'}
-                    </label>
-                    <input
-                      type="text"
-                      value={loanPurpose}
-                      onChange={(e) => setLoanPurpose(e.target.value)}
-                      className="w-full bg-[#F7F4EC] border border-[#E2DDD3] rounded-xl px-3 py-2 text-sm font-bold text-[#1C1917] outline-none"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                        {language === 'mr' ? 'कर्ज रक्कम (₹)' : 'Loan Amount (₹)'}
+                      </label>
+                      <input
+                        type="number"
+                        step="500"
+                        value={loanAmount}
+                        onChange={(e) => setLoanAmount(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-black text-stone-900 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-600 mb-1">
+                        {language === 'mr' ? 'कर्जाचे कारण' : 'Purpose'}
+                      </label>
+                      <input
+                        type="text"
+                        value={loanPurpose}
+                        onChange={(e) => setLoanPurpose(e.target.value)}
+                        placeholder={language === 'mr' ? 'उदा. बियाणे, शेती' : 'e.g. seeds, farming'}
+                        className="w-full bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-stone-900 outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-[#E2DDD3]">
+            <div className="flex justify-between items-center pt-3 border-t border-stone-200">
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(2); }}
-                className="px-4 py-2 border border-[#E2DDD3] rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center space-x-1"
+                className="px-3.5 py-2 border border-stone-300 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center space-x-1 transition active:scale-95"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{language === 'mr' ? 'मागे' : 'Back'}</span>
               </button>
               <button
+                type="button"
                 onClick={() => { sound.playStampSound(); setStep(4); }}
-                className="bg-[#14532D] hover:bg-emerald-900 text-white px-5 py-2.5 rounded-xl text-xs font-black flex items-center space-x-2 shadow"
+                className="bg-[#14532D] hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-xs font-black flex items-center space-x-1.5 shadow-xs transition active:scale-95 cursor-pointer"
               >
-                <span>{language === 'mr' ? 'स्वाक्षरी व जतन' : 'Next: Quorum & Commit'}</span>
+                <span>{language === 'mr' ? 'पुढील: स्वाक्षरी व जतन' : 'Next: Quorum & Commit'}</span>
                 <ArrowRight className="w-4 h-4 text-amber-400" />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 4: 2-of-3 Multi-Signatory Quorum PIN & Out-of-Band SMS Receipt */}
+        {/* STEP 4: Quorum PIN & Commit (Sleek & Compressed) */}
         {step === 4 && (
-          <div className="space-y-5">
-            <div>
-              <h3 className="text-base font-black text-stone-900 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-800" />
-                {language === 'mr' ? '४. २-पैकी-३ पदाधिकारी स्वाक्षरी (Quorum Consensus)' : 'Step 4: Multi-Signatory PIN Quorum'}
-              </h3>
-              <p className="text-xs text-stone-600 mt-0.5">
-                {language === 'mr'
-                  ? 'एकल-चालक गैरव्यवहार टाळण्यासाठी किमान २ पदाधिकाऱ्यांचे ४-अंकी पिन आवश्यक.'
-                  : 'To eliminate single-operator fraud, at least 2 elected officers must enter their 4-digit PIN.'}
-              </p>
-            </div>
-
-            {/* Quorum Officer Selector Badges & Quick Auto-Fill Helpers */}
-            <div className="bg-white border border-stone-200 p-3.5 sm:p-4 rounded-2xl space-y-3.5 shadow-2xs">
-              
-              {/* Auto-Sign Banner: Clean, Responsive without Overlapping */}
-              <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="text-xs font-bold text-emerald-950">
-                    {language === 'mr' ? 'स्वाक्षरी करणारे २ पदाधिकारी निवडा:' : 'Select Signatory Officers (Choose 2 or 3):'}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleAutoFillPin('PRESIDENT');
-                      handleAutoFillPin('TREASURER');
-                    }}
-                    className="w-full sm:w-auto bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white px-3.5 py-2 rounded-xl text-xs font-black shadow-xs flex items-center justify-center gap-1.5 transition"
-                    title="Auto-sign both President and Treasurer PINs"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    <span>{language === 'mr' ? '⚡ १-टॅप कोरम स्वाक्षऱ्या भरा' : '⚡ 1-Click Auto-Sign Quorum'}</span>
-                  </button>
+          <div className="space-y-4">
+            {/* Quorum Officers Grid */}
+            <div className="bg-white border border-stone-200 p-3.5 sm:p-4 rounded-lg space-y-3 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-black text-xs sm:text-sm text-stone-900 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-800" />
+                    <span>{language === 'mr' ? '२-पैकी-३ पदाधिकारी स्वाक्षरी' : 'Officer Quorum PINs (Choose 2)'}</span>
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    {language === 'mr' ? 'किमान २ पदाधिकाऱ्यांचे ४-अंकी पिन आवश्यक.' : 'At least 2 officers must enter PIN.'}
+                  </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-emerald-200/60 text-[11px] font-bold">
-                  <span className="text-emerald-900 font-semibold">{language === 'mr' ? 'पिन:' : 'PINs:'}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillPin('PRESIDENT')}
-                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
-                    title="Auto-fill President PIN (1111)"
-                  >
-                    अध्यक्ष (1111)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillPin('TREASURER')}
-                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
-                    title="Auto-fill Treasurer PIN (3333)"
-                  >
-                    खजिनदार (3333)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAutoFillPin('SECRETARY')}
-                    className="bg-white hover:bg-emerald-100 text-emerald-950 px-2 py-0.5 rounded-lg border border-emerald-300 transition"
-                    title="Auto-fill Secretary PIN (2222)"
-                  >
-                    सचिव (2222)
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAutoFillPin('PRESIDENT');
+                    handleAutoFillPin('TREASURER');
+                  }}
+                  className="bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-black shadow-2xs flex items-center justify-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{language === 'mr' ? '⚡ १-टॅप स्वाक्षरी भरा' : '⚡ 1-Click Auto-Sign'}</span>
+                </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {DEFAULT_OFFICERS.map(officer => {
                   const isSelected = selectedRoles.includes(officer.role);
                   const isVerified = verifiedSignatures[officer.role];
                   return (
                     <div
                       key={officer.role}
-                      className={`p-3 rounded-2xl border-2 transition ${
+                      className={`p-2.5 rounded-lg border transition ${
                         isVerified
-                          ? 'bg-emerald-50 border-[#14532D]'
+                          ? 'bg-emerald-50/80 border-emerald-600'
                           : isSelected
-                          ? 'bg-amber-50 border-amber-400'
-                          : 'bg-[#F7F4EC] border-[#E2DDD3]'
+                          ? 'bg-amber-50/80 border-amber-400'
+                          : 'bg-stone-50 border-stone-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5">
                         <button
                           type="button"
                           onClick={() => toggleRoleSelection(officer.role)}
-                          className={`px-2.5 py-1 rounded-full text-xs font-black ${
-                            isSelected ? 'bg-[#14532D] text-white' : 'bg-stone-300 text-stone-700'
+                          className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer ${
+                            isSelected ? 'bg-emerald-800 text-white' : 'bg-stone-200 text-stone-700'
                           }`}
                         >
                           {officer.role}
                         </button>
                         {isVerified ? (
-                          <span className="flex items-center space-x-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>Signed</span>
+                          <span className="flex items-center space-x-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                            <span>Signed ✔</span>
                           </span>
                         ) : (
                           <span className="text-[10px] text-stone-400 font-bold">Unsigned</span>
                         )}
                       </div>
 
-                      <div className="text-xs font-bold text-[#1C1917] mb-2">{officer.nameRegional}</div>
+                      <div className="text-xs font-black text-stone-900 truncate">{officer.nameRegional}</div>
 
                       {isSelected && !isVerified && (
-                        <div className="space-y-2 mt-1">
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              const res = await biometricService.authenticateOfficer(officer.role, officer.name);
-                              if (res.success) {
-                                sound.playStampSound();
-                                setVerifiedSignatures(v => ({ ...v, [officer.role]: true }));
-                                setPinErrorMsg('');
-                              }
-                            }}
-                            className="w-full py-2 px-2 bg-[#14532D] hover:bg-emerald-900 text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 shadow-xs transition"
-                          >
-                            <Fingerprint className="w-3.5 h-3.5 text-amber-400" />
-                            <span>{language === 'mr' ? 'बायोमेट्रिक / फिंगरप्रिंट स्वाक्षरी' : 'Biometric Fingerprint Sign'}</span>
-                          </button>
-
-                          <div className="text-center text-[10px] text-stone-400 font-bold uppercase">— किंवा (or) —</div>
-
-                          <div>
-                            <label className="block text-[10px] font-bold text-stone-500 mb-1">
-                              {language === 'mr' ? `४-अंकी PIN (${officer.defaultPin})` : `Enter 4-Digit PIN (${officer.defaultPin})`}
-                            </label>
-                            <input
-                              type="password"
-                              maxLength={4}
-                              placeholder="****"
-                              value={pinInputs[officer.role]}
-                              onChange={(e) => handleVerifyPin(officer.role, e.target.value)}
-                              className="w-full bg-white border border-[#E2DDD3] rounded-xl px-2.5 py-1.5 text-center font-mono text-base font-black tracking-widest outline-none focus:ring-2 focus:ring-[#14532D]"
-                            />
-                          </div>
+                        <div className="mt-2 space-y-1">
+                          <input
+                            type="password"
+                            maxLength={4}
+                            placeholder="****"
+                            value={pinInputs[officer.role]}
+                            onChange={(e) => handleVerifyPin(officer.role, e.target.value)}
+                            className="w-full bg-white border border-stone-300 rounded px-2 py-1 text-center font-mono text-sm font-black tracking-widest outline-none focus:ring-1 focus:ring-emerald-700"
+                          />
                         </div>
                       )}
                     </div>
@@ -850,81 +881,55 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                 })}
               </div>
 
-              {/* Error Banner */}
               {pinErrorMsg && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-xl text-xs font-bold flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-2.5 rounded-lg text-xs font-bold flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>{pinErrorMsg}</span>
-                </div>
-              )}
-
-              {!isQuorumMet && (
-                <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-xl text-xs font-bold text-center">
-                  किमान २ पदाधिकाऱ्यांची पिन स्वाक्षरी आवश्यक आहे (Minimum 2 officer PIN signatures required)
                 </div>
               )}
             </div>
 
             {/* Session Summary Card */}
-            <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-2 text-xs font-bold text-stone-800">
+            <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-lg text-xs font-bold text-stone-800 space-y-1.5 shadow-2xs">
               <div className="flex justify-between">
-                <span>उपस्थिती (Attendance):</span>
-                <span className="text-[#14532D] font-extrabold">{totalPresent} / {members.length} Present</span>
+                <span>{language === 'mr' ? 'उपस्थिती:' : 'Attendance:'}</span>
+                <span className="text-emerald-900 font-black">{totalPresent} / {members.length} Present</span>
               </div>
               <div className="flex justify-between">
-                <span>एकूण जमा बचत (Savings):</span>
-                <span className="text-[#14532D] font-extrabold">₹{totalSavingsCollected.toLocaleString('en-IN')}</span>
+                <span>{language === 'mr' ? 'एकूण जमा बचत:' : 'Total Savings:'}</span>
+                <span className="text-emerald-900 font-black">₹{totalSavingsCollected.toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between">
-                <span>पुष्टीबद्ध स्वाक्षऱ्या (Verified Quorum):</span>
-                <span className="text-[#14532D] font-extrabold">{validSignaturesCount} / 3 Officers</span>
+                <span>{language === 'mr' ? 'पुष्टीबद्ध स्वाक्षऱ्या:' : 'Verified Quorum:'}</span>
+                <span className="text-emerald-900 font-black">{validSignaturesCount} / 3 Officers</span>
               </div>
-              {isCommitted && (
-                <div className="pt-2 border-t border-emerald-200 font-mono text-[11px] text-emerald-950 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span>Block Fingerprint:</span>
-                    <span className="font-black text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
-                      {commitSuccessData?.fingerprint || 'CHK-8F3A-21BC-91D4'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-[10px] text-stone-600">
-                    <span>Merkle Root:</span>
-                    <span className="truncate max-w-[200px]">{commitSuccessData?.merkleRoot || 'e3b0c442...'}</span>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Out-of-Band SMS Audit Receipts Drawer (Visible after commit) */}
+            {/* Out-of-Band SMS Receipts Drawer */}
             {isCommitted && (
-              <div className="bg-amber-50 border border-amber-300 p-4 rounded-2xl space-y-3 animate-fadeIn">
-                <div className="flex items-center gap-2 text-amber-950 font-black text-sm">
-                  <MessageSquare className="w-5 h-5 text-amber-700" />
-                  <span>{language === 'mr' ? 'सदस्यांना ऑफलाईन SMS / WhatsApp पावती पाठवा' : 'Broadcast Audit Receipts via SMS / WhatsApp'}</span>
+              <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-lg space-y-2 animate-fadeIn">
+                <div className="flex items-center gap-2 text-amber-950 font-black text-xs sm:text-sm">
+                  <MessageSquare className="w-4 h-4 text-amber-700" />
+                  <span>{language === 'mr' ? 'सदस्यांना ऑफलाईन SMS / WhatsApp पावती पाठवा' : 'Broadcast Audit Receipts via WhatsApp'}</span>
                 </div>
-                <p className="text-xs text-amber-900 font-medium">
-                  {language === 'mr'
-                    ? 'कोणत्याही ऑनलाईन SMS गेटवेचा वापर न करता मोबाईल वेब शेअर द्वारे सदस्यांना पावती पाठवा.'
-                    : 'Dispatch cryptographic audit receipts directly to members via mobile share.'}
-                </p>
                 <button
                   type="button"
                   onClick={handleBroadcastSmsReceipts}
-                  className="w-full bg-stone-900 hover:bg-black text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow transition active:scale-95"
+                  className="w-full bg-stone-900 hover:bg-black text-white font-black py-2 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow transition active:scale-95 cursor-pointer"
                 >
-                  <Share2 className="w-4 h-4 text-amber-400" />
+                  <Share2 className="w-3.5 h-3.5 text-amber-400" />
                   <span>{language === 'mr' ? 'SMS / WhatsApp पावती पाठवा' : 'Broadcast Receipts'}</span>
                 </button>
               </div>
             )}
 
             {/* Bottom Actions */}
-            <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-4 border-t border-stone-200 pb-2">
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-2 pt-3 border-t border-stone-200">
               <button
                 type="button"
                 onClick={() => { sound.playStampSound(); setStep(3); }}
                 disabled={isCommitted || isSubmitting}
-                className="px-4 py-2.5 border border-stone-300 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                className="px-3.5 py-2 border border-stone-300 rounded-lg text-xs font-bold text-stone-600 hover:bg-stone-100 flex items-center justify-center gap-1 transition disabled:opacity-50"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>{language === 'mr' ? 'मागे' : 'Back'}</span>
@@ -937,9 +942,9 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                     sound.playStampSound();
                     onCancel();
                   }}
-                  className="w-full sm:w-auto font-black px-6 py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg bg-emerald-700 hover:bg-emerald-800 text-white transition transform active:scale-95"
+                  className="w-full sm:w-auto font-black px-5 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm bg-emerald-700 hover:bg-emerald-800 text-white transition active:scale-95 cursor-pointer"
                 >
-                  <CheckCircle2 className="w-5 h-5 text-amber-300" />
+                  <CheckCircle2 className="w-4 h-4 text-amber-300" />
                   <span>{language === 'mr' ? 'बैठक समाप्त करा आणि डॅशबोर्ड पहा' : 'Finish & Return to Dashboard'}</span>
                 </button>
               ) : (
@@ -947,21 +952,21 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                   type="button"
                   onClick={handleFinalSubmit}
                   disabled={!isQuorumMet || isSubmitting}
-                  className={`w-full sm:w-auto font-black px-6 py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 shadow-lg transition transform active:scale-95 ${
+                  className={`w-full sm:w-auto font-black px-5 py-2.5 rounded-lg text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 ${
                     isQuorumMet && !isSubmitting
-                      ? 'bg-amber-400 hover:bg-amber-300 text-stone-900 cursor-pointer shadow-amber-200'
+                      ? 'bg-amber-400 hover:bg-amber-300 text-stone-950 cursor-pointer'
                       : 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none'
                   }`}
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
-                      <span>{language === 'mr' ? 'नोंदवहीत जतन होत आहे...' : 'Saving to Ledger...'}</span>
+                      <div className="w-3.5 h-3.5 border-2 border-stone-900 border-t-transparent rounded-full animate-spin" />
+                      <span>{language === 'mr' ? 'नोंदवहीत जतन होत आहे...' : 'Saving...'}</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>{language === 'mr' ? 'नोंदवहीत जतन करा (Commit Block)' : 'Save Session to Ledger'}</span>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{language === 'mr' ? 'नोंदवहीत जतन करा' : 'Save Session to Ledger'}</span>
                     </>
                   )}
                 </button>

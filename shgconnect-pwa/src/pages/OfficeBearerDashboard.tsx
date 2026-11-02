@@ -264,32 +264,9 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
     if (showWizard) {
     return (
       <div className="space-y-4 animate-fadeIn">
-        {/* Active Meeting Session Header */}
-        <div className="bg-white rounded-lg border border-stone-200 p-3.5 sm:p-4 flex items-center justify-between shadow-2xs">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-black flex-shrink-0">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 uppercase tracking-wider">
-                {language === 'mr' ? 'बैठक संचालन सत्र' : 'Active Meeting Session'}
-              </span>
-              <h2 className="font-black text-sm sm:text-base text-stone-900 leading-tight mt-0.5 truncate">
-                {language === 'mr' ? group.nameRegional : group.name} · #{meetings.length + 1}
-              </h2>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowWizard(false)}
-            className="px-3 py-1.5 rounded-xl text-xs font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 border border-stone-200 transition active:scale-95 flex-shrink-0"
-          >
-            ✕ {language === 'mr' ? 'बाहेर पडा' : 'Exit'}
-          </button>
-        </div>
-
         <MeetingWizard
           members={members}
+          groupName={language === 'mr' ? group.nameRegional : group.name}
           language={language}
           monthlySavingsAmount={group.monthlyPoolRate || 500}
           onCancel={() => setShowWizard(false)}
@@ -350,34 +327,49 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           </p>
         </div>
 
-        {/* ── 3 Action Buttons: Offline Meet, Live Meet, Schedule ── */}
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-3.5 border-t border-white/15 relative z-10">
+        {/* ── 3 Action Buttons: Offline Meet, Online Meet, Schedule (Never Cuts Out) ── */}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-4 pt-3.5 border-t border-white/15 relative z-10">
           <button
             type="button"
             onClick={() => setShowWizard(true)}
-            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer"
+            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg bg-white text-emerald-950 font-black text-xs shadow-xs hover:bg-emerald-50 active:scale-[0.98] transition cursor-pointer min-h-[50px] sm:min-h-[42px]"
           >
             <Sparkles className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-            <span className="whitespace-nowrap">{language === 'mr' ? 'ऑफलाईन बैठक' : 'Offline Meet'}</span>
+            <span className="text-[11px] sm:text-xs font-black leading-tight text-center">
+              {language === 'mr' ? 'ऑफलाईन' : 'Offline'}
+              <span className="block sm:inline sm:ml-1 text-[9.5px] sm:text-xs font-semibold sm:font-black opacity-85 sm:opacity-100">
+                {language === 'mr' ? 'बैठक' : 'Meet'}
+              </span>
+            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowLiveMeeting(true)}
-            className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
+            className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer min-h-[50px] sm:min-h-[42px]"
           >
             <Radio className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-            <span className="whitespace-nowrap">{language === 'mr' ? 'लाईव्ह बैठक' : 'Live Meet'}</span>
+            <span className="text-[11px] sm:text-xs font-bold leading-tight text-center">
+              {language === 'mr' ? 'ऑनलाईन' : 'Online'}
+              <span className="block sm:inline sm:ml-1 text-[9.5px] sm:text-xs font-semibold sm:font-bold opacity-85 sm:opacity-100">
+                {language === 'mr' ? 'बैठक' : 'Meet'}
+              </span>
+            </span>
           </button>
 
           {onOpenScheduleMeeting && (
             <button
               type="button"
               onClick={onOpenScheduleMeeting}
-              className="flex items-center justify-center gap-1.5 py-2 px-1 sm:py-2.5 sm:px-2 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 py-2 px-1 rounded-lg bg-white/15 hover:bg-white/25 border border-white/25 text-white font-bold text-xs active:scale-[0.98] transition cursor-pointer min-h-[50px] sm:min-h-[42px]"
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
-              <span className="whitespace-nowrap">{language === 'mr' ? 'बैठक नियोजन' : 'Schedule'}</span>
+              <span className="text-[11px] sm:text-xs font-bold leading-tight text-center">
+                {language === 'mr' ? 'नियोजन' : 'Schedule'}
+                <span className="block sm:inline sm:ml-1 text-[9.5px] sm:text-xs font-semibold sm:font-bold opacity-85 sm:opacity-100">
+                  {language === 'mr' ? 'बैठक' : ''}
+                </span>
+              </span>
             </button>
           )}
         </div>
