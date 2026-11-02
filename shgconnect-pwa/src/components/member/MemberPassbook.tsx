@@ -1,8 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { Member, Transaction, SupportedLanguage } from '../../types/shg';
-import { formatINR } from '../../theme/tokens';
+import { formatINR, formatReceiptNumber } from '../../theme/tokens';
 import { tts } from '../../services/tts';
-import { BookOpen, Volume2, Filter, ArrowUpRight, ArrowDownLeft, ShieldCheck, Search, Calendar } from 'lucide-react';
+import {
+  BookOpen,
+  Volume2,
+  Filter,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Search,
+  Calendar,
+  Share2,
+  Printer,
+  AlertCircle
+} from 'lucide-react';
 import { Badge } from '../ui/Badge';
 import { Card } from '../ui/Card';
 
@@ -21,222 +32,302 @@ export const MemberPassbook: React.FC<MemberPassbookProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const isMr = language === 'mr';
-  const isHi = language === 'hi';
 
-  const memberTransactions = useMemo(() => {
-    return transactions
+  // Sort transactions chronologically to compute running balance accurately
+  const txsWithRunningBalance = useMemo(() => {
+    const userTxs = transactions
       .filter(t => t.memberId === member.id)
-      .filter(t => {
-        if (filterType !== 'ALL' && t.type !== filterType) return false;
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          return (
-            t.notes?.toLowerCase().includes(q) ||
-            t.type.toLowerCase().includes(q) ||
-            t.utrReference?.toLowerCase().includes(q) ||
-            t.amount.toString().includes(q)
-          );
-        }
-        return true;
-      })
-      .sort((a, b) => b.index - a.index);
-  }, [transactions, member.id, filterType, searchQuery]);
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    let running = 0;
+    const enriched = userTxs.map((t, idx) => {
+      if (t.type === 'SAVINGS') {
+        running += t.amount;
+      }
+      return {
+        ...t,
+        runningBalance: running,
+        displayIndex: idx + 1
+      };
+    });
+
+    return enriched.reverse(); // Display most recent first
+  }, [transactions, member.id]);
+
+  const filteredTransactions = useMemo(() => {
+    return txsWithRunningBalance.filter(t => {
+      if (filterType !== 'ALL' && t.type !== filterType) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          t.notes?.toLowerCase().includes(q) ||
+          t.type.toLowerCase().includes(q) ||
+          t.amount.toString().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [txsWithRunningBalance, filterType, searchQuery]);
+
+  // Group by Month headline
+  const groupedByMonth = useMemo(() => {
+    const groups: { [key: string]: typeof filteredTransactions } = {};
+    const months = [
+      'जानेवारी', 'फेब्रुवारी', 'मार्च', 'एप्रिल', 'मे', 'जून',
+      'जुलै', 'ऑगस्ट', 'सप्टेंबर', 'ऑक्टोबर', 'नोव्हेंबर', 'डिसेंबर'
+    ];
+    filteredTransactions.forEach(tx => {
+      const d = new Date(tx.timestamp);
+      const key = isMr
+        ? `${months[d.getMonth()]} ${d.getFullYear()}`
+        : d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tx);
+    });
+    return groups;
+  }, [filteredTransactions, isMr]);
 
   const speakPassbookSummary = () => {
-    const totalTx = memberTransactions.length;
+    const totalTx = filteredTransactions.length;
     const msg = isMr
-      ? `${member.nameRegional || member.name} यांचे पासबुक: एकूण बचत ₹${member.totalSavings}, थकीत कर्ज ₹${member.activeLoanBalance}. ${totalTx} व्यवहार नोंदवले आहेत.`
-      : `${member.name}'s Passbook: Total savings ₹${member.totalSavings}, Loan balance ₹${member.activeLoanBalance}. ${totalTx} transactions recorded.`;
+      ? `${member.nameRegional || member.name} यांचे पासबुक: एकूण बचत ${member.totalSavings} रुपये, थकीत कर्ज ${member.activeLoanBalance} रुपये. ${totalTx} नोंदी वहीत आहेत.`
+      : `${member.name}'s Passbook: Total savings ${member.totalSavings} rupees, Loan balance ${member.activeLoanBalance} rupees. ${totalTx} transactions recorded.`;
     tts.speak(msg);
   };
 
+  const handleShareWhatsApp = () => {
+    const text = isMr
+      ? `*बचत पासबुक वही*\nसदस्य: ${member.nameRegional || member.name}\nएकूण जमा बचत: ₹${member.totalSavings.toLocaleString('en-IN')}\nथकीत कर्ज: ₹${member.activeLoanBalance.toLocaleString('en-IN')}\nएकूण नोंदी: ${filteredTransactions.length}`
+      : `*Passbook Summary*\nMember: ${member.name}\nTotal Savings: ₹${member.totalSavings.toLocaleString('en-IN')}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
-    <div className="space-y-5 pb-8 animate-fadeIn">
+    <div className="space-y-5 pb-8 animate-fadeIn max-w-2xl mx-auto">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#14532D] to-[#0F4C3A] rounded-3xl p-5 text-white shadow-lg space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-emerald-800/80 pb-3">
+      <div
+        className="rounded-lg p-5 sm:p-6 text-white shadow-sm space-y-4 border border-emerald-700/40"
+        style={{ background: 'linear-gradient(135deg, #14532D 0%, #0F4230 65%, #0A2F22 100%)' }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/20 pb-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black">
+            <div className="w-10 h-10 rounded-lg bg-amber-400 text-emerald-950 flex items-center justify-center font-black">
               <BookOpen className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-black tracking-tight">
-                {isMr ? 'माझे डिजिटल पासबुक' : isHi ? 'मेरा डिजिटल पासबुक' : 'My Digital Passbook'}
+                {isMr ? 'माझे पासबुक (डिजिटल वही)' : 'My Passbook'}
               </h2>
               <p className="text-xs text-emerald-200 font-medium">
-                {member.nameRegional || member.name} · SHA-256 Ledger Verified
+                {member.nameRegional || member.name} • {isMr ? 'नोंद वही' : 'Verified Register'}
               </p>
             </div>
           </div>
 
-          <button
-            onClick={speakPassbookSummary}
-            className="bg-amber-400 hover:bg-amber-300 text-amber-950 px-3.5 py-1.5 rounded-xl text-xs font-black flex items-center space-x-1.5 shadow transition active:scale-95"
-          >
-            <Volume2 className="w-4 h-4" />
-            <span>{isMr ? 'आवाज सारांश' : 'Voice Summary'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={speakPassbookSummary}
+              className="bg-amber-400 hover:bg-amber-300 text-amber-950 px-3 py-1.5 rounded-lg text-xs font-black flex items-center space-x-1.5 shadow-2xs transition active:scale-95 cursor-pointer"
+            >
+              <Volume2 className="w-4 h-4" />
+              <span>{isMr ? 'ऐका' : 'Listen'}</span>
+            </button>
+            <button
+              onClick={handleShareWhatsApp}
+              className="bg-white/15 hover:bg-white/25 text-white p-2 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer border border-white/20"
+              title={isMr ? 'WhatsApp वर पाठवा' : 'Share'}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handlePrint}
+              className="bg-white/15 hover:bg-white/25 text-white p-2 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer border border-white/20"
+              title={isMr ? 'प्रिंट / सेव्ह करा' : 'Print'}
+            >
+              <Printer className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Balance Metrics */}
         <div className="grid grid-cols-2 gap-3 pt-1">
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+          <div className="bg-white/10 backdrop-blur rounded-lg p-3.5 border border-white/10">
             <span className="text-[11px] font-semibold text-emerald-200 uppercase tracking-wider block">
-              {isMr ? 'एकूण बचत (Total Savings)' : 'Total Savings'}
+              {isMr ? 'एकूण जमा बचत' : 'Total Savings'}
             </span>
-            <span className="text-2xl font-black text-amber-300 amount-display mt-0.5 block">
+            <span className="text-2xl sm:text-3xl font-black text-amber-300 amount-display mt-0.5 block">
               {formatINR(member.totalSavings)}
             </span>
           </div>
 
-          <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5 border border-white/10">
+          <div className="bg-white/10 backdrop-blur rounded-lg p-3.5 border border-white/10">
             <span className="text-[11px] font-semibold text-emerald-200 uppercase tracking-wider block">
-              {isMr ? 'कर्ज उर्वरित (Loan Balance)' : 'Loan Outstanding'}
+              {isMr ? 'थकीत बाकी कर्ज' : 'Loan Due'}
             </span>
-            <span className="text-2xl font-black text-white amount-display mt-0.5 block">
+            <span className="text-2xl sm:text-3xl font-black text-white amount-display mt-0.5 block">
               {formatINR(member.activeLoanBalance)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center space-x-2 flex-1 min-w-[200px]">
-          <Search className="w-4 h-4 text-gray-400" />
+      {/* Filter & Search Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-lg border border-stone-200 shadow-2xs">
+        <div className="flex items-center space-x-2 flex-1 min-w-[180px]">
+          <Search className="w-4 h-4 text-stone-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={isMr ? 'व्यवहार शोधा...' : 'Search transactions...'}
-            className="bg-transparent text-xs font-medium text-gray-800 outline-none w-full"
+            placeholder={isMr ? 'नोंद शोधा...' : 'Search records...'}
+            className="bg-transparent text-xs font-bold text-stone-800 outline-none w-full"
           />
         </div>
 
-        <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
-          <Filter className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-          {['ALL', 'SAVINGS', 'EMI_REPAYMENT', 'LOAN_DISBURSAL'].map((type) => (
+        <div className="flex items-center space-x-1.5 overflow-x-auto">
+          <Filter className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+          {[
+            { id: 'ALL', mr: 'सर्व', en: 'All' },
+            { id: 'SAVINGS', mr: 'बचत', en: 'Savings' },
+            { id: 'EMI_REPAYMENT', mr: 'हप्ता', en: 'EMI' },
+            { id: 'LOAN_DISBURSAL', mr: 'कर्ज वाटप', en: 'Loan' }
+          ].map((item) => (
             <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-3 py-1 rounded-xl text-[11px] font-bold transition flex-shrink-0 ${
-                filterType === type
-                  ? 'bg-[#14532D] text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              key={item.id}
+              onClick={() => setFilterType(item.id)}
+              className={`px-2.5 py-1 rounded-md text-xs font-black transition shrink-0 cursor-pointer ${
+                filterType === item.id
+                  ? 'bg-[#14532D] text-white shadow-2xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
               }`}
             >
-              {type === 'ALL'
-                ? isMr
-                  ? 'सर्व'
-                  : 'All'
-                : type === 'SAVINGS'
-                ? isMr
-                  ? 'बचत'
-                  : 'Savings'
-                : type === 'EMI_REPAYMENT'
-                ? isMr
-                  ? 'हप्ता'
-                  : 'EMI'
-                : isMr
-                ? 'कर्ज वितरण'
-                : 'Loan'}
+              {isMr ? item.mr : item.en}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Transaction List */}
-      <div className="space-y-3">
-        {memberTransactions.length === 0 ? (
-          <Card className="p-8 text-center text-xs text-gray-500 font-medium">
-            {isMr ? 'कोणतेही व्यवहार आढळले नाहीत.' : 'No passbook transactions found for selected filter.'}
+      {/* Transaction List Grouped by Month */}
+      <div className="space-y-4">
+        {Object.keys(groupedByMonth).length === 0 ? (
+          <Card className="p-8 text-center text-xs text-stone-500 font-medium rounded-lg border border-stone-200">
+            {isMr ? 'कोणतीही नोंद आढळली नाही.' : 'No passbook records found.'}
           </Card>
         ) : (
-          memberTransactions.map((tx) => {
-            const isSavings = tx.type === 'SAVINGS';
-            const isEmi = tx.type === 'EMI_REPAYMENT';
-            const isDisbursal = tx.type === 'LOAN_DISBURSAL';
-
-            return (
-              <div
-                key={tx.id}
-                className="bg-white border border-gray-100 rounded-2xl p-4 shadow-card hover:shadow-md transition space-y-2"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                        isSavings
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : isEmi
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {isSavings ? (
-                        <ArrowDownLeft className="w-5 h-5 text-emerald-700" />
-                      ) : isEmi ? (
-                        <ArrowUpRight className="w-5 h-5 text-blue-700" />
-                      ) : (
-                        <ArrowDownLeft className="w-5 h-5 text-rose-700" />
-                      )}
-                    </div>
-                    <div>
-                      <div className="font-extrabold text-sm text-gray-900 flex items-center gap-2">
-                        <span>
-                          {isSavings
-                            ? isMr
-                              ? 'मासिक बचत जमा'
-                              : 'Monthly Savings'
-                            : isEmi
-                            ? isMr
-                              ? 'कर्ज हप्ता परतफेड'
-                              : 'EMI Repayment'
-                            : isMr
-                            ? 'कर्ज वितरण'
-                            : 'Loan Disbursal'}
-                        </span>
-                        {tx.paymentMode === 'UPI_INTENT' && (
-                          <Badge variant="blue" size="sm">
-                            UPI
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="text-[11px] text-gray-500 font-medium mt-0.5 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-gray-400" />
-                        <span>{new Date(tx.timestamp).toLocaleDateString()}</span>
-                        {tx.utrReference && (
-                          <span className="text-stone-400">· UTR: {tx.utrReference}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <span
-                      className={`text-base font-black amount-display ${
-                        isSavings || isEmi ? 'text-emerald-800' : 'text-rose-700'
-                      }`}
-                    >
-                      {isSavings || isEmi ? '+' : '-'}
-                      {formatINR(tx.amount)}
-                    </span>
-                    <div className="text-[10px] text-emerald-700 font-bold flex items-center justify-end gap-1 mt-0.5">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Block #{tx.index}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {tx.notes && (
-                  <div className="text-xs bg-[#FDFBF7] p-2 rounded-xl border border-[#E2DDD3]/60 text-stone-700 font-medium">
-                    {tx.notes}
-                  </div>
-                )}
+          Object.entries(groupedByMonth).map(([monthTitle, txList]) => (
+            <div key={monthTitle} className="bg-white rounded-lg border border-stone-200 shadow-2xs overflow-hidden">
+              <div className="bg-stone-100/80 px-4 py-2 border-b border-stone-200 flex items-center justify-between">
+                <span className="text-xs font-black text-stone-800 uppercase tracking-wide">
+                  {monthTitle}
+                </span>
+                <span className="text-[11px] font-bold text-stone-500">
+                  {txList.length} {isMr ? 'नोंदी' : 'records'}
+                </span>
               </div>
-            );
-          })
+
+              <div className="divide-y divide-stone-100">
+                {txList.map((tx) => {
+                  const isSavings = tx.type === 'SAVINGS';
+                  const isEmi = tx.type === 'EMI_REPAYMENT';
+                  const isDisbursal = tx.type === 'LOAN_DISBURSAL';
+                  const isInit = tx.notes?.includes('आधीची शिल्लक') || tx.id.includes('init');
+
+                  return (
+                    <div
+                      key={tx.id}
+                      className="p-3.5 sm:p-4 hover:bg-stone-50 transition flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`w-9 h-9 rounded-lg flex items-center justify-center font-black text-sm shrink-0 ${
+                            isSavings
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                              : isEmi
+                              ? 'bg-amber-100 text-amber-950 border border-amber-200'
+                              : 'bg-rose-100 text-rose-900 border border-rose-200'
+                          }`}
+                        >
+                          {isSavings ? (
+                            <ArrowDownLeft className="w-5 h-5 text-emerald-800" />
+                          ) : isEmi ? (
+                            <ArrowUpRight className="w-5 h-5 text-amber-800" />
+                          ) : (
+                            <ArrowDownLeft className="w-5 h-5 text-rose-800" />
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="font-black text-stone-900 text-xs flex items-center gap-1.5">
+                            <span>
+                              {isInit
+                                ? (isMr ? 'आधीची शिल्लक' : 'Opening Accumulated')
+                                : isSavings
+                                ? (isMr ? 'मासिक बचत जमा' : 'Monthly Savings')
+                                : isEmi
+                                ? (isMr ? 'कर्ज हप्ता परतफेड' : 'EMI Repayment')
+                                : (isMr ? 'कर्ज वाटप' : 'Loan Disbursal')}
+                            </span>
+                            {tx.paymentMode === 'UPI_INTENT' && (
+                              <Badge variant="blue" size="sm">
+                                UPI
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-stone-500 font-medium mt-0.5 flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-stone-400" />
+                            <span>{new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            {tx.notes && !isInit && (
+                              <span className="text-stone-400 hidden sm:inline">• {tx.notes}</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span
+                          className={`text-sm sm:text-base font-black amount-display ${
+                            isSavings || isEmi ? 'text-emerald-800' : 'text-rose-700'
+                          }`}
+                        >
+                          {isSavings || isEmi ? '+' : '-'}
+                          {formatINR(tx.amount)}
+                        </span>
+                        <div className="text-[10px] text-stone-500 font-bold mt-0.5">
+                          {isSavings && (
+                            <>
+                              {isMr ? 'शिल्लक:' : 'Bal:'} <span className="text-stone-800 amount-display font-black">{formatINR(tx.runningBalance)}</span> •{' '}
+                            </>
+                          )}
+                          <span className="text-emerald-800">{formatReceiptNumber(tx.index || 0)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
         )}
+      </div>
+
+      {/* Discrepancy report notice */}
+      <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>{isMr ? 'हिशोब जुळला ✔ (तफावत असल्यास प्रमुखांना कळवा)' : 'Ledger balanced ✔'}</span>
+        </span>
+        <a
+          href="https://wa.me/"
+          target="_blank"
+          rel="noreferrer"
+          className="text-emerald-800 font-bold hover:underline"
+        >
+          {isMr ? 'प्रमुखांना कळवा' : 'Report'} →
+        </a>
       </div>
     </div>
   );

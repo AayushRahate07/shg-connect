@@ -227,6 +227,29 @@ export const LeadLiveMeeting: React.FC<Props> = ({
     }
   };
 
+  
+  const handleBatchConfirmAll = async () => {
+    if (!room?.code) return;
+    try {
+      const res = await liveMeetingApi.batchConfirmAll(room.code, 300);
+      if (res.ok && res.members) {
+        setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
+        sound.playStampSound();
+      }
+    } catch {}
+  };
+
+  const handlePaperSlipConfirm = async (memberId: string) => {
+    if (!room?.code) return;
+    try {
+      const res = await liveMeetingApi.verifySavings(room.code, memberId, '9999', true);
+      if (res.ok && res.members) {
+        setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
+        sound.playStampSound();
+      }
+    } catch {}
+  };
+
   const handleCancelHandshake = async () => {
     if (room && verifyModal.memberId) {
       await liveMeetingApi.cancelSavings(room.code, verifyModal.memberId);
@@ -686,9 +709,19 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                 {t('रक्कम नोंदवून सभासदाच्या फोनवरील कोड विचारा', 'Enter amount & ask member for code')}
               </p>
             </div>
-            <span className="text-xs font-black text-stone-600 bg-stone-100 px-2 py-0.5 rounded-lg">
-              {members.length} {t('सभासद', 'Members')}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleBatchConfirmAll}
+                className="bg-amber-100 hover:bg-amber-200 text-amber-950 px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 border border-amber-300 transition active:scale-95 shadow-2xs"
+                title={t('सर्व उपस्थित सदस्यांची बचत एकदम मंजूर करा', 'Batch Confirm All')}
+              >
+                <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
+              </button>
+              <span className="text-xs font-black text-stone-600 bg-stone-100 px-2 py-0.5 rounded-lg">
+                {members.length} {t('सभासद', 'Members')}
+              </span>
+            </div>
           </div>
 
           {members.length === 0 ? (
@@ -835,14 +868,24 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                           <span>{t('कोड टाका', 'OTP')}</span>
                         </button>
                       ) : (
-                        <button
-                          onClick={() => handleInitiateSavings(m.memberId)}
-                          disabled={!savingsInputs[m.memberId]}
-                          className="px-3.5 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>{t('नोंदवा', 'Save')}</span>
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleInitiateSavings(m.memberId)}
+                            disabled={!savingsInputs[m.memberId]}
+                            className="px-3.5 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            <span>{t('नोंदवा', 'Save')}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePaperSlipConfirm(m.memberId)}
+                            className="px-2.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-[10px] font-bold rounded-xl transition border border-stone-200 shrink-0 cursor-pointer"
+                            title={t('कागदी पावती (स्मार्टफोन नसलेल्या सदस्यांसाठी)', 'Paper Slip Mode')}
+                          >
+                            📄 {t('पावती', 'Slip')}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

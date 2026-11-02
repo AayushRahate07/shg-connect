@@ -55,7 +55,29 @@ export const colors = {
   }
 };
 
-export const formatINR = (amount: number): string => {
+let _hideAmounts = false;
+
+export const getAmountPrivacy = (): boolean => {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('shg_hide_amounts');
+    if (stored !== null) return stored === 'true';
+  }
+  return _hideAmounts;
+};
+
+export const setAmountPrivacy = (hide: boolean) => {
+  _hideAmounts = hide;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('shg_hide_amounts', hide ? 'true' : 'false');
+    window.dispatchEvent(new CustomEvent('shg_privacy_changed', { detail: { hide } }));
+  }
+};
+
+export const formatINR = (amount: number, forceHide?: boolean): string => {
+  const isHidden = forceHide !== undefined ? forceHide : getAmountPrivacy();
+  if (isHidden) {
+    return '₹ ••••';
+  }
   return `₹${Math.abs(amount).toLocaleString('en-IN')}`;
 };
 
@@ -69,6 +91,36 @@ export const formatDate = (isoString?: string): string => {
   }
 };
 
+export const formatMarathiDate = (isoString?: string): string => {
+  if (!isoString) return '';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return isoString;
+    const months = [
+      'जानेवारी', 'फेब्रुवारी', 'मार्च', 'एप्रिल', 'मे', 'जून',
+      'जुलै', 'ऑगस्ट', 'सप्टेंबर', 'ऑक्टोबर', 'नोव्हेंबर', 'डिसेंबर'
+    ];
+    const days = [
+      'रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'
+    ];
+    const dayName = days[d.getDay()];
+    const monthName = months[d.getMonth()];
+    const dateNum = d.getDate();
+    const year = d.getFullYear();
+    const hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'सायं.' : 'सकाळी';
+    const hour12 = hours % 12 || 12;
+    return `${dateNum} ${monthName} ${year}, ${dayName}, ${ampm} ${hour12}:${minutes}`;
+  } catch {
+    return isoString;
+  }
+};
+
+export const formatReceiptNumber = (txIndex: number): string => {
+  return `पावती क्र. ${txIndex + 1}`;
+};
+
 /** Minimum 48px touch target for rural accessibility */
 export const touchTargetStyle = {
   minWidth: '48px',
@@ -77,4 +129,3 @@ export const touchTargetStyle = {
   alignItems: 'center',
   justifyContent: 'center'
 };
-

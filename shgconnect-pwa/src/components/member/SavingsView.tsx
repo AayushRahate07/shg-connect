@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Member, Transaction, SupportedLanguage, GroupInfo } from '../../types/shg';
-import { translations } from '../../i18n/translations';
-import { formatINR } from '../../theme/tokens';
+import { formatINR, formatReceiptNumber } from '../../theme/tokens';
+import { getGroupSettings } from '../../services/db';
 import { Card } from '../ui/Card';
-import { PlusCircle, PiggyBank, Target, Calendar, Filter, ArrowUpRight, Check, Banknote, ShieldCheck } from 'lucide-react';
+import { SavingsGoal } from './SavingsGoal';
+import {
+  PiggyBank,
+  Calendar,
+  Check,
+  ShieldCheck,
+  Share2,
+  Printer,
+  AlertCircle,
+  TrendingUp,
+  Percent,
+  CheckCircle2
+} from 'lucide-react';
 
 interface SavingsViewProps {
   member: Member;
@@ -24,20 +36,33 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
   group,
   members = []
 }) => {
-  const t = translations[language] || translations.en;
   const isMr = language === 'mr';
-  const [filterPeriod, setFilterPeriod] = useState<'month' | '3months' | 'all'>('all');
+  const settings = getGroupSettings(group);
+  const [filterPeriod, setFilterPeriod] = useState<'all' | 'month' | '3months'>('all');
 
-  const savingsTxs = transactions.filter(t => t.memberId === member.id && t.type === 'SAVINGS');
+  const monthlyRate = settings.monthlySavingAmount || 300;
+
+  // Filter savings transactions
+  const savingsTxs = useMemo(() => {
+    return transactions
+      .filter(t => t.memberId === member.id && t.type === 'SAVINGS')
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }, [transactions, member.id]);
+
+  // Compute running balance for each savings row
+  const txsWithRunningBalance = useMemo(() => {
+    let running = 0;
+    return savingsTxs.map(tx => {
+      running += tx.amount;
+      return { ...tx, runningBalance: running };
+    }).reverse(); // Most recent first for display
+  }, [savingsTxs]);
 
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Dynamic monthly contribution from group info
-  const monthlyRate = group?.monthlyPoolRate || 500;
-
-  // Dynamic savings this month
+  // Savings this month
   const thisMonthSavings = savingsTxs
     .filter(tx => {
       const d = new Date(tx.timestamp);
@@ -45,7 +70,8 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
     })
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const filteredTxs = savingsTxs.filter(tx => {
+  // Filter by period
+  const filteredTxs = txsWithRunningBalance.filter(tx => {
     const txDate = new Date(tx.timestamp);
     if (filterPeriod === 'month') {
       return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
@@ -55,176 +81,257 @@ export const SavingsView: React.FC<SavingsViewProps> = ({
       threeMonthsAgo.setMonth(now.getMonth() - 3);
       return txDate >= threeMonthsAgo;
     }
-    return true;
+    return true; // Default 'all'
   });
 
-  // Dynamic savings goal based on current total savings
-  const targetGoal = Math.max(25000, Math.ceil((member.totalSavings + 5000) / 5000) * 5000);
-  const progressPercent = Math.min(100, Math.round((member.totalSavings / targetGoal) * 100));
-  const remainingGoal = Math.max(0, targetGoal - member.totalSavings);
+  // Calculate year-end interest share / dividend (e.g. 8.5% annual return on savings)
+  const estimatedYearlyInterest = Math.round((member.totalSavings * 8.5) / 100);
+
+  // Group transactions by Month for clear headlines
+  const groupedByMonth = useMemo(() => {
+    const groups: { [key: string]: typeof filteredTxs } = {};
+    const months = [
+      'जानेवारी', 'फेब्रुवारी', 'मार्च', 'एप्रिल', 'मे', 'जून',
+      'जुलै', 'ऑगस्ट', 'सप्टेंबर', 'ऑक्टोबर', 'नोव्हेंबर', 'डिसेंबर'
+    ];
+    filteredTxs.forEach(tx => {
+      const d = new Date(tx.timestamp);
+      const key = isMr
+        ? `${months[d.getMonth()]} ${d.getFullYear()}`
+        : d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(tx);
+    });
+    return groups;
+  }, [filteredTxs, isMr]);
+
+  // WhatsApp share passbook summary
+  const handleShareWhatsApp = () => {
+    const text = isMr
+      ? `*${settings.nameRegional || settings.name}*\nसदस्य: ${member.nameRegional || member.name}\nएकूण जमा बचत: ₹${member.totalSavings.toLocaleString('en-IN')}\nया महिन्याची बचत: ₹${thisMonthSavings.toLocaleString('en-IN')}\nमासिक ठरलेली बचत: ₹${monthlyRate}\n\nसर्व नोंदी डिजिटल वहीत सुरक्षित आहेत.`
+      : `*${settings.name}*\nMember: ${member.name}\nTotal Savings: ₹${member.totalSavings.toLocaleString('en-IN')}\nMonthly Contribution: ₹${monthlyRate}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  // WhatsApp message to lead for discrepancies
+  const handleContactLead = () => {
+    const leadPhone = group?.bankDetails?.accountMasked || '9876543210';
+    const text = isMr
+      ? `नमस्कार ${settings.treasurerName || settings.presidentName}, मी ${member.nameRegional || member.name}. माझ्या बचत वहीमध्ये रकमेची खात्री करायची आहे. कृपया मार्गदर्शन करावे.`
+      : `Hello Lead, I am ${member.name}. I noticed a discrepancy in my passbook.`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-6">
-      {/* Page Title & Subtitle */}
-      <div>
-        <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-          <PiggyBank className="w-6 h-6 text-[#14532D]" />
-          <span>{isMr ? 'माझी बचत' : 'My Savings'}</span>
-        </h1>
-        <p className="text-xs text-stone-500 mt-0.5">
-          {group?.nameRegional || group?.name || (isMr ? 'सावित्री महिला बचत गट' : 'Savitri Mahila Bachat Gat')} • {isMr ? 'तुमच्या बचतीचा सविस्तर ताळेबंद' : 'Detailed overview of your savings ledger'}
-        </p>
+    <div className="space-y-5 max-w-2xl mx-auto pb-8 animate-fadeIn">
+      {/* ── Page Title & Controls ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+            <PiggyBank className="w-6 h-6 text-emerald-800" />
+            <span>{isMr ? 'माझी बचत' : 'My Savings'}</span>
+          </h1>
+          <p className="text-xs text-stone-500 font-medium mt-0.5">
+            {settings.nameRegional || settings.name} • {settings.village}
+          </p>
+        </div>
+
+        {/* Action Buttons: WhatsApp & Print */}
+        <div className="flex items-center gap-2 print:hidden">
+          <button
+            type="button"
+            onClick={handleShareWhatsApp}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
+            title={isMr ? 'WhatsApp वर पाठवा' : 'Share on WhatsApp'}
+          >
+            <Share2 className="w-3.5 h-3.5 text-emerald-700" />
+            <span className="hidden sm:inline">{isMr ? 'WhatsApp' : 'Share'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 text-xs font-bold transition active:scale-95 cursor-pointer shadow-2xs"
+            title={isMr ? 'पासबुक प्रिंट / सेव्ह करा' : 'Print Passbook'}
+          >
+            <Printer className="w-3.5 h-3.5 text-stone-600" />
+            <span className="hidden sm:inline">{isMr ? 'प्रिंट' : 'Print'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Main Savings Card */}
-      <div className="card-hero-green rounded-lg p-5 sm:p-6 shadow-sm border border-emerald-500/30 relative overflow-hidden space-y-3.5 border border-emerald-400/40">
-        <div className="flex items-center justify-between relative z-10">
-          <span className="text-xs font-bold uppercase tracking-wider text-green-200">
-            {isMr ? 'एकूण जमा बचत' : 'Total Personal Savings'}
+      {/* ── Main Savings Card ── */}
+      <div
+        className="rounded-lg p-5 sm:p-6 shadow-sm border border-emerald-700/30 text-white space-y-3 relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #14532D 0%, #0F4230 65%, #0A2F22 100%)' }}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">
+            {isMr ? 'एकूण जमा बचत' : 'Total Saved'}
           </span>
-          <span className="bg-white/20 text-[#DCFCE7] border border-white/20 font-extrabold text-xs px-2.5 py-1 rounded-full">
-            +₹{thisMonthSavings} {isMr ? 'या महिन्यात जमा' : 'saved this month'}
+          <span className="bg-white/20 text-emerald-100 border border-white/20 font-black text-xs px-2.5 py-1 rounded-full">
+            +{formatINR(thisMonthSavings)} {isMr ? 'या महिन्यात जमा' : 'this month'}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-baseline justify-between gap-2 relative z-10">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="text-4xl sm:text-5xl font-black text-white tracking-tight amount-display">
             {formatINR(member.totalSavings)}
           </div>
-          <div className="text-xs text-green-200 font-semibold">
-            {isMr ? 'मासिक योगदान:' : 'Monthly contribution:'} ₹{monthlyRate}
+          <div className="text-xs text-emerald-200 font-semibold">
+            {isMr ? 'ठरलेली मासिक बचत:' : 'Monthly contribution:'} ₹{monthlyRate}
           </div>
         </div>
 
-        <div className="pt-3 border-t border-white/20 flex flex-wrap items-center justify-between gap-3 relative z-10">
-          <span className="text-xs font-bold text-green-200 flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-300" />
-            <span>{isMr ? 'नोंद लेजरमध्ये सुरक्षित आहे' : 'Secured in cryptoledger'}</span>
+        {/* ONE-LINE SAFETY MESSAGE */}
+        <div className="pt-3 border-t border-white/20 flex items-center justify-between text-xs text-emerald-200 font-medium">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+            <span>{isMr ? 'तुमची बचत पूर्ण सुरक्षित असून वहीमध्ये नोंदवली आहे.' : 'Your savings are 100% verified and recorded in the group ledger.'}</span>
           </span>
-          
-          {/* Centralized Deposit Indicator (Quorum Witnessed by Group Head) */}
-          <div className="bg-white/15 backdrop-blur text-white px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 border border-white/20">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-300" />
-            <span>{isMr ? 'बैठकीत अध्यक्षांकडे संकलित (कोरम)' : 'Centrally Collected by Head (Quorum)'}</span>
-          </div>
+          <span className="text-[11px] text-emerald-300 font-bold hidden sm:inline">
+            {settings.treasurerName} ({isMr ? 'कोषाध्यक्ष' : 'Treasurer'})
+          </span>
         </div>
       </div>
 
-      {/* ── Central Quorum Protocol Explanation Card ── */}
-      <div className="bg-gradient-to-r from-emerald-50/90 to-teal-50/60 border border-emerald-200 rounded-lg shadow-2xs p-4 text-xs space-y-1.5">
-        <div className="font-extrabold text-emerald-950 flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-700 flex-shrink-0" />
-          <span>{isMr ? 'केंद्रीकृत बचत संकलन पद्धत (Central Quorum Verification)' : 'Centralized Savings Collection Protocol'}</span>
+      {/* ── Year-End Interest Share / Dividend Card ── */}
+      <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-200 rounded-lg p-3.5 sm:p-4 shadow-2xs flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+              {isMr ? 'अंदाजे वार्षिक व्याज / लाभांश वाटप' : 'Projected Annual Dividend / Interest'}
+            </span>
+            <div className="text-base sm:text-lg font-black text-amber-950 amount-display mt-0.5">
+              +{formatINR(estimatedYearlyInterest)} <span className="text-xs font-semibold text-stone-500">({isMr ? '८.५% अंदाजे' : '~8.5% p.a.'})</span>
+            </div>
+          </div>
         </div>
-        <p className="text-emerald-800 font-medium leading-relaxed">
-          {isMr
-            ? 'बचत गट नियमानुसार वैयक्तिक सभासद परस्पर थेट बचत जमा करू शकत नाहीत. मासिक बैठकीत अध्यक्षा / कोषाध्यक्षा (कमलताई पाटील) रोख पेटीत किंवा अधिकृत UPI ने बचत संकलित करतात आणि किमान २ पंचांच्या (Quorum) स्वाक्षरीने सुरक्षित लेजरमध्ये नोंद होते.'
-            : 'As per SHG rules, personal savings are centrally collected by the Group Head/Treasurer during monthly meetings and verified with Quorum signatures into the tamper-proof ledger.'}
+        <p className="text-[10px] text-amber-800 font-medium text-right max-w-[150px] hidden sm:block">
+          {isMr ? 'वर्षअखेरीस गटाच्या नफ्यातून थेट खात्यात जमा होतो.' : 'Disbursed at annual meeting.'}
         </p>
       </div>
 
-      {/* Savings Goal Section */}
-      <div className="bg-gradient-to-br from-amber-50/60 via-white to-orange-50/30 p-5 sm:p-6 rounded-lg border border-amber-200/80 shadow-2xs space-y-3.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
-            <Target className="w-4 h-4 text-amber-600" />
-            {isMr ? 'बचतीची प्रगती (ध्येय)' : 'Savings Goal Progress'}
-          </span>
-          <span className="text-xs font-extrabold text-amber-600">
-            {progressPercent}%
-          </span>
-        </div>
+      {/* ── Optional Member-Defined Savings Goal ── */}
+      <SavingsGoal
+        memberId={member.id}
+        currentSavings={member.totalSavings}
+        monthlyQuota={monthlyRate}
+        language={language}
+      />
 
-        <div>
-          <div className="flex justify-between text-xs font-bold text-stone-900 mb-1.5">
-            <span>{isMr ? 'आपत्कालीन व वैयक्तिक निधी' : 'Emergency & Personal Fund'}</span>
-            <span>{formatINR(member.totalSavings)} / {formatINR(targetGoal)}</span>
-          </div>
-          <div className="w-full bg-stone-100 rounded-full h-3 overflow-hidden border border-stone-200">
-            <div
-              className="h-full rounded-full transition-all duration-500 bg-[#14532D]"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-stone-500 font-medium pt-1">
-          <span>{isMr ? `₹${remainingGoal.toLocaleString('en-IN')} बाकी` : `₹${remainingGoal.toLocaleString('en-IN')} remaining`}</span>
-          <span>{isMr ? `दरमहा ₹${monthlyRate} प्रमाणे अंदाजे पूर्णता` : `Based on ₹${monthlyRate}/mo contribution`}</span>
-        </div>
-      </div>
-
-      {/* Savings Ledger History with Filter */}
-      <Card className="p-0 border border-stone-200 shadow-xs rounded-lg overflow-hidden bg-white">
+      {/* ── Savings Passbook Ledger History ── */}
+      <Card className="p-0 border border-stone-200 shadow-2xs rounded-lg overflow-hidden bg-white">
         <div className="p-4 border-b border-stone-200 flex flex-wrap items-center justify-between gap-3 bg-stone-50">
-          <span className="text-xs font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
-            <Calendar className="w-4 h-4 text-[#14532D]" />
-            {isMr ? 'बचतीचा इतिहास' : 'Savings History'}
+          <span className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-emerald-800" />
+            <span>{isMr ? 'बचत नोंद वही' : 'Savings Register'}</span>
           </span>
 
-          {/* Time Filter Toggle */}
-          <div className="flex bg-white rounded-xl p-1 border border-stone-200 text-xs">
+          {/* Time Filter Toggle (Default 'all' / सर्व) */}
+          <div className="flex bg-white rounded-lg p-1 border border-stone-200 text-xs">
             <button
-              onClick={() => setFilterPeriod('month')}
-              className={`px-3 py-1.5 min-h-[36px] min-w-[44px] rounded-lg font-bold transition ${
-                filterPeriod === 'month' ? 'bg-[#14532D] text-white shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              onClick={() => setFilterPeriod('all')}
+              className={`px-3 py-1 rounded-md font-bold transition cursor-pointer ${
+                filterPeriod === 'all' ? 'bg-[#14532D] text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              {isMr ? 'या महिन्यात' : 'This Month'}
+              {isMr ? 'सर्व' : 'All'}
             </button>
             <button
               onClick={() => setFilterPeriod('3months')}
-              className={`px-3 py-1.5 min-h-[36px] min-w-[44px] rounded-lg font-bold transition ${
-                filterPeriod === '3months' ? 'bg-[#14532D] text-white shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              className={`px-3 py-1 rounded-md font-bold transition cursor-pointer ${
+                filterPeriod === '3months' ? 'bg-[#14532D] text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
               {isMr ? '३ महिने' : '3 Months'}
             </button>
             <button
-              onClick={() => setFilterPeriod('all')}
-              className={`px-3 py-1.5 min-h-[36px] min-w-[44px] rounded-lg font-bold transition ${
-                filterPeriod === 'all' ? 'bg-[#14532D] text-white shadow-xs' : 'text-stone-500 hover:text-stone-900'
+              onClick={() => setFilterPeriod('month')}
+              className={`px-3 py-1 rounded-md font-bold transition cursor-pointer ${
+                filterPeriod === 'month' ? 'bg-[#14532D] text-white shadow-2xs' : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              {isMr ? 'सर्व' : 'All'}
+              {isMr ? 'या महिन्यात' : 'This Month'}
             </button>
           </div>
         </div>
 
-        <div className="divide-y divide-stone-200">
-          {filteredTxs.length === 0 ? (
+        {/* Transaction Rows with Month Headline & Running Balance */}
+        <div className="divide-y divide-stone-100">
+          {Object.keys(groupedByMonth).length === 0 ? (
             <div className="p-8 text-center text-xs text-stone-500 font-medium">
-              {isMr ? 'निवडलेल्या कालावधीत कोणतीही बचत नोंद नाही.' : 'No savings transactions found for the selected period.'}
+              {isMr ? 'निवडलेल्या कालावधीत कोणतीही बचत नोंद नाही.' : 'No transactions found.'}
             </div>
           ) : (
-            filteredTxs.map((tx) => (
-              <div key={tx.id} className="p-4 flex items-center justify-between text-xs hover:bg-stone-50 transition min-h-[60px]">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#14532D] font-bold flex items-center justify-center text-base border border-emerald-200">
-                    +
-                  </div>
-                  <div>
-                    <div className="font-bold text-stone-900 text-xs">
-                      {isMr ? 'बचत जमा' : 'Savings Deposit'}
-                    </div>
-                    <div className="text-[11px] text-stone-500 font-medium">
-                      {new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      {tx.notes ? ` • ${tx.notes}` : ''}
-                    </div>
-                  </div>
+            Object.entries(groupedByMonth).map(([monthHeadline, txList]) => (
+              <div key={monthHeadline} className="space-y-0">
+                {/* Month Headline */}
+                <div className="bg-stone-100/70 px-4 py-1.5 text-[11px] font-black text-stone-700 tracking-wide uppercase border-b border-stone-200/60">
+                  {monthHeadline}
                 </div>
 
-                <div className="text-right">
-                  <div className="font-black text-[#14532D] text-sm amount-display">
-                    {formatINR(tx.amount)}
-                  </div>
-                  {tx.checkpointFingerprint && (
-                    <span className="text-[10px] font-mono text-stone-400 block">{tx.checkpointFingerprint}</span>
-                  )}
+                <div className="divide-y divide-stone-100">
+                  {txList.map((tx) => {
+                    const isInit = tx.notes?.includes('आधीची शिल्लक') || tx.id.includes('init');
+                    return (
+                      <div
+                        key={tx.id}
+                        className="p-3.5 sm:p-4 flex items-center justify-between text-xs hover:bg-stone-50 transition min-h-[58px]"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#14532D] font-black flex items-center justify-center text-sm border border-emerald-200 shrink-0">
+                            +
+                          </div>
+                          <div>
+                            <div className="font-bold text-stone-900 text-xs">
+                              {isInit ? (isMr ? 'आधीची शिल्लक' : 'Opening Accumulated') : (isMr ? 'मासिक बचत जमा' : 'Monthly Savings')}
+                            </div>
+                            <div className="text-[11px] text-stone-500 font-medium mt-0.5">
+                              {new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {tx.notes && !isInit ? ` • ${tx.notes}` : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="font-black text-[#14532D] text-sm amount-display">
+                            +{formatINR(tx.amount)}
+                          </div>
+                          <div className="text-[10px] text-stone-500 font-semibold mt-0.5">
+                            {isMr ? 'शिल्लक:' : 'Bal:'} <span className="font-bold amount-display text-stone-800">{formatINR(tx.runningBalance)}</span> • {formatReceiptNumber(tx.index || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))
           )}
+        </div>
+
+        {/* ── Discrepancy Action: "चूक आहे? प्रमुखांना कळवा" ── */}
+        <div className="p-3 bg-stone-50 border-t border-stone-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-stone-500 font-medium flex items-center gap-1.5">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{isMr ? 'हिशोबात तफावत किंवा चूक वाटते?' : 'Notice any discrepancy?'}</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleContactLead}
+            className="text-emerald-800 hover:text-emerald-950 font-black hover:underline cursor-pointer"
+          >
+            {isMr ? 'चूक आहे? प्रमुखांना कळवा' : 'Report to Lead'} →
+          </button>
         </div>
       </Card>
     </div>

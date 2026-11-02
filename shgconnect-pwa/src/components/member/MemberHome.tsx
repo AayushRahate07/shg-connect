@@ -1,7 +1,8 @@
 import React from 'react';
 import { Member, Transaction, Loan, SupportedLanguage, GroupInfo, Meeting } from '../../types/shg';
 import { translations } from '../../i18n/translations';
-import { formatINR } from '../../theme/tokens';
+import { formatINR, formatMarathiDate } from '../../theme/tokens';
+import { getGroupSettings } from '../../services/db';
 import { tts } from '../../services/tts';
 import { Card } from '../ui/Card';
 import {
@@ -13,6 +14,9 @@ import {
   BookOpen,
   Landmark,
   ArrowUpRight,
+  CheckCircle2,
+  MapPin,
+  Clock
 } from 'lucide-react';
 
 interface MemberHomeProps {
@@ -44,16 +48,14 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
   meetings = [],
   members = []
 }) => {
-  const t = translations[language] || translations.en;
   const isMr = language === 'mr';
+  const settings = getGroupSettings(group);
   const activeLoans = loans.filter(l => l.memberId === member.id && l.status === 'ACTIVE');
   const activeLoan = activeLoans[0];
-  // Show only last 3 transactions
-  const memberTxs = transactions.filter(tx => tx.memberId === member.id).slice(-3).reverse();
 
-  const groupName = group?.nameRegional || group?.name || (isMr ? 'सावित्री महिला बचत गट' : 'Savitri Mahila Bachat Gat');
-  const villageInfo = group?.village ? `${group.village}, ${group.district}` : (isMr ? 'शिरवळ, सातारा' : 'Shirwal, Satara');
-  const monthlyRate = group?.monthlyPoolRate || 500;
+  const groupName = group?.nameRegional || group?.name || settings.nameRegional || settings.name;
+  const villageInfo = `${settings.village}, ${settings.district}`;
+  const monthlyRate = settings.monthlySavingAmount || 300;
 
   // This month's savings
   const now = new Date();
@@ -67,32 +69,48 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
     })
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  // Next meeting
+  // Next meeting details
   const nextMeeting = group?.nextMeeting;
-  const nextMeetingDate = nextMeeting
-    ? new Date(nextMeeting.date).toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' })
-    : (meetings && meetings.length > 0
-        ? (() => {
-            const latest = new Date(meetings[0].date);
-            const next = new Date(latest);
-            next.setMonth(next.getMonth() + 1);
-            return next.toLocaleDateString(isMr ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short' });
-          })()
-        : (isMr ? '१८ नोव्हें' : '18 Nov'));
-  const nextMeetingVenue = nextMeeting?.venue || (isMr ? 'स्थान: गट कार्यालय' : 'Group Office');
+  const nextMeetingDateRaw = nextMeeting?.date || '2026-11-16';
+  const nextMeetingDateFormatted = formatMarathiDate(`${nextMeetingDateRaw}T${nextMeeting?.time || settings.meetingTime || '16:00'}:00`);
+  const nextMeetingVenue = nextMeeting?.venue || settings.meetingPlace || 'ग्रामपंचायत सभागृह';
+
+  // Calculate monthly EMI if loan exists
+  const emiAmount = activeLoan
+    ? Math.round((activeLoan.principal / (activeLoan.tenureMonths || 12)) + (activeLoan.principal * (activeLoan.interestRateMonthly || 1.5)) / 100)
+    : 0;
 
   const greeting = isMr
     ? `नमस्कार, ${member.nameRegional || member.name}`
-    : language === 'hi'
-    ? `नमस्ते, ${member.name}`
     : `Hello, ${member.name}`;
 
+  // Read whole screen summary
+  const handleSpeakWholeScreen = () => {
+    let msg = '';
+    if (isMr) {
+      msg = `${greeting}. तुमच्या बचत गटाचे नाव ${groupName}. तुमची एकूण जमा बचत ${member.totalSavings} रुपये आहे. पुढील बैठक ${nextMeetingDateFormatted} रोजी ${nextMeetingVenue} येथे आहे. `;
+      if (activeLoan) {
+        msg += `तुमचे थकीत कर्ज ${activeLoan.remainingBalance} रुपये आहे, आणि या महिन्याचा हप्ता ${emiAmount} रुपये आहे.`;
+      } else {
+        msg += 'तुमच्यावर सध्या कोणतेही कर्ज थकीत नाही.';
+      }
+    } else {
+      msg = `${greeting}. Total savings is ${member.totalSavings} rupees. Next meeting on ${nextMeetingDateRaw} at ${nextMeetingVenue}. `;
+      if (activeLoan) {
+        msg += `Loan balance is ${activeLoan.remainingBalance} rupees with monthly EMI of ${emiAmount} rupees.`;
+      } else {
+        msg += 'No active loan outstanding.';
+      }
+    }
+    tts.speak(msg);
+  };
+
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
+    <div className="space-y-4 max-w-2xl mx-auto pb-6">
 
       {/* ── Dual-Role Lead Quick Banner ── */}
       {isLeadUser && onSwitchToLead && (
-        <div className="bg-gradient-to-r from-amber-50 via-amber-100/40 to-orange-50 border border-amber-200 rounded-lg p-3 sm:p-3.5 flex items-center justify-between shadow-2xs gap-3 animate-fadeIn">
+        <div className="bg-gradient-to-r from-amber-50 via-amber-100/50 to-orange-50 border border-amber-300 rounded-lg p-3 sm:p-3.5 flex items-center justify-between shadow-2xs gap-3 animate-fadeIn">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
               👑
@@ -102,7 +120,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
                 {isMr ? 'तुम्ही या बचत गटाच्या प्रमुख (अध्यक्ष) आहात' : 'You are the SHG Lead for this group'}
               </p>
               <p className="text-[10px] text-amber-800 font-medium truncate mt-0.5">
-                {isMr ? 'हे तुमचे वैयक्तिक बचत खाते आहे. संपूर्ण गट व्यवस्थापनासाठी स्विच करा.' : 'This is your individual savings. Switch to manage group funds & meetings.'}
+                {isMr ? 'हे तुमचे वैयक्तिक बचत खाते आहे. संपूर्ण गट व्यवस्थापनासाठी स्विच करा.' : 'This is your personal savings. Switch to manage group funds.'}
               </p>
             </div>
           </div>
@@ -111,142 +129,193 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
             onClick={onSwitchToLead}
             className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white text-xs font-black rounded-lg shadow-2xs transition cursor-pointer shrink-0"
           >
-            {isMr ? 'गट संचालन →' : 'Group Operations →'}
+            {isMr ? 'गट व्यवस्थापन →' : 'Group Operations →'}
           </button>
         </div>
       )}
 
-      {/* ── Greeting row ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold text-stone-500 mb-0.5">
-            {groupName}
+      {/* ── Greeting Row + Full Screen Audio ── */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold text-stone-500 truncate mb-0.5">
+            {groupName} • {villageInfo}
           </p>
-          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight truncate">
             {greeting}
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => {
-              const msg = isMr
-                ? `नमस्कार ${member.nameRegional || member.name}. तुमची एकूण बचत ₹${member.totalSavings} आहे.`
-                : `Hello ${member.name}. Your total savings is ₹${member.totalSavings}.`;
-              tts.speak(msg);
-            }}
-            className="flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl transition bg-stone-100 text-stone-700 border border-stone-200 hover:bg-stone-200"
-            title="Audio Balance Readout"
+            onClick={handleSpeakWholeScreen}
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition bg-stone-100 text-stone-800 border border-stone-200 hover:bg-stone-200 active:scale-95 cursor-pointer shadow-2xs"
+            title={isMr ? 'संपूर्ण माहिती ऐका' : 'Listen to screen summary'}
+            aria-label="Listen"
           >
-            <Volume2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{isMr ? 'ऐका' : 'Listen'}</span>
+            <Volume2 className="w-4 h-4 text-emerald-800" />
+            <span className="font-black">{isMr ? 'ऐका' : 'Listen'}</span>
           </button>
 
           <button
             onClick={() => onOpenDossier(member)}
-            className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-xl transition bg-emerald-50 text-emerald-900 border border-emerald-200 hover:bg-emerald-100"
+            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition bg-emerald-50 text-emerald-950 border border-emerald-200 hover:bg-emerald-100 active:scale-95 cursor-pointer shadow-2xs"
+            title={isMr ? 'माझी प्रोफाइल' : 'Profile'}
           >
-            <User className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{t.member.viewDossier}</span>
+            <User className="w-4 h-4 text-emerald-800" />
+            <span className="hidden sm:inline font-bold">{isMr ? 'प्रोफाइल' : 'Profile'}</span>
           </button>
         </div>
       </div>
 
-      {/* ── Hero Savings Card ── */}
+      {/* ──────────────────────────────────────────────────────────
+          P2 HOME MANDATE: SHOW ONLY THREE ESSENTIAL THINGS
+          1. SAVED (जमा बचत)
+          2. NEXT MEETING (पुढील बैठक)
+          3. OWED (थकीत कर्ज + हप्ता)
+         ────────────────────────────────────────────────────────── */}
+
+      {/* ── 1. Hero Card: SAVED (जमा बचत) ── */}
       <div
-        className="rounded-lg p-5 sm:p-6 relative overflow-hidden shadow-sm border border-emerald-600/30"
-        style={{ background: 'linear-gradient(135deg, #1A6B4A 0%, #14532D 60%, #0F4230 100%)' }}
+        className="rounded-lg p-5 sm:p-6 relative overflow-hidden shadow-sm border border-emerald-700/30"
+        style={{ background: 'linear-gradient(135deg, #14532D 0%, #0F4230 65%, #0A2F22 100%)' }}
       >
-        <div className="relative z-10">
-          <p className="text-green-200 text-xs font-semibold uppercase tracking-wider mb-1">
-            {isMr ? 'एकूण बचत' : 'Total Savings'}
-          </p>
+        <div className="relative z-10 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-emerald-200 text-xs font-bold uppercase tracking-wider">
+              {isMr ? 'एकूण जमा बचत' : 'Total Saved'}
+            </span>
+            <span className="bg-white/20 text-emerald-100 text-[11px] font-black px-2.5 py-1 rounded-full border border-white/20">
+              +{formatINR(thisMonthSavings)} {isMr ? 'या महिन्यात जमा' : 'this month'}
+            </span>
+          </div>
+
           <div className="text-4xl sm:text-5xl font-black text-white tracking-tight amount-display">
             {formatINR(member.totalSavings)}
           </div>
-          <div className="flex items-center gap-3 mt-3">
-            <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full text-green-100"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <TrendingUp className="w-3 h-3" />
-              +{formatINR(thisMonthSavings)} {isMr ? 'या महिन्यात' : 'this month'}
-            </span>
-          </div>
-          <div className="flex items-center justify-between pt-4 mt-1 border-t border-white/20">
-            <span className="text-green-200 text-xs font-medium">
-              {isMr ? 'मासिक हप्ता:' : 'Monthly:'} ₹{monthlyRate}
+
+          <div className="flex items-center justify-between pt-3 border-t border-white/20 text-xs">
+            <span className="text-emerald-200 font-semibold">
+              {isMr ? 'ठरलेली मासिक बचत:' : 'Monthly saving:'} ₹{monthlyRate}
             </span>
             <button
               onClick={() => onNavigateTab('passbook')}
-              className="flex items-center gap-1 text-xs font-bold text-white hover:text-green-100 transition-colors"
+              className="flex items-center gap-1 font-bold text-white hover:text-emerald-200 transition active:scale-95 cursor-pointer"
             >
-              {isMr ? 'पासबुक पहा' : 'View Passbook'}
+              <span>{isMr ? 'पासबुक पहा' : 'View Passbook'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── Two stat tiles ── */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Next Meeting */}
-        <button
-          onClick={() => onNavigateTab('meetings')}
-          className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/30 p-4 rounded-lg border border-amber-200/80 shadow-2xs text-left hover:border-amber-300 hover:shadow-xs transition active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-3.5 h-3.5" />
+      {/* ── 2. Card: NEXT MEETING (पुढील बैठक) ── */}
+      <button
+        onClick={() => onNavigateTab('meetings')}
+        className="w-full bg-gradient-to-br from-white via-amber-50/30 to-amber-100/20 p-4 sm:p-5 rounded-lg border border-amber-200 shadow-2xs text-left hover:border-amber-300 transition active:scale-[0.99] cursor-pointer group"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
               {isMr ? 'पुढील बैठक' : 'Next Meeting'}
             </span>
           </div>
-          <p className="text-sm font-black text-stone-900 leading-snug">{nextMeetingDate}</p>
-          <p className="text-[10px] text-stone-500 font-medium mt-0.5 truncate">{nextMeetingVenue}</p>
-        </button>
+          <span className="text-xs font-bold text-amber-900 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+            <span>{isMr ? 'तपशील' : 'Details'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </span>
+        </div>
 
-        {/* Loan Due */}
-        <button
-          onClick={() => onNavigateTab('loans')}
-          className="bg-gradient-to-br from-amber-50/80 via-white to-orange-50/30 p-4 rounded-lg border border-amber-200/80 shadow-2xs text-left hover:border-amber-300 hover:shadow-xs transition active:scale-[0.98]"
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
-              <Landmark className="w-3.5 h-3.5" />
+        <p className="text-base sm:text-lg font-black text-stone-900 leading-snug">
+          {nextMeetingDateFormatted}
+        </p>
+
+        <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium mt-1">
+          <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+          <span className="truncate">{nextMeetingVenue}</span>
+        </div>
+      </button>
+
+      {/* ── 3. Card: OWED (थकीत कर्ज + या महिन्याचा हप्ता) ── */}
+      <div className="bg-white p-4 sm:p-5 rounded-lg border border-stone-200 shadow-2xs">
+        <div className="flex items-center justify-between mb-2 border-b border-stone-100 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+              <Landmark className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+            <span className="text-xs font-bold text-stone-600 uppercase tracking-wider">
               {isMr ? 'थकीत कर्ज' : 'Loan Due'}
             </span>
           </div>
-          {activeLoan ? (
-            <>
-              <p className="text-sm font-black text-stone-900 amount-display leading-snug">
-                {formatINR(activeLoan.remainingBalance)}
+
+          <button
+            onClick={() => onNavigateTab('loans')}
+            className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1"
+          >
+            <span>{isMr ? 'कर्ज खाते' : 'Loan Account'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {activeLoan ? (
+          <div className="space-y-3 pt-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-bold text-stone-500 uppercase block">
+                  {isMr ? 'एकूण बाकी' : 'Total Outstanding'}
+                </span>
+                <span className="text-2xl sm:text-3xl font-black text-rose-700 amount-display mt-0.5 block">
+                  {formatINR(activeLoan.remainingBalance)}
+                </span>
+              </div>
+              <button
+                onClick={() => onOpenUpiPayment('EMI_REPAYMENT', emiAmount)}
+                className="bg-[#14532D] hover:bg-emerald-900 text-white px-4 py-2 rounded-lg text-xs font-black shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+                <span>{isMr ? 'हप्ता भरा' : 'Pay EMI'}</span>
+              </button>
+            </div>
+
+            {/* MANDATE: "या महिन्याचा हप्ता ₹X, तारीख Y" */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs font-bold text-amber-950 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-amber-700 shrink-0" />
+              <span>
+                {isMr
+                  ? `या महिन्याचा हप्ता ${formatINR(emiAmount)}, बैठक तारीख ${nextMeetingDateRaw.split('-')[2] || '१६'}`
+                  : `This month EMI: ${formatINR(emiAmount)}, due on meeting day`}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="py-2 flex items-center justify-between">
+            <div>
+              <p className="text-base font-black text-emerald-900 leading-snug">
+                {isMr ? 'काही नाही' : 'No Active Loan'}
               </p>
-              <p className="text-[10px] text-amber-700 font-bold mt-0.5">
-                {isMr ? 'परतफेड बाकी' : 'To Repay'}
+              <p className="text-xs text-stone-500 font-medium mt-0.5">
+                {isMr ? 'सर्व हप्ते पूर्ण ✔ (कोणतेही कर्ज थकीत नाही)' : 'All loans cleared ✔'}
               </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-black text-emerald-800 leading-snug">
-                {isMr ? 'निरंक' : 'No active loan'}
-              </p>
-              <p className="text-[10px] text-stone-400 font-medium mt-0.5">
-                {isMr ? 'सर्व हप्ते पूर्ण' : 'All clear'}
-              </p>
-            </>
-          )}
-        </button>
+            </div>
+            <button
+              onClick={() => onNavigateTab('loans')}
+              className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-lg transition active:scale-95 cursor-pointer"
+            >
+              {isMr ? 'कर्ज मागा' : 'Apply'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* ── Primary action row: 3 icon+label buttons ── */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* ── Quick Nav Row ── */}
+      <div className="grid grid-cols-3 gap-3 pt-1">
         <button
           onClick={() => onNavigateTab('passbook')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-stone-50 hover:bg-emerald-50/50 rounded-lg border border-stone-200 shadow-2xs transition active:scale-[0.97] cursor-pointer group"
         >
-          <BookOpen className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
+          <BookOpen className="w-5 h-5 text-emerald-800 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
             {isMr ? 'पासबुक' : 'Passbook'}
           </span>
@@ -254,102 +323,24 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
 
         <button
           onClick={() => onNavigateTab('loans')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-stone-50 hover:bg-emerald-50/50 rounded-lg border border-stone-200 shadow-2xs transition active:scale-[0.97] cursor-pointer group"
         >
-          <Landmark className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
+          <Landmark className="w-5 h-5 text-emerald-800 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
-            {isMr ? 'माझे कर्ज' : 'My Loan'}
+            {isMr ? 'माझे कर्ज' : 'My Loans'}
           </span>
         </button>
 
         <button
           onClick={() => onNavigateTab('meetings')}
-          className="flex flex-col items-center justify-center gap-1.5 py-4 px-2 bg-gradient-to-b from-white to-stone-50/40 hover:to-emerald-50/50 rounded-lg border border-stone-200/80 hover:border-emerald-300 shadow-2xs transition active:scale-[0.97] group"
+          className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 bg-stone-50 hover:bg-emerald-50/50 rounded-lg border border-stone-200 shadow-2xs transition active:scale-[0.97] cursor-pointer group"
         >
-          <Calendar className="w-5 h-5 text-[#14532D] group-hover:scale-110 transition-transform" />
+          <Calendar className="w-5 h-5 text-emerald-800 group-hover:scale-110 transition-transform" />
           <span className="text-xs font-bold text-stone-800">
             {isMr ? 'बैठका' : 'Meetings'}
           </span>
         </button>
       </div>
-
-      {/* ── Active loan repay nudge (only when loan exists) ── */}
-      {activeLoan && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 border border-amber-300/80 rounded-lg p-4 flex items-center justify-between gap-3 shadow-xs">
-          <div>
-            <p className="text-xs font-bold text-amber-800">
-              {isMr ? 'थकीत हप्ता' : 'Loan Repayment Due'}
-            </p>
-            <p className="text-base font-black text-amber-950 amount-display">
-              {formatINR(activeLoan.remainingBalance)}
-            </p>
-          </div>
-          <button
-            onClick={() => onOpenUpiPayment('EMI_REPAYMENT', 0)}
-            className="bg-[#14532D] hover:bg-emerald-900 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-sm flex items-center gap-1.5 transition active:scale-95 flex-shrink-0"
-          >
-            <ArrowUpRight className="w-4 h-4" />
-            <span>{isMr ? 'हप्ता भरा' : 'Repay'}</span>
-          </button>
-        </div>
-      )}
-
-      {/* ── Recent Transactions (last 3) ── */}
-      <Card className="p-0 border border-stone-200/80 shadow-2xs rounded-lg overflow-hidden bg-white">
-        <div className="px-4 py-3 border-b border-stone-100 flex items-center justify-between bg-stone-50">
-          <span className="text-xs font-black text-stone-600 uppercase tracking-wider">
-            {isMr ? 'अलीकडील व्यवहार' : 'Recent Transactions'}
-          </span>
-          <button
-            onClick={() => onNavigateTab('passbook')}
-            className="text-xs font-bold text-emerald-800 hover:underline flex items-center gap-1"
-          >
-            <span>{isMr ? 'सर्व पहा' : 'View All'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="divide-y divide-stone-100">
-          {memberTxs.length === 0 ? (
-            <div className="p-6 text-center text-xs text-stone-400 font-medium">
-              {isMr ? 'कोणतेही व्यवहार उपलब्ध नाहीत.' : 'No recent transactions.'}
-            </div>
-          ) : (
-            memberTxs.map(tx => (
-              <div key={tx.id} className="px-4 py-3 flex items-center justify-between hover:bg-stone-50 transition">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                    tx.type === 'SAVINGS'
-                      ? 'bg-emerald-100 text-emerald-900'
-                      : tx.type === 'LOAN_DISBURSAL'
-                      ? 'bg-stone-100 text-stone-700'
-                      : 'bg-amber-100 text-amber-900'
-                  }`}>
-                    {tx.type === 'SAVINGS' ? '+' : '−'}
-                  </div>
-                  <div className="text-left">
-                    <p className="text-xs font-bold text-stone-900">
-                      {tx.type === 'SAVINGS'
-                        ? (isMr ? 'बचत जमा' : 'Savings Deposit')
-                        : tx.type === 'LOAN_DISBURSAL'
-                        ? (isMr ? 'कर्ज वाटप' : 'Loan Disbursal')
-                        : (isMr ? 'हप्ता परतफेड' : 'EMI Repayment')}
-                    </p>
-                    <p className="text-[10px] text-stone-400 font-medium">
-                      {new Date(tx.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-                <span className={`text-xs font-black ${
-                  tx.type === 'SAVINGS' ? 'text-[#14532D]' : 'text-stone-700'
-                }`}>
-                  {tx.type === 'SAVINGS' ? '+' : ''}{formatINR(tx.amount)}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
 
     </div>
   );

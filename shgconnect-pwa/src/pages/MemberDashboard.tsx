@@ -191,6 +191,7 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           transactions={transactions}
           language={language}
           onOpenUpiPayment={handleOpenPayment}
+          group={group}
         />
       )}
 
@@ -200,7 +201,14 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
           meetings={meetings}
           language={language}
           group={group}
-          onJoinLiveMeeting={() => setShowLiveMeeting(true)}
+          member={currentMember}
+          transactions={transactions}
+          onJoinLiveMeeting={(code) => {
+            if (code) {
+              try { localStorage.setItem('shg_live_meeting_code', code); } catch {}
+            }
+            setShowLiveMeeting(true);
+          }}
         />
       )}
 
@@ -223,13 +231,13 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
       {/* 7. Savings Goal / Calculator Page */}
       {activeTab === 'calculator' && (
-        <LoanCalculator language={language} />
+        <LoanCalculator language={language} group={group} />
       )}
 
       {activeTab === 'goals' && (
         <div className="space-y-6 max-w-2xl mx-auto">
-          <SavingsGoal currentSavings={currentMember.totalSavings} targetAmount={25000} goalName="आपत्कालीन व वैद्यकीय निधी" />
-          <LoanCalculator language={language} />
+          <SavingsGoal memberId={currentMember.id} currentSavings={currentMember.totalSavings} monthlyQuota={group?.monthlyPoolRate || 300} language={language} />
+          <LoanCalculator language={language} group={group} />
         </div>
       )}
 

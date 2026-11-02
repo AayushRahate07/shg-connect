@@ -1,17 +1,36 @@
-import React, { useState } from 'react';
-import { Meeting, SupportedLanguage, Resolution } from '../../types/shg';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Meeting, SupportedLanguage, Resolution, Member, Transaction } from '../../types/shg';
 import { GroupInfo } from '../../services/db';
-import { translations } from '../../i18n/translations';
-import { formatINR } from '../../theme/tokens';
+import { formatINR, formatMarathiDate, formatReceiptNumber } from '../../theme/tokens';
+import { getGroupSettings } from '../../services/db';
 import { Card } from '../ui/Card';
-import { Calendar, CheckCircle2, MapPin, Users, PiggyBank, Landmark, ShieldCheck, ArrowLeft, ChevronRight, FileText, Radio, ArrowRight, Sparkles } from 'lucide-react';
+import {
+  Calendar,
+  CheckCircle2,
+  MapPin,
+  Users,
+  PiggyBank,
+  Landmark,
+  ArrowLeft,
+  FileText,
+  Radio,
+  ArrowRight,
+  Clock,
+  Navigation,
+  Bell,
+  Check,
+  X,
+  AlertCircle
+} from 'lucide-react';
 
 interface MeetingsViewProps {
-  onJoinLiveMeeting?: () => void;
+  onJoinLiveMeeting?: (code?: string) => void;
   meetings: Meeting[];
   resolutions?: Resolution[];
   language: SupportedLanguage;
   group?: GroupInfo | null;
+  member?: Member;
+  transactions?: Transaction[];
 }
 
 export const MeetingsView: React.FC<MeetingsViewProps> = ({
@@ -19,288 +38,426 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
   resolutions = [],
   language,
   group,
+  member,
+  transactions = [],
   onJoinLiveMeeting
 }) => {
-  const t = translations[language] || translations.en;
+  const isMr = language === 'mr';
+  const settings = getGroupSettings(group);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [joinPin, setJoinPin] = useState<string>('');
+  const [activeRoomCode, setActiveRoomCode] = useState<string | null>(null);
+
+  // Check if there is an active meeting room in localStorage
+  useEffect(() => {
+    const checkRoom = () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('shg_live_meeting_code');
+        const hostRoom = localStorage.getItem('shg_live_room_' + stored);
+        if (stored) {
+          setActiveRoomCode(stored);
+          setJoinPin(stored);
+        } else {
+          setActiveRoomCode(null);
+        }
+      }
+    };
+    checkRoom();
+    const interval = setInterval(checkRoom, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const scheduled = group?.nextMeeting;
-  const locationLabel = scheduled?.venue
-    ? scheduled.venue
-    : (group?.village
-        ? (language === 'mr' ? `${group.village} ग्रामपंचायत सभागृह` : `${group.village} Gram Panchayat Hall`)
-        : (language === 'mr' ? 'ग्रामपंचायत सभागृह' : 'Gram Panchayat Hall'));
+  const nextDateRaw = scheduled?.date || '2026-11-16';
+  const nextTimeRaw = scheduled?.time || settings.meetingTime || '16:00';
+  const venue = scheduled?.venue || settings.meetingPlace || 'ग्रामपंचायत सभागृह';
+  const monthlyRate = settings.monthlySavingAmount || 300;
 
-  const nextMeetingDate = scheduled
-    ? `${new Date(scheduled.date).toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · ${scheduled.time || '४:०० वा.'}`
-    : (() => {
-        if (meetings && meetings.length > 0) {
-          const last = new Date(meetings[meetings.length - 1].date);
-          if (!isNaN(last.getTime())) {
-            const next = new Date(last);
-            next.setMonth(next.getMonth() + 1);
-            return next.toLocaleDateString(language === 'mr' ? 'mr-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) + ' · ४:०० वा.';
-          }
-        }
-        return '18 नोव्हेंबर 2026 · ४:०० वा.';
-      })();
+  // Compute countdown in days
+  const countdownDays = useMemo(() => {
+    const target = new Date(`${nextDateRaw}T${nextTimeRaw}:00`);
+    const today = new Date();
+    const diffTime = target.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  }, [nextDateRaw, nextTimeRaw]);
 
-  const monthlyRate = group?.monthlyPoolRate || 200;
+  // Weekday name in Marathi
+  const weekdayName = useMemo(() => {
+    const d = new Date(`${nextDateRaw}T12:00:00`);
+    const days = ['रविवार', 'सोमवार', 'मंगळवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+    return isMr ? days[d.getDay()] : d.toLocaleDateString('en-IN', { weekday: 'long' });
+  }, [nextDateRaw, isMr]);
 
-  // If a meeting detail is selected, render the dedicated Detail Screen
+  // Deduplicate meetings by date
+  const uniqueMeetings = useMemo(() => {
+    const map = new Map<string, Meeting>();
+    meetings.forEach(m => {
+      if (!map.has(m.date)) {
+        map.set(m.date, m);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [meetings]);
+
+  // Open Google Maps search for venue
+  const handleOpenMap = () => {
+    const q = `${venue}, ${settings.village}, ${settings.district}`;
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+  };
+
+  // WhatsApp Reminder
+  const handleSetReminder = () => {
+    const msg = isMr
+      ? `*स्मरणपत्र: बचत गट मासिक बैठक*\nतारीख: ${nextDateRaw} (${weekdayName})\nवेळ: सायं. ${nextTimeRaw} वा.\nस्थान: ${venue}\nकाय आणायचे: बचत ₹${monthlyRate}\n\nकृपया वेळेवर उपस्थित राहावे.`
+      : `SHG Meeting Reminder: ${nextDateRaw} at ${venue}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  // Handle inline join
+  const handleInlineJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (joinPin.trim().length === 4) {
+      onJoinLiveMeeting?.(joinPin.trim());
+    }
+  };
+
+  // ── Meeting Detail View (When a meeting is tapped) ──
   if (selectedMeeting) {
-    const totalMembers = Object.keys(selectedMeeting.attendanceRecord || {}).length || 16;
-    const presentCount = Object.values(selectedMeeting.attendanceRecord || {}).filter(Boolean).length || 14;
-    const totalCash = (selectedMeeting.totalSavingsCollected || 2400) + (selectedMeeting.totalEmiCollected || 5600);
+    const totalMembers = Object.keys(selectedMeeting.attendanceRecord || {}).length || 14;
+    const presentCount = Object.values(selectedMeeting.attendanceRecord || {}).filter(Boolean).length || 12;
+    const isMemberPresent = member ? selectedMeeting.attendanceRecord?.[member.id] !== false : true;
+    const totalCash = (selectedMeeting.totalSavingsCollected || (monthlyRate * presentCount)) + (selectedMeeting.totalEmiCollected || 0);
 
     return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        {/* Detail Screen Navigation Header */}
+      <div className="space-y-5 max-w-2xl mx-auto pb-8 animate-fadeIn">
+        {/* Back Navigation */}
         <div className="flex items-center justify-between">
           <button
             onClick={() => setSelectedMeeting(null)}
-            className="flex items-center space-x-2 text-xs font-bold text-[#0F766E] hover:underline bg-white px-3 py-1.5 rounded-xl border border-[#E7E5E4] shadow-xs"
+            className="flex items-center space-x-1.5 text-xs font-black text-stone-700 hover:text-stone-900 bg-white px-3 py-1.5 rounded-xl border border-stone-200 shadow-2xs active:scale-95 transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>{language === 'mr' ? '← मागे (माझ्या बैठका)' : language === 'hi' ? '← पीछे' : '← Back to Meetings'}</span>
+            <span>{isMr ? 'मागे (बैठका)' : 'Back to Meetings'}</span>
           </button>
 
-          <span className="bg-[#CCFBF1] text-[#0F766E] font-extrabold text-xs px-3 py-1 rounded-full flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            {language === 'mr' ? 'बैठक पूर्ण' : 'Meeting Completed'}
+          <span className="bg-emerald-100 text-emerald-950 font-black text-xs px-3 py-1 rounded-full flex items-center gap-1 border border-emerald-300">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+            <span>{isMr ? 'बैठक संपन्न' : 'Completed'}</span>
           </span>
         </div>
 
-        {/* Meeting Hero Banner */}
-        <div className="bg-gradient-to-br from-teal-50/50 via-white to-emerald-50/30 p-6 rounded-lg border border-teal-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
-              {language === 'mr' ? `बैठक क्रमांक #${selectedMeeting.meetingNumber}` : `Meeting #${selectedMeeting.meetingNumber}`}
-            </span>
-            <span className="text-xs font-bold text-[#1C1917]">
-              {selectedMeeting.date}
-            </span>
+        {/* Meeting Header */}
+        <div className="bg-gradient-to-br from-white via-stone-50 to-emerald-50/20 p-5 rounded-lg border border-stone-200 shadow-2xs space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold text-stone-500">
+            <span>{isMr ? `बैठक क्र. #${selectedMeeting.meetingNumber}` : `Meeting #${selectedMeeting.meetingNumber}`}</span>
+            <span>{selectedMeeting.date}</span>
           </div>
-          <h2 className="text-2xl font-extrabold text-[#1C1917]">
-            {language === 'mr' ? 'मासिक गट बैठक' : 'Monthly SHG Meeting'}
+          <h2 className="text-xl sm:text-2xl font-black text-stone-900">
+            {isMr ? 'मासिक बचत गट बैठक' : 'Monthly SHG Meeting'}
           </h2>
-          <div className="text-xs text-[#78716C] font-medium flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-            <span>{locationLabel}</span>
+          <div className="text-xs text-stone-600 font-medium flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+            <span>{venue}</span>
           </div>
         </div>
 
-        {/* Meeting Detail Grid Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Attendance Card */}
-          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-[#0F766E]" />
-              {language === 'mr' ? 'उपस्थिती' : 'Attendance'}
-            </span>
-            <div className="text-2xl font-black text-[#1C1917]">
-              {presentCount} / {totalMembers} {language === 'mr' ? 'सदस्य' : 'members'}
+        {/* Personal Status Banner */}
+        <div className={`p-4 rounded-lg border text-xs font-bold flex items-center justify-between shadow-2xs ${
+          isMemberPresent
+            ? 'bg-emerald-50 text-emerald-950 border-emerald-300'
+            : 'bg-rose-50 text-rose-950 border-rose-300'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-black ${
+              isMemberPresent ? 'bg-emerald-700' : 'bg-rose-700'
+            }`}>
+              {isMemberPresent ? '✔' : '✖'}
             </div>
-            <div className="text-xs text-[#0F766E] font-semibold">
-              {Math.round((presentCount / totalMembers) * 100)}% {language === 'mr' ? 'उपस्थिती दर (Quorum Met)' : 'Attendance rate'}
+            <div>
+              <p className="font-black text-sm">
+                {isMr
+                  ? (isMemberPresent ? 'तुम्ही या बैठकीस हजर होतात' : 'तुम्ही या बैठकीस गैरहजर होतात')
+                  : (isMemberPresent ? 'You attended this meeting' : 'You were absent')}
+              </p>
+              <p className="text-[11px] font-medium opacity-90 mt-0.5">
+                {isMemberPresent
+                  ? (isMr ? `बचत जमा: ${formatINR(monthlyRate)} • पावती वहीत नोंदली गेली आहे` : `Savings: ${formatINR(monthlyRate)}`)
+                  : (isMr ? 'मासिक बचत पुढील बैठकीत जमा करणे' : 'Deposit pending')}
+              </p>
             </div>
           </div>
+          <span className="text-xs font-black">
+            {isMemberPresent ? (isMr ? 'हजर ✔' : 'Present') : (isMr ? 'गैरहजर ✖' : 'Absent')}
+          </span>
+        </div>
 
-          {/* Cash Reconciliation Card */}
-          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-[#0F766E]" />
-              {language === 'mr' ? 'रोख ताळमेळ (Reconciliation)' : 'Cash Reconciliation'}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white p-4 rounded-lg border border-stone-200 shadow-2xs space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+              <Users className="w-3.5 h-3.5 text-emerald-800" />
+              {isMr ? 'एकूण उपस्थिती' : 'Attendance'}
             </span>
-            <div className="text-2xl font-black text-[#1C1917]">
+            <div className="text-xl font-black text-stone-900">
+              {presentCount} / {totalMembers} {isMr ? 'हजर' : 'present'}
+            </div>
+            <p className="text-[11px] text-emerald-800 font-bold">
+              {Math.round((presentCount / totalMembers) * 100)}% {isMr ? 'कोरम पूर्ण' : 'Quorum met'}
+            </p>
+          </div>
+
+          <div className="bg-white p-4 rounded-lg border border-stone-200 shadow-2xs space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 flex items-center gap-1">
+              <PiggyBank className="w-3.5 h-3.5 text-emerald-800" />
+              {isMr ? 'रोख पेटी ताळमेळ' : 'Cash Balanced'}
+            </span>
+            <div className="text-xl font-black text-stone-900 amount-display">
               {formatINR(totalCash)}
             </div>
-            <div className="text-xs text-[#0F766E] font-semibold flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{language === 'mr' ? 'Expected ₹' + totalCash + ' = Actual ₹' + totalCash + ' (ताळमेळ पूर्ण)' : 'Balanced cleanly'}</span>
-            </div>
-          </div>
-
-          {/* Savings Collected */}
-          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-              <PiggyBank className="w-4 h-4 text-[#0F766E]" />
-              {language === 'mr' ? 'जमा झालेली बचत' : 'Savings Collected'}
-            </span>
-            <div className="text-xl font-bold text-[#0F766E]">
-              {formatINR(selectedMeeting.totalSavingsCollected || 2400)}
-            </div>
-          </div>
-
-          {/* Loan Repayments Collected */}
-          <div className="bg-gradient-to-br from-white to-emerald-50/30 p-5 rounded-lg border border-emerald-200/80 shadow-2xs space-y-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-              <Landmark className="w-4 h-4 text-[#F97316]" />
-              {language === 'mr' ? 'कर्ज परतफेड' : 'Loan Repayments'}
-            </span>
-            <div className="text-xl font-bold text-[#1C1917]">
-              {formatINR(selectedMeeting.totalEmiCollected || 5600)}
-            </div>
+            <p className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
+              <span>{isMr ? 'हिशोब जुळला ✔' : 'Balanced cleanly ✔'}</span>
+            </p>
           </div>
         </div>
 
-        {/* Resolutions Passed Section */}
-        <div className="bg-white p-5 rounded-lg border border-[#E7E5E4] shadow-card space-y-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-[#F97316]" />
-            {language === 'mr' ? 'बैठकीतील ठराव (Resolutions)' : 'Resolutions Passed'}
-          </span>
-          <ul className="space-y-2 text-xs text-[#1C1917] font-medium">
-            <li className="flex items-start gap-2 bg-[#FAFAF9] p-2.5 rounded-xl border border-[#E7E5E4]">
-              <span className="text-[#0F766E] font-bold">•</span>
-              <span>{language === 'mr' ? `मासिक बचत दरमहा ₹${monthlyRate} वेळेवर जमा करण्याचा ठराव मंजूर.` : `Monthly savings contribution fixed at ₹${monthlyRate} per member.`}</span>
+        {/* Short Minutes (इतिवृत्त) & Fines */}
+        <div className="bg-white p-4 sm:p-5 rounded-lg border border-stone-200 shadow-2xs space-y-3">
+          <h4 className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5 border-b border-stone-100 pb-2">
+            <FileText className="w-4 h-4 text-amber-700" />
+            <span>{isMr ? 'बैठकीचे इतिवृत्त व ठराव' : 'Meeting Minutes'}</span>
+          </h4>
+          <ul className="space-y-2 text-xs text-stone-800 font-medium leading-relaxed">
+            <li className="flex items-start gap-2 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+              <span className="text-emerald-800 font-black">•</span>
+              <span>
+                {isMr
+                  ? `मासिक बचत दरमहा ₹${monthlyRate} प्रमाणे उपस्थित सदस्यांकडून रोख संकलित करण्यात आली.`
+                  : `Monthly savings collected from all present members at ₹${monthlyRate}.`}
+              </span>
             </li>
-            <li className="flex items-start gap-2 bg-[#FAFAF9] p-2.5 rounded-xl border border-[#E7E5E4]">
-              <span className="text-[#0F766E] font-bold">•</span>
-              <span>{language === 'mr' ? `पुढील बैठकीची तारीख ${nextMeetingDate} ${locationLabel} येथे निश्चित.` : `Next meeting confirmed for ${nextMeetingDate} at ${locationLabel}.`}</span>
+            <li className="flex items-start gap-2 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+              <span className="text-emerald-800 font-black">•</span>
+              <span>
+                {isMr
+                  ? 'दंड व वसुली: कोणतीही दंडात्मक वसुली नाही (निरंक / काही नाही).'
+                  : 'Fines: Nil.'}
+              </span>
+            </li>
+            <li className="flex items-start gap-2 bg-stone-50 p-2.5 rounded-lg border border-stone-200">
+              <span className="text-emerald-800 font-black">•</span>
+              <span>
+                {isMr
+                  ? `पुढील बैठक ठरल्याप्रमाणे १६ तारखेला ${venue} येथे दुपारी ४:०० वाजता घेण्याचे सर्वानुमते ठरले.`
+                  : `Next meeting confirmed for regular schedule at ${venue}.`}
+              </span>
             </li>
           </ul>
-        </div>
-
-        {/* Cryptographic Audit Checkpoint */}
-        <div className="bg-[#FAFAF9] p-4 rounded-lg border border-[#E7E5E4] flex flex-wrap items-center justify-between gap-2 text-xs text-[#78716C]">
-          <span className="font-semibold">{language === 'mr' ? 'ऑडिट तपासणी (Hash Checkpoint):' : 'Audit Checkpoint:'}</span>
-          <span className="font-mono text-[11px] font-bold text-[#0F766E]">
-            {selectedMeeting.checkpointFingerprint || 'CHK-88F2-990A-331C'}
-          </span>
         </div>
       </div>
     );
   }
 
+  // ── Main Meetings Overview ──
   return (
-    <div className="space-y-6 max-w-4xl mx-auto pb-6">
-      {/* Page Title & Subtitle */}
+    <div className="space-y-5 max-w-2xl mx-auto pb-8 animate-fadeIn">
+      {/* Title */}
       <div>
-        <h1 className="text-2xl font-extrabold text-[#1C1917] tracking-tight flex items-center gap-2">
-          <Calendar className="w-6 h-6 text-[#0F766E]" />
-          <span>{language === 'mr' ? 'माझ्या बैठका' : language === 'hi' ? 'मेरी बैठकें' : 'My Meetings'}</span>
+        <h1 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+          <Calendar className="w-6 h-6 text-emerald-800" />
+          <span>{isMr ? 'माझ्या बैठका' : 'Meetings'}</span>
         </h1>
-        <p className="text-xs text-[#78716C] mt-0.5">
-          {language === 'mr' ? 'आगामी आणि मागील बैठकींची माहिती व तपशील' : language === 'hi' ? 'आगामी और पिछली बैठकों का विवरण' : 'Upcoming schedule and past meeting records'}
+        <p className="text-xs text-stone-500 font-medium mt-0.5">
+          {settings.nameRegional || settings.name} • {venue}
         </p>
       </div>
 
-      {/* Live Meeting Action Card */}
-      {onJoinLiveMeeting && (
-        <div className="bg-gradient-to-r from-emerald-800 to-teal-700 text-white p-5 rounded-lg shadow-lg border border-emerald-600 space-y-3">
+      {/* ── 1. JOIN LIVE MEETING CARD (Prominent ONLY when room is active or initiated) ── */}
+      {(activeRoomCode || onJoinLiveMeeting) && (
+        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-5 rounded-lg shadow-sm border border-emerald-700 space-y-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-emerald-400 animate-ping inline-block" />
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-200">
-                {language === 'mr' ? 'थेट बैठक कक्ष' : 'Live Meeting Room'}
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-200">
+                {isMr ? 'थेट बैठक कक्ष (Live)' : 'Live Meeting Room'}
               </span>
             </div>
             <span className="bg-emerald-500/30 text-emerald-100 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-400/30">
-              {language === 'mr' ? 'सुरू आहे' : 'Active'}
+              {activeRoomCode ? (isMr ? 'सध्या सुरू आहे' : 'Active Now') : (isMr ? 'सामील व्हा' : 'Join')}
             </span>
           </div>
+
           <div>
-            <h2 className="text-xl font-black text-white">
-              {language === 'mr' ? 'गटाची थेट बैठक सुरू आहे?' : 'Is your SHG meeting in progress?'}
-            </h2>
-            <p className="text-xs text-emerald-100/90 mt-1">
-              {language === 'mr'
-                ? 'गट प्रमुखांकडून ४-अंकी कोड घ्या आणि बैठकीत सामील व्हा.'
-                : 'Get the 4-digit code from your Lead and join to record your attendance & savings.'}
+            <h3 className="text-base sm:text-lg font-black text-white">
+              {isMr ? 'गटाची बैठक सुरू आहे? बैठकीत सामील व्हा' : 'Meeting in progress? Join now'}
+            </h3>
+            <p className="text-xs text-emerald-100/90 mt-0.5">
+              {isMr
+                ? 'गट प्रमुखांनी दिलेला ४-अंकी बैठक कोड टाका आणि हजेरी नोंदवा.'
+                : 'Enter the 4-digit code given by your Lead to record attendance.'}
             </p>
           </div>
-          <button
-            onClick={onJoinLiveMeeting}
-            className="w-full bg-white text-emerald-900 font-black text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-md hover:bg-emerald-50 active:scale-[0.98] transition"
-          >
-            <Radio className="w-4 h-4 text-emerald-700 animate-pulse" />
-            <span>{language === 'mr' ? 'बैठकीत सामील व्हा (Join Meeting)' : 'Join Live Meeting'}</span>
-            <ArrowRight className="w-4 h-4 ml-1" />
-          </button>
+
+          {/* Inline 4-digit PIN Box & Join Button */}
+          <form onSubmit={handleInlineJoin} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                maxLength={4}
+                value={joinPin}
+                onChange={(e) => setJoinPin(e.target.value.replace(/\D/g, ''))}
+                placeholder={isMr ? '४-अंकी कोड (उदा. ४८२१)' : '4-digit PIN (e.g. 4821)'}
+                className="w-full bg-white/15 border border-white/30 text-white placeholder-emerald-200 text-base font-black px-4 py-2.5 rounded-lg text-center tracking-widest outline-none focus:ring-2 focus:ring-white"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={joinPin.trim().length !== 4}
+              className="bg-white hover:bg-emerald-50 active:scale-95 disabled:opacity-50 text-emerald-950 font-black text-xs px-5 py-3 rounded-lg shadow-sm transition flex items-center justify-center gap-2 cursor-pointer shrink-0"
+            >
+              <Radio className="w-4 h-4 text-emerald-800 animate-pulse" />
+              <span>{isMr ? 'बैठकीत सामील व्हा' : 'Join Meeting'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
         </div>
       )}
 
-      {/* Upcoming Meeting Banner Card */}
-      <div className="bg-gradient-to-br from-white via-amber-50/20 to-amber-50/40 p-5 sm:p-6 rounded-lg border border-amber-200/80 shadow-2xs space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#78716C] flex items-center gap-1.5">
-          <Calendar className="w-4 h-4 text-[#F97316]" />
-          {language === 'mr' ? 'पुढील बैठक' : language === 'hi' ? 'अगली बैठक' : 'Next Scheduled Meeting'}
-        </span>
-
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            <div className="text-2xl font-extrabold text-[#1C1917]">
-              {nextMeetingDate}
-            </div>
-            <div className="text-xs text-[#78716C] font-medium mt-1 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-[#F97316]" />
-              <span>{locationLabel}</span>
-            </div>
-            {scheduled?.agenda && (
-              <div className="text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 mt-2 inline-flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                <span>{language === 'mr' ? 'विषय:' : 'Agenda:'} {scheduled.agenda}</span>
-              </div>
-            )}
-          </div>
-          <span className="bg-[#FFEDD5] text-[#C2410C] font-extrabold text-xs px-3 py-1.5 rounded-full">
-            {language === 'mr' ? 'नियोजित' : 'Scheduled'}
+      {/* ── 2. NEXT SCHEDULED MEETING CARD ── */}
+      <div className="bg-gradient-to-br from-white via-amber-50/20 to-orange-50/20 p-5 rounded-lg border border-amber-200 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-amber-700" />
+            <span>{isMr ? 'पुढील ठरलेली बैठक' : 'Next Scheduled Meeting'}</span>
           </span>
+          <span className="bg-amber-100 text-amber-900 text-xs font-black px-2.5 py-1 rounded-full border border-amber-300">
+            {isMr ? `${countdownDays} दिवसांनी` : `In ${countdownDays} days`}
+          </span>
+        </div>
+
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-stone-900">
+            {formatMarathiDate(`${nextDateRaw}T${nextTimeRaw}:00`)}
+          </h2>
+          <div className="flex items-center gap-1.5 text-xs text-stone-600 font-medium mt-1">
+            <MapPin className="w-4 h-4 text-amber-700 shrink-0" />
+            <span>{venue}</span>
+          </div>
+        </div>
+
+        {/* "काय आणायचे" (What to bring) */}
+        <div className="bg-white/80 p-3.5 rounded-lg border border-amber-200/80 space-y-1.5 text-xs">
+          <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 block">
+            {isMr ? '💼 बैठकीत काय आणायचे:' : 'What to bring:'}
+          </span>
+          <div className="grid grid-cols-2 gap-2 font-bold text-stone-800">
+            <div className="bg-stone-50 p-2 rounded-lg border border-stone-200">
+              <span className="text-[10px] text-stone-500 block">{isMr ? 'मासिक बचत' : 'Savings'}</span>
+              <span className="text-sm font-black text-emerald-800">{formatINR(monthlyRate)}</span>
+            </div>
+            <div className="bg-stone-50 p-2 rounded-lg border border-stone-200">
+              <span className="text-[10px] text-stone-500 block">{isMr ? 'कर्ज हप्ता' : 'Loan EMI'}</span>
+              <span className="text-sm font-black text-stone-800">
+                {member?.activeLoanBalance ? (isMr ? 'हप्ता रक्कम' : 'EMI Due') : (isMr ? 'काही नाही' : 'Nil')}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Reminder & Venue Direction Buttons */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <button
+            type="button"
+            onClick={handleSetReminder}
+            className="w-full py-2 px-3 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-stone-200"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-700" />
+            <span>{isMr ? 'स्मरणपत्र ठेवा' : 'Reminder'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenMap}
+            className="w-full py-2 px-3 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-950 text-xs font-bold transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer border border-emerald-200"
+          >
+            <Navigation className="w-3.5 h-3.5 text-emerald-800" />
+            <span>{isMr ? 'नकाशा / पत्ता' : 'Map Venue'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Past Meetings List */}
-      <Card className="p-0 border border-[#E7E5E4] shadow-card rounded-lg overflow-hidden bg-white">
-        <div className="p-4 border-b border-[#E7E5E4] bg-[#FAFAF9]">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#78716C]">
-            {language === 'mr' ? 'मागील बैठका' : language === 'hi' ? 'पिछली बैठकें' : 'Past Completed Meetings'}
+      {/* ── 3. PAST MEETINGS (Lead with MY Attendance & Deposit) ── */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black uppercase tracking-wider text-stone-700 flex items-center gap-1.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-800" />
+            <span>{isMr ? 'मागील बैठकांचा इतिहास' : 'Past Meetings'}</span>
+          </h3>
+          <span className="text-xs text-stone-500 font-medium">
+            {uniqueMeetings.length} {isMr ? 'बैठका' : 'meetings'}
           </span>
         </div>
 
-        <div className="divide-y divide-[#E7E5E4]">
-          {meetings.length === 0 ? (
-            <div className="p-8 text-center text-xs text-[#78716C]">
-              {language === 'mr' ? 'अजून कोणतीही बैठक पूर्ण झालेली नाही.' : 'No past meeting records found.'}
-            </div>
-          ) : (
-            meetings.map((m) => {
-              const presentCount = Object.values(m.attendanceRecord || {}).filter(Boolean).length || 14;
-              const totalCount = Object.keys(m.attendanceRecord || {}).length || 16;
-              return (
-                <div key={m.id} className="p-4 flex flex-wrap items-center justify-between gap-3 hover:bg-[#F5F5F4] transition">
+        <div className="space-y-2.5">
+          {uniqueMeetings.map((mtg) => {
+            const isAttended = member ? mtg.attendanceRecord?.[member.id] !== false : true;
+            const totalPresent = Object.values(mtg.attendanceRecord || {}).filter(Boolean).length || 12;
+            const totalMembers = Object.keys(mtg.attendanceRecord || {}).length || 14;
+
+            return (
+              <button
+                key={mtg.id}
+                onClick={() => setSelectedMeeting(mtg)}
+                className="w-full bg-white hover:bg-stone-50 p-4 rounded-lg border border-stone-200 shadow-2xs text-left transition active:scale-[0.99] cursor-pointer group"
+              >
+                <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-extrabold text-sm text-[#1C1917]">
-                        {m.date}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-stone-900">
+                        {isMr ? `बैठक क्र. #${mtg.meetingNumber}` : `Meeting #${mtg.meetingNumber}`}
                       </span>
-                      <span className="bg-[#CCFBF1] text-[#0F766E] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {language === 'mr' ? 'बैठक पूर्ण' : 'Completed'}
+                      <span className="text-[11px] text-stone-500 font-semibold">
+                        • {mtg.date}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-[#78716C] font-medium">
-                      <span>{language === 'mr' ? `उपस्थिती: ${presentCount}/${totalCount}` : `Attendance: ${presentCount}/${totalCount}`}</span>
-                      <span>•</span>
-                      <span>{language === 'mr' ? `बचत: ${formatINR(m.totalSavingsCollected || 2400)}` : `Savings: ${formatINR(m.totalSavingsCollected || 2400)}`}</span>
-                      <span>•</span>
-                      <span>{language === 'mr' ? `तफावत: ₹०` : `Diff: ₹0`}</span>
+                    {/* LEAD WITH MY ATTENDANCE AND DEPOSIT */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-black px-2 py-0.5 rounded-md ${
+                        isAttended
+                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          : 'bg-rose-100 text-rose-900 border border-rose-200'
+                      }`}>
+                        {isAttended ? (isMr ? 'हजर ✔' : 'Attended ✔') : (isMr ? 'गैरहजर ✖' : 'Absent ✖')}
+                      </span>
+                      <span className="text-xs font-bold text-stone-700">
+                        {isAttended ? (isMr ? `बचत: ₹${monthlyRate} जमा` : `Saved: ₹${monthlyRate}`) : (isMr ? 'बचत: बाकी' : 'Pending')}
+                      </span>
                     </div>
+
+                    <p className="text-[11px] text-stone-500 font-medium pt-1">
+                      {isMr
+                        ? `गट उपस्थिती: ${totalPresent}/${totalMembers} हजर • दंड: काही नाही`
+                        : `Attendance: ${totalPresent}/${totalMembers} • Fines: Nil`}
+                    </p>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedMeeting(m)}
-                    className="bg-[#F5F5F4] hover:bg-[#CCFBF1] text-[#1C1917] hover:text-[#0F766E] border border-[#E7E5E4] px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
-                  >
-                    <span>{language === 'mr' ? 'बैठक तपशील पहा' : 'View Details'}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-black text-emerald-800 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                      <span>{isMr ? 'इतिवृत्त पहा' : 'View Minutes'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                    <span className="text-[10px] text-stone-400 block mt-1">
+                      {formatReceiptNumber(mtg.meetingNumber - 1)}
+                    </span>
+                  </div>
                 </div>
-              );
-            })
-          )}
+              </button>
+            );
+          })}
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

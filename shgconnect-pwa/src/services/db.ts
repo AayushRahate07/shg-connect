@@ -15,13 +15,17 @@ import {
   FederationScope,
   DeferredRemoteOperation,
   Role,
-  GroupInfo
+  GroupInfo,
+  GroupSettings
 } from '../types/shg';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 import { DEMO_ASSIGNED_GROUPS, DEMO_MEMBERS, DEMO_LOANS, DEMO_MEETINGS } from './demoData';
 import {
   SEED_GROUPS,
   ALL_SEED_USERS,
+  DEFAULT_SEED_MEMBERS,
+  DEFAULT_SEED_LOANS,
+  DEFAULT_SEED_MEETINGS,
   SEED_MEMBERS_BY_SHG,
   SEED_LOANS_BY_SHG,
   SEED_MEETINGS_BY_SHG,
@@ -95,30 +99,62 @@ export const INITIAL_GROUP: GroupInfo = SEED_GROUPS[0] || {
 export const DEFAULT_OFFICERS: OfficerCredentials[] = [
   {
     role: 'PRESIDENT',
-    name: 'Sunita-bai Deshmukh',
-    nameRegional: 'सुनिताबाई देशमुख (अध्यक्ष)',
+    name: 'Asha-tai Kamble',
+    nameRegional: 'आशाताई कांबळे (अध्यक्ष)',
     pinHash: '0e7517141fb53f21ee439b355b5a1d0a520954f91e4b096d24669aa5ab7a856f',
     defaultPin: '1111'
   },
   {
     role: 'SECRETARY',
-    name: 'Anita-tai Shinde',
-    nameRegional: 'अनिताताई शिंदे (सचिव)',
+    name: 'Anita-tai Meshram',
+    nameRegional: 'अनिताताई मेश्राम (सचिव)',
     pinHash: 'edee29f882543b956620b26d0fc0e7314715d92c9704e6fe84a6c42a2223788a',
     defaultPin: '2222'
   },
   {
     role: 'TREASURER',
-    name: 'Kamal-tai Patil',
-    nameRegional: 'कमलताई पाटील (खजिनदार)',
+    name: 'Meena-tai Raut',
+    nameRegional: 'मीनाताई राऊत (कोषाध्यक्ष)',
     pinHash: '1134a654e58b8ef4d6d6c6a7e04f0390a19e5d99b1a0e3678512530a6f80a311',
     defaultPin: '3333'
   }
 ];
 
-export const INITIAL_MEMBERS: Member[] = DEMO_MEMBERS;
-export const INITIAL_LOANS: Loan[] = DEMO_LOANS;
-export const INITIAL_MEETINGS: Meeting[] = DEMO_MEETINGS;
+export const INITIAL_MEMBERS: Member[] = DEFAULT_SEED_MEMBERS;
+export const INITIAL_LOANS: Loan[] = DEFAULT_SEED_LOANS;
+export const INITIAL_MEETINGS: Meeting[] = DEFAULT_SEED_MEETINGS;
+
+export function getGroupSettings(group?: GroupInfo | null): GroupSettings {
+  if (group?.settings) {
+    return group.settings;
+  }
+  const defaultGroup = SEED_GROUPS[0];
+  if (defaultGroup.settings) {
+    return defaultGroup.settings;
+  }
+  return {
+    shgCode: group?.shgCode || defaultGroup.shgCode,
+    name: group?.name || defaultGroup.name,
+    nameRegional: group?.nameRegional || defaultGroup.nameRegional,
+    village: group?.village || defaultGroup.village,
+    district: group?.district || defaultGroup.district,
+    monthlySavingAmount: group?.monthlyPoolRate || defaultGroup.monthlyPoolRate || 300,
+    loanInterestRateMonthly: 1.5,
+    maxLoanTenureMonths: 12,
+    loanLimitMultiplier: 3,
+    requiredQuorumSignatures: 2,
+    treasurerName: 'मीनाताई राऊत',
+    presidentName: 'आशाताई कांबळे',
+    secretaryName: 'अनिताताई मेश्राम',
+    meetingPlace: group?.nextMeeting?.venue || 'बोरी ग्रामपंचायत सभागृह',
+    meetingTime: group?.nextMeeting?.time || '16:00',
+    meetingDayOfMonth: 16,
+    bankName: group?.bankDetails?.bankName || 'Vidharbha Konkan Gramin Bank',
+    accountMasked: group?.bankDetails?.accountMasked || 'XXXX-XXXX-3841',
+    ifsc: group?.bankDetails?.ifsc || 'VKGB0001042',
+    branch: group?.bankDetails?.branch || 'Hingna Branch'
+  };
+}
 
 let dbInstancePromise: Promise<IDBDatabase> | null = null;
 
@@ -572,7 +608,16 @@ export async function getMeetings(): Promise<Meeting[]> {
 }
 
 export async function saveMeetings(meetings: Meeting[]): Promise<void> {
-  await putAllIntoStore('meetings', meetings);
+  const uniqueMeetings: Meeting[] = [];
+  const seenDateShg = new Set<string>();
+  for (const m of meetings) {
+    const key = `${m.shgId || 'default'}_${m.date}`;
+    if (!seenDateShg.has(key)) {
+      seenDateShg.add(key);
+      uniqueMeetings.push(m);
+    }
+  }
+  await putAllIntoStore('meetings', uniqueMeetings);
 }
 
 export async function getResolutions(): Promise<Resolution[]> {

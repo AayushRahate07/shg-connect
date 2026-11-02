@@ -11,7 +11,7 @@
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_v4-success?style=for-the-badge&logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![WebCrypto](https://img.shields.io/badge/Security-SHA--256_RFC6962-critical?style=for-the-badge&logo=open-access&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
-[Live Demo](https://shg-connect-in.vercel.app/#)  •  [Architecture](#4-technical-architecture)  •  [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
+[Live Demo](https://shg-connect-in.vercel.app/#)  •  [मराठी माहितीपत्रक](README.mr.md)  •  [Architecture](#4-technical-architecture)  •  [Testing Guide](#how-to-test-live-multi-device-meeting-3-phones-on-wi-fi)
 
 </div>
 
@@ -230,7 +230,7 @@ Tamper Simulation Attack : PASS (Altering block 0 amount from ₹500 to ₹50,00
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/shgconnect.git
+git clone https://github.com/AayushRahate07/shg-connect.git
 cd shgconnect/shgconnect-pwa
 
 # Install dependencies

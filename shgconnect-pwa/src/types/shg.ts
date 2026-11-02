@@ -54,6 +54,37 @@ export interface ScheduledMeeting {
   scheduledAt: string;
 }
 
+export interface GroupSettings {
+  shgCode: string;
+  name: string;
+  nameRegional: string;
+  village: string;
+  district: string;
+  // Core financial & operational rules
+  monthlySavingAmount: number;         // e.g. ₹300 or ₹500
+  loanInterestRateMonthly: number;     // e.g. 1.5% ("शेकडा दीड रुपये")
+  maxLoanTenureMonths: number;         // e.g. 12 or 24 months
+  loanLimitMultiplier: number;         // e.g. 3x of total savings
+  requiredQuorumSignatures: number;    // e.g. 2 or 3
+  treasurerName: string;               // e.g. "मीनाताई राऊत"
+  presidentName: string;               // e.g. "आशाताई कांबळे"
+  secretaryName: string;               // e.g. "अनिताताई मेश्राम"
+  meetingPlace: string;                // e.g. "बोरी ग्रामपंचायत सभागृह"
+  meetingTime: string;                 // e.g. "16:00"
+  meetingDayOfMonth: number;           // e.g. 16
+  bankName: string;
+  accountMasked: string;
+  ifsc: string;
+  branch: string;
+}
+
+export interface GoalSetting {
+  memberId: string;
+  targetAmount: number;
+  purpose: string;
+  createdAt: string;
+}
+
 export interface GroupInfo {
   name: string;
   nameRegional: string;
@@ -78,6 +109,7 @@ export interface GroupInfo {
     scheduledBy?: string;
   };
   federation?: FederationScope;
+  settings?: GroupSettings;
 }
 
 export interface Member {
