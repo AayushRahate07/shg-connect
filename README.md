@@ -11,7 +11,7 @@
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_v4-success?style=for-the-badge&logo=databricks&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![WebCrypto](https://img.shields.io/badge/Security-SHA--256_RFC6962-critical?style=for-the-badge&logo=open-access&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
 
-[Live Demo](https://shg-connect-in.vercel.app/#)  •  [मराठी माहितीपत्रक](README.mr.md)  •  [Meeting Modes](#3-meeting-operational-modes--dynamic-protocols)  •  [Edge Cases & Early Departures](#4-member-lifecycle-early-departures--edge-case-safeguards)  •  [Architecture](#6-technical-architecture)
+[Live Demo](https://shg-connect-in.vercel.app/#)  •  [मराठी माहितीपत्रक](README.mr.md)  •  [Architecture](#6-technical-architecture)
 
 </div>
 
