@@ -1,0 +1,9 @@
+{
+  "name": "shg-connect",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "cd shgconnect-pwa && npm install && npm run build",
+    "dev": "cd shgconnect-pwa && npm run dev"
+  }
+}

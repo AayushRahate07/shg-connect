@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "cd shgconnect-pwa && npm run build",
+  "outputDirectory": "shgconnect-pwa/dist",
+  "installCommand": "cd shgconnect-pwa && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
