@@ -24,6 +24,14 @@ if ('serviceWorker' in navigator) {
         console.log('SHGConnect PWA ready for offline use');
       }
     });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   }
 }
 
