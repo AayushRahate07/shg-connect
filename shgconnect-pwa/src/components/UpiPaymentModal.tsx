@@ -394,7 +394,7 @@ export const UpiPaymentModal: React.FC<UpiPaymentModalProps> = ({
                         ? 'bg-emerald-700 text-white font-black'
                         : 'bg-stone-200 text-stone-600'
                     }`}>
-                      {w.verified ? (isMr ? 'प्रमाणित ✓' : 'Verified ✓') : (isMr ? 'पडताळणी करा' : 'Sign')}
+                      {w.verified ? (<span className="inline-flex items-center gap-1"><span>{isMr ? 'प्रमाणित' : 'Verified'}</span><Check className="w-2.5 h-2.5" /></span>) : (isMr ? 'पडताळणी करा' : 'Sign')}
                     </span>
                   </div>
                 ))}

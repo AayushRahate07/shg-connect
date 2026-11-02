@@ -172,7 +172,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
             <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-black ${
               isMemberPresent ? 'bg-emerald-700' : 'bg-rose-700'
             }`}>
-              {isMemberPresent ? '✔' : '✖'}
+              {isMemberPresent ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
             </div>
             <div>
               <p className="font-black text-sm">
@@ -188,7 +188,11 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
             </div>
           </div>
           <span className="text-xs font-black">
-            {isMemberPresent ? (isMr ? 'हजर ✔' : 'Present') : (isMr ? 'गैरहजर ✖' : 'Absent')}
+            {isMemberPresent ? (
+              <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-800" /><span>{isMr ? 'हजर' : 'Present'}</span></span>
+            ) : (
+              <span className="inline-flex items-center gap-1"><X className="w-3.5 h-3.5 text-rose-800" /><span>{isMr ? 'गैरहजर' : 'Absent'}</span></span>
+            )}
           </span>
         </div>
 
@@ -217,7 +221,7 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
             </div>
             <p className="text-[11px] text-emerald-800 font-bold flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-              <span>{isMr ? 'हिशोब जुळला ✔' : 'Balanced cleanly ✔'}</span>
+              <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-700" /><span>{isMr ? 'हिशोब जुळला' : 'Balanced cleanly'}</span></span>
             </p>
           </div>
         </div>
@@ -429,7 +433,11 @@ export const MeetingsView: React.FC<MeetingsViewProps> = ({
                           ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
                           : 'bg-rose-100 text-rose-900 border border-rose-200'
                       }`}>
-                        {isAttended ? (isMr ? 'हजर ✔' : 'Attended ✔') : (isMr ? 'गैरहजर ✖' : 'Absent ✖')}
+                        {isAttended ? (
+                          <span className="inline-flex items-center gap-1"><Check className="w-3 h-3 text-emerald-800" /><span>{isMr ? 'हजर' : 'Attended'}</span></span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1"><X className="w-3 h-3 text-rose-800" /><span>{isMr ? 'गैरहजर' : 'Absent'}</span></span>
+                        )}
                       </span>
                       <span className="text-xs font-bold text-stone-700">
                         {isAttended ? (isMr ? `बचत: ₹${monthlyRate} जमा` : `Saved: ₹${monthlyRate}`) : (isMr ? 'बचत: बाकी' : 'Pending')}

@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Member, Transaction, SupportedLanguage } from '../../types/shg';
-import { formatINR, formatReceiptNumber } from '../../theme/tokens';
-import { tts } from '../../services/tts';
 import {
+  Member, Transaction, SupportedLanguage } from '../../types/shg';
+import {
+  formatINR, formatReceiptNumber } from '../../theme/tokens';
+import {
+  tts } from '../../services/tts';
+import {
+  Check,
   BookOpen,
   Volume2,
   Filter,
@@ -14,8 +18,10 @@ import {
   Printer,
   AlertCircle
 } from 'lucide-react';
-import { Badge } from '../ui/Badge';
-import { Card } from '../ui/Card';
+import {
+  Badge } from '../ui/Badge';
+import {
+  Card } from '../ui/Card';
 
 interface MemberPassbookProps {
   member: Member;
@@ -318,7 +324,7 @@ export const MemberPassbook: React.FC<MemberPassbookProps> = ({
       <div className="bg-stone-50 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 flex items-center justify-between">
         <span className="flex items-center gap-1.5">
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-          <span>{isMr ? 'हिशोब जुळला ✔ (तफावत असल्यास प्रमुखांना कळवा)' : 'Ledger balanced ✔'}</span>
+          <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" /><span>{isMr ? 'हिशोब जुळला (तफावत असल्यास प्रमुखांना कळवा)' : 'Ledger balanced'}</span></span>
         </span>
         <a
           href="https://wa.me/"

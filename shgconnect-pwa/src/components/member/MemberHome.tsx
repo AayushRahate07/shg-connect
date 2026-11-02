@@ -15,6 +15,7 @@ import {
   Landmark,
   ArrowUpRight,
   CheckCircle2,
+  Check,
   MapPin,
   Clock
 } from 'lucide-react';
@@ -308,7 +309,7 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
                 {isMr ? 'काही नाही' : 'No Active Loan'}
               </p>
               <p className="text-xs text-emerald-700/80 font-medium mt-0.5">
-                {isMr ? 'सर्व हप्ते पूर्ण ✔ (कोणतेही कर्ज थकीत नाही)' : 'All loans cleared ✔'}
+                <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" /><span>{isMr ? 'सर्व हप्ते पूर्ण (कोणतेही कर्ज थकीत नाही)' : 'All loans cleared'}</span></span>
               </p>
             </div>
             <button

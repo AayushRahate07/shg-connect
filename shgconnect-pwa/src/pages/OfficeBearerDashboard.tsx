@@ -765,7 +765,7 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
                             {language === 'mr' ? 'स्थिती' : 'Status'}
                           </span>
                           <span className="inline-block mt-0.5 font-black text-xs text-emerald-800">
-                            {l.status === 'ACTIVE' ? (language === 'mr' ? 'सक्रिय ✔' : 'ACTIVE') : l.status}
+                            <span className="inline-flex items-center gap-1">{l.status === 'ACTIVE' && <Check className="w-3 h-3 text-emerald-700" />}{language === 'mr' ? 'सक्रिय' : 'ACTIVE'}</span>
                           </span>
                         </div>
                       </div>

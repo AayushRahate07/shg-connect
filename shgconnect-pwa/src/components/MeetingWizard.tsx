@@ -336,15 +336,15 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden mb-6 animate-fadeIn">
-      {/* Sleek Integrated Header with Progress & Exit (Single Unified Header) */}
+      {/* Sleek Integrated Header with 2 Row, 2 Col Stepper */}
       <div className="bg-[#14532D] text-white p-3.5 sm:p-4 rounded-t-lg">
-        <div className="flex items-center justify-between gap-2 mb-2.5">
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-emerald-800 text-amber-300 flex items-center justify-center shrink-0 border border-emerald-700/80 shadow-2xs">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-black truncate leading-tight">
+              <h2 className="text-sm sm:text-base font-black leading-tight text-white">
                 {language === 'mr' ? 'मासिक बैठक सत्र' : 'Monthly Meeting Session'}
               </h2>
               {groupName && (
@@ -370,13 +370,13 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
           </div>
         </div>
 
-        {/* Compressed 4-Step Stepper (Single horizontal row on all devices!) */}
-        <div className="grid grid-cols-4 gap-1 sm:gap-1.5 text-center text-[10px] sm:text-xs">
+        {/* 2 Row, 2 Col Stepper Format for Perfect Mobile & Desktop Readability */}
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 text-center text-xs">
           {[
             { s: 1, mr: '१. उपस्थिती', en: '1. Attendance' },
-            { s: 2, mr: '२. बचत', en: '2. Savings' },
-            { s: 3, mr: '३. ठराव/कर्ज', en: '3. Resol.' },
-            { s: 4, mr: '४. स्वाक्षरी', en: '4. Sign' },
+            { s: 2, mr: '२. बचत व रोकड', en: '2. Savings & Cash' },
+            { s: 3, mr: '३. ठराव व कर्ज', en: '3. Resolutions & Loan' },
+            { s: 4, mr: '४. कोरम स्वाक्षरी', en: '4. Quorum & Commit' },
           ].map(tab => {
             const isActive = step === tab.s;
             const isDone = step > tab.s;
@@ -385,15 +385,16 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                 key={tab.s}
                 type="button"
                 onClick={() => { sound.playStampSound(); setStep(tab.s as any); }}
-                className={`py-1.5 px-1 rounded-lg font-bold transition truncate cursor-pointer ${
+                className={`py-2 px-2.5 rounded-lg font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-xs ${
                   isActive
                     ? 'bg-amber-400 text-stone-950 font-black shadow-xs'
                     : isDone
-                    ? 'bg-emerald-900 text-emerald-200 border border-emerald-700/80 hover:bg-emerald-800'
-                    : 'bg-white/10 text-emerald-200/70 hover:bg-white/15'
+                    ? 'bg-emerald-900 text-emerald-100 border border-emerald-700/80 hover:bg-emerald-800'
+                    : 'bg-white/10 text-emerald-200/80 hover:bg-white/15 border border-white/10'
                 }`}
               >
-                {language === 'mr' ? tab.mr : tab.en} {isDone && '✓'}
+                {isDone && <Check className="w-3.5 h-3.5 text-emerald-300 shrink-0" />}
+                <span className="truncate">{language === 'mr' ? tab.mr : tab.en}</span>
               </button>
             );
           })}
@@ -429,7 +430,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                   }}
                   className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[11px] font-bold shadow-2xs transition active:scale-95 cursor-pointer"
                 >
-                  {language === 'mr' ? '✓ सर्वांना हजर करा' : '✓ Mark All Present'}
+                  <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /><span>{language === 'mr' ? 'सर्व हजर करा' : 'Mark All Present'}</span></span>
                 </button>
                 <button
                   type="button"
@@ -855,7 +856,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                         {isVerified ? (
                           <span className="flex items-center space-x-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
                             <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                            <span>Signed ✔</span>
+                            <span>Signed</span>
                           </span>
                         ) : (
                           <span className="text-[10px] text-stone-400 font-bold">Unsigned</span>

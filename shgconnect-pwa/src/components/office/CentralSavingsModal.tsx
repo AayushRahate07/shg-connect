@@ -377,7 +377,7 @@ export const CentralSavingsModal: React.FC<CentralSavingsModalProps> = ({
                         <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold ${
                           isChecked ? 'bg-[#14532D] text-white' : 'border border-stone-400'
                         }`}>
-                          {isChecked && '✓'}
+                          {isChecked && <Check className="w-3 h-3 text-white" />}
                         </span>
                         <span className="font-bold text-stone-900">{isMr ? m.nameRegional : m.name}</span>
                       </div>
@@ -428,7 +428,7 @@ export const CentralSavingsModal: React.FC<CentralSavingsModalProps> = ({
                     <span className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-[10px] ${
                       w.verified ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-600'
                     }`}>
-                      {w.verified ? '✓' : w.name.charAt(0)}
+                      {w.verified ? <Check className="w-3.5 h-3.5 text-white" /> : w.name.charAt(0)}
                     </span>
                     <div>
                       <p className="text-xs font-black text-stone-900 leading-tight">
@@ -445,7 +445,7 @@ export const CentralSavingsModal: React.FC<CentralSavingsModalProps> = ({
                       ? 'bg-emerald-700 text-white'
                       : 'bg-stone-200 text-stone-600'
                   }`}>
-                    {w.verified ? (isMr ? 'प्रमाणित ✓' : 'Verified ✓') : (isMr ? 'साक्षीदार स्वाक्षरी' : 'Sign')}
+                    {w.verified ? (<span className="inline-flex items-center gap-1"><span>{isMr ? 'प्रमाणित' : 'Verified'}</span><Check className="w-2.5 h-2.5" /></span>) : (isMr ? 'साक्षीदार स्वाक्षरी' : 'Sign')}
                   </span>
                 </div>
               ))}

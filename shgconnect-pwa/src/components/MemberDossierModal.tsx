@@ -1,7 +1,7 @@
 import React from 'react';
 import { Member, Transaction, Loan, SupportedLanguage } from '../types/shg';
 import { formatINR } from '../theme/tokens';
-import { X, Award, Printer, ShieldCheck, TrendingUp, Calendar, CheckCircle2, User, Phone, Wallet } from 'lucide-react';
+import { X, Check, Award, Printer, ShieldCheck, TrendingUp, Calendar, CheckCircle2, User, Phone, Wallet } from 'lucide-react';
 
 interface MemberDossierModalProps {
   member: Member;
@@ -86,7 +86,7 @@ export const MemberDossierModal: React.FC<MemberDossierModalProps> = ({
                 {formatINR(member.totalSavings)}
               </div>
               <span className="text-[9.5px] text-emerald-800 font-bold block truncate mt-0.5">
-                {isMr ? '१००% कोटा पूर्ण' : 'Quota Met ✔'}
+                <span className="inline-flex items-center gap-1">{isMr ? '१००% कोटा पूर्ण' : 'Quota Met'} <Check className="w-2.5 h-2.5 text-emerald-800 shrink-0" /></span>
               </span>
             </div>
 
