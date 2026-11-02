@@ -167,9 +167,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
         if (foundMem) {
           match = {
             user: foundMem,
-            group: SEED_GROUPS[1] || SEED_GROUPS[0],
+            group: SEED_GROUPS.find(g => g.shgCode === foundMem.shgId) || SEED_GROUPS[0],
             role: foundMem.role,
-            shgId: foundMem.shgId || (SEED_GROUPS[1] || SEED_GROUPS[0]).shgCode
+            shgId: foundMem.shgId || SEED_GROUPS[0].shgCode
           };
         }
       }

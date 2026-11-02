@@ -49,10 +49,12 @@ export default function App() {
   const handleLoginSuccess = async (newSession: { memberId: string; phone: string; role: Role; memberName?: string; shgId?: string }) => {
     if (newSession.shgId) {
       setCurrentShgId(newSession.shgId);
-      await reloadAllData();
     }
     setSession(newSession);
     setCurrentRole(newSession.role);
+    if (newSession.shgId) {
+      await reloadAllData();
+    }
     setActiveTab('home');
     setNavStack(['home']);
     window.history.pushState({ app: 'shgconnect', view: 'dashboard', tab: 'home' }, '', '#home');
@@ -750,6 +752,7 @@ export default function App() {
 
   return (
     <AppShell
+      userName={session?.memberName}
       currentRole={currentRole}
       onRoleChange={handleRoleChange}
       activeTab={activeTab}

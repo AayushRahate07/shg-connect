@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
+  userName?: string;
   currentRole: Role;
   activeTab: string;
   onSelectTab: (tab: string) => void;
@@ -34,6 +35,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
+  userName,
   currentRole,
   activeTab,
   onSelectTab,
@@ -96,31 +98,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'OFFICE_BEARER':
       case 'SHG_LEAD' as any:
         return {
-          name: isMr ? 'कमलताई पाटील' : 'Kamal-tai Patil',
-          title: isMr ? 'गट प्रमुख (SHG Lead - Single SHG)' : 'SHG Lead (1 SHG & Finance)',
+          name: userName || (isMr ? 'मीनाताई राऊत' : 'Meena Tai Raut'),
+          title: isMr ? 'गट प्रमुख (SHG Lead)' : 'SHG Lead (1 SHG & Finance)',
           bg: 'bg-amber-100 text-amber-900'
         };
       case 'MEMBER':
         return {
-          name: isMr ? 'मीनाबाई जाधव' : 'Meena-bai Jadhav',
+          name: userName || (isMr ? 'अनिता पाटील' : 'Anita Patil'),
           title: isMr ? 'बचत गट सभासद (SHG Member)' : 'SHG Member',
           bg: 'bg-emerald-100 text-emerald-900'
         };
       case 'ANIMATOR':
       case 'OFFICER' as any:
         return {
-          name: isMr ? 'सुनिताबाई देशमुख' : 'Sunita-bai Deshmukh',
+          name: userName || (isMr ? 'सुरेखा मोरे' : 'Surekha More'),
           title: isMr ? 'प्रभाग अधिकारी (Multi-SHG Officer)' : 'Officer (Manages Multiple SHGs)',
           bg: 'bg-blue-100 text-blue-900'
         };
       case 'AUDITOR':
         return {
-          name: isMr ? 'शासकीय वरिष्ठ अधिकारी' : 'Govt Senior Official',
+          name: userName || (isMr ? 'प्रिया देशमुख' : 'Priya Deshmukh'),
           title: isMr ? 'लेखापरीक्षक (Auditor / Govt Data)' : 'Auditor (Govt Data Collection)',
           bg: 'bg-purple-100 text-purple-900'
         };
       default:
-        return { name: 'User', title: 'Member', bg: 'bg-stone-100 text-stone-900' };
+        return { name: userName || 'User', title: 'Member', bg: 'bg-stone-100 text-stone-900' };
     }
   };
 

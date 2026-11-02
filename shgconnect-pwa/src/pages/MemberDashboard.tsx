@@ -11,6 +11,7 @@ import {
   OfficerSignature
 } from '../types/shg';
 import { translations } from '../i18n/translations';
+import { ALL_SEED_USERS } from '../data/seedData';
 import { MemberHome } from '../components/member/MemberHome';
 import { MemberPassbook } from '../components/member/MemberPassbook';
 import { MemberLoan } from '../components/member/MemberLoan';
@@ -74,17 +75,10 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
   // 2. First member with role === 'MEMBER' (e.g. Meena-bai Jadhav)
   // 3. Fallback to first member
   const currentMember = (loggedInMemberId ? members.find(m => m.id === loggedInMemberId) : null)
+    || (loggedInMemberId ? ALL_SEED_USERS.find(m => m.id === loggedInMemberId) : null)
     || members.find(m => m.role === 'MEMBER')
     || members[0]
-    || {
-      id: 'mem-4',
-      name: 'Meena-bai Jadhav',
-      nameRegional: 'मीनाबाई जाधव',
-      role: 'MEMBER',
-      totalSavings: 16000,
-      activeLoanBalance: 0,
-      joinDate: '2022-01-15'
-    };
+    || ALL_SEED_USERS[3];
 
   const memberTransactions = transactions.filter(t => t.memberId === currentMember.id);
   const [showUpiModal, setShowUpiModal] = useState<boolean>(false);

@@ -2,7 +2,8 @@
 // Universal Mobile Number for ALL Users: 9876543210
 // 88 Total Users across 6 Maharashtra Districts with distinct 4-digit security PINs
 
-import { Member, GroupInfo, Loan, Meeting, Role } from '../types/shg';
+import { Member, GroupInfo, Loan, Meeting, Role, Transaction } from '../types/shg';
+import { computeBlockHashSync, getBlockPayloadString, generateCheckpointFingerprint } from '../services/hashChain';
 
 export const UNIVERSAL_PHONE = '9876543210';
 
@@ -4393,58 +4394,221 @@ export interface AuthenticatedUserSession {
 }
 
 /**
+ * Generates rich, realistic, chronological seed transactions for all 96 members across all 6 SHGs.
+ * Includes initial accumulated savings, monthly deposits, and loan EMI repayments, cryptographically chained.
+ */
+export function generateSeedTransactions(): Transaction[] {
+  const rawTxs: Transaction[] = [];
+
+  for (const group of SEED_GROUPS) {
+    const groupMembers = SEED_MEMBERS_BY_SHG[group.shgCode] || [];
+    const groupLoans = SEED_LOANS_BY_SHG[group.shgCode] || [];
+    const poolRate = group.monthlyPoolRate || 500;
+
+    // Leader for signature stamp
+    const lead = groupMembers.find(m => m.role === 'OFFICE_BEARER') || groupMembers[0];
+    const leadName = lead ? (lead.nameRegional || lead.name) : 'गट प्रमुख';
+
+    for (const mem of groupMembers) {
+      if (mem.role === 'AUDITOR' || mem.role === 'ANIMATOR') continue;
+
+      const memName = mem.nameRegional || mem.name;
+      const memSavings = mem.totalSavings || 3000;
+      const initialAccumulated = Math.max(300, memSavings - (poolRate * 3));
+
+      // 1. Initial Accumulated Savings (August 2026)
+      rawTxs.push({
+        id: `tx-seed-${mem.id}-init`,
+        index: 0,
+        timestamp: '2026-08-15T10:00:00.000Z',
+        memberId: mem.id,
+        memberName: memName,
+        type: 'SAVINGS',
+        amount: initialAccumulated,
+        notes: 'आरंभिक बचत संचयन (Initial Accumulated Balance)',
+        paymentMode: 'CASH',
+        settlementStatus: 'SETTLED_CASH',
+        prevHash: '',
+        hash: '',
+        signatories: [
+          { role: 'PRESIDENT', signedAt: '2026-08-15T10:00:00.000Z', officerName: leadName }
+        ]
+      });
+
+      // 2. September 2026 Monthly Deposit
+      rawTxs.push({
+        id: `tx-seed-${mem.id}-sep`,
+        index: 0,
+        timestamp: '2026-09-16T11:00:00.000Z',
+        memberId: mem.id,
+        memberName: memName,
+        type: 'SAVINGS',
+        amount: poolRate,
+        notes: 'मासिक बचत जमा (सप्टेंबर २०२६)',
+        paymentMode: 'CASH',
+        settlementStatus: 'SETTLED_CASH',
+        prevHash: '',
+        hash: '',
+        signatories: [
+          { role: 'PRESIDENT', signedAt: '2026-09-16T11:00:00.000Z', officerName: leadName }
+        ]
+      });
+
+      // 3. October 2026 Monthly Deposit
+      rawTxs.push({
+        id: `tx-seed-${mem.id}-oct`,
+        index: 0,
+        timestamp: '2026-10-16T11:00:00.000Z',
+        memberId: mem.id,
+        memberName: memName,
+        type: 'SAVINGS',
+        amount: poolRate,
+        notes: 'मासिक बचत जमा (ऑक्टोबर २०२६)',
+        paymentMode: 'CASH',
+        settlementStatus: 'SETTLED_CASH',
+        prevHash: '',
+        hash: '',
+        signatories: [
+          { role: 'PRESIDENT', signedAt: '2026-10-16T11:00:00.000Z', officerName: leadName }
+        ]
+      });
+
+      // 4. November 2026 Monthly Deposit (Current month - reflects active savings balance)
+      rawTxs.push({
+        id: `tx-seed-${mem.id}-nov`,
+        index: 0,
+        timestamp: '2026-11-01T10:30:00.000Z',
+        memberId: mem.id,
+        memberName: memName,
+        type: 'SAVINGS',
+        amount: poolRate,
+        notes: 'मासिक बचत जमा (नोव्हेंबर २०२६)',
+        paymentMode: 'CASH',
+        settlementStatus: 'SETTLED_CASH',
+        prevHash: '',
+        hash: '',
+        signatories: [
+          { role: 'PRESIDENT', signedAt: '2026-11-01T10:30:00.000Z', officerName: leadName }
+        ]
+      });
+
+      // 5. Loan Transactions (if member has an active loan)
+      const userLoan = groupLoans.find(l => l.memberId === mem.id);
+      if (userLoan) {
+        const emiAmt = Math.round(userLoan.totalPaid / 10) || 1500;
+
+        // Loan Disbursed
+        rawTxs.push({
+          id: `tx-seed-${mem.id}-loan-disb`,
+          index: 0,
+          timestamp: userLoan.dateDisbursed ? `${userLoan.dateDisbursed}T10:00:00.000Z` : '2026-05-15T10:00:00.000Z',
+          memberId: mem.id,
+          memberName: memName,
+          type: 'LOAN_DISBURSAL' as any,
+          amount: userLoan.principal,
+          notes: `कर्ज वाटप मंजुरी (Principal: ₹${userLoan.principal})`,
+          paymentMode: 'UPI_INTENT',
+          settlementStatus: 'SETTLED_DIGITAL_UTR',
+          prevHash: '',
+          hash: '',
+          signatories: [
+            { role: 'PRESIDENT', signedAt: '2026-05-15T10:00:00.000Z', officerName: leadName }
+          ]
+        });
+
+        // September EMI
+        rawTxs.push({
+          id: `tx-seed-${mem.id}-emi-sep`,
+          index: 0,
+          timestamp: '2026-09-16T11:30:00.000Z',
+          memberId: mem.id,
+          memberName: memName,
+          type: 'EMI_REPAYMENT',
+          amount: emiAmt,
+          notes: 'कर्ज हप्ता परतफेड (सप्टेंबर EMI)',
+          paymentMode: 'CASH',
+          settlementStatus: 'SETTLED_CASH',
+          prevHash: '',
+          hash: '',
+          signatories: [
+            { role: 'PRESIDENT', signedAt: '2026-09-16T11:30:00.000Z', officerName: leadName }
+          ]
+        });
+
+        // October EMI
+        rawTxs.push({
+          id: `tx-seed-${mem.id}-emi-oct`,
+          index: 0,
+          timestamp: '2026-10-16T11:30:00.000Z',
+          memberId: mem.id,
+          memberName: memName,
+          type: 'EMI_REPAYMENT',
+          amount: emiAmt,
+          notes: 'कर्ज हप्ता परतफेड (ऑक्टोबर EMI)',
+          paymentMode: 'CASH',
+          settlementStatus: 'SETTLED_CASH',
+          prevHash: '',
+          hash: '',
+          signatories: [
+            { role: 'PRESIDENT', signedAt: '2026-10-16T11:30:00.000Z', officerName: leadName }
+          ]
+        });
+      }
+    }
+  }
+
+  // Sort chronologically
+  rawTxs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  // Chain cryptographically with SHA-256 block hashes & checkpoint fingerprints
+  let prevHash = "GENESIS_BLOCK_00000000000000000000000000000000";
+  for (let i = 0; i < rawTxs.length; i++) {
+    const tx = rawTxs[i];
+    tx.index = i;
+    tx.prevHash = prevHash;
+    const payload = getBlockPayloadString(tx);
+    tx.hash = computeBlockHashSync(i, prevHash, tx.timestamp, payload);
+    tx.checkpointFingerprint = generateCheckpointFingerprint(tx.hash);
+    prevHash = tx.hash;
+  }
+
+  return rawTxs;
+}
+
+export const ALL_SEED_TRANSACTIONS: Transaction[] = generateSeedTransactions();
+
+/**
  * Authentication matcher:
- * Given phone (9876543210) and 4-digit PIN, finds and returns the exact user and their SHG.
+ * Given phone (9876543210) and 4-digit PIN, finds and returns the exact user and their exact SHG.
  */
 export function findUserByCredentials(phone: string, pin: string): AuthenticatedUserSession | null {
-  const cleanPhone = phone.trim().replace(/\D/g, '');
   const cleanPin = pin.trim();
 
-  // Accept universal phone or 10-digit standard
+  // Accept 4-digit PIN matching any seeded user
   const matchedUser = ALL_SEED_USERS.find(u => u.pin === cleanPin);
   if (!matchedUser) return null;
 
-  // If Auditor Tier 4 (0000)
+  // Auditor Tier 4 (0000)
   if (matchedUser.role === 'AUDITOR' || cleanPin === '0000') {
     return {
       user: matchedUser,
-      group: SEED_GROUPS[1], // Default to primary Satara group, auditor oversees all
+      group: SEED_GROUPS[0],
       role: 'AUDITOR',
-      shgId: SEED_GROUPS[1].shgCode
+      shgId: SEED_GROUPS[0].shgCode
     };
   }
 
-  // If Officer Tier 3 (0001)
+  // Officer Tier 3 (0001)
   if (matchedUser.role === 'ANIMATOR' || matchedUser.role === 'OFFICER' || cleanPin === '0001') {
     return {
       user: matchedUser,
-      group: SEED_GROUPS[1], // Oversees all groups
+      group: SEED_GROUPS[0],
       role: 'ANIMATOR',
-      shgId: SEED_GROUPS[1].shgCode
+      shgId: SEED_GROUPS[0].shgCode
     };
   }
 
-  // If Lead Tier 2 (1001) - Meenatai leads the primary Satara SHG
-  if (matchedUser.role === 'OFFICE_BEARER' || cleanPin === '1001') {
-    return {
-      user: { ...matchedUser, shgId: SEED_GROUPS[1].shgCode },
-      group: SEED_GROUPS[1],
-      role: 'OFFICE_BEARER',
-      shgId: SEED_GROUPS[1].shgCode
-    };
-  }
-
-  // If Member Tier 1 (1002) - Anita Patil belongs to primary Satara SHG
-  if (cleanPin === '1002') {
-    return {
-      user: { ...matchedUser, shgId: SEED_GROUPS[1].shgCode },
-      group: SEED_GROUPS[1],
-      role: 'MEMBER',
-      shgId: SEED_GROUPS[1].shgCode
-    };
-  }
-
-  // Find their group
+  // Find their group directly matching matchedUser.shgId
   const group = SEED_GROUPS.find(g => g.shgCode === matchedUser.shgId) || SEED_GROUPS[0];
   return {
     user: matchedUser,
@@ -4455,8 +4619,8 @@ export function findUserByCredentials(phone: string, pin: string): Authenticated
 }
 
 /**
- * Helper to get default demo members for initial active group (Satara)
+ * Default demo members for initial active group (Nagpur - Krantijyoti SHG)
  */
-export const DEFAULT_SEED_MEMBERS = SEED_MEMBERS_BY_SHG['SHG-MH-SAT-2024-0089'] || ALL_SEED_USERS.slice(1, 17);
-export const DEFAULT_SEED_LOANS = SEED_LOANS_BY_SHG['SHG-MH-SAT-2024-0089'] || [];
-export const DEFAULT_SEED_MEETINGS = SEED_MEETINGS_BY_SHG['SHG-MH-SAT-2024-0089'] || [];
+export const DEFAULT_SEED_MEMBERS = SEED_MEMBERS_BY_SHG['SHG-MH-NGP-2024-0010'] || ALL_SEED_USERS.slice(2, 18);
+export const DEFAULT_SEED_LOANS = SEED_LOANS_BY_SHG['SHG-MH-NGP-2024-0010'] || [];
+export const DEFAULT_SEED_MEETINGS = SEED_MEETINGS_BY_SHG['SHG-MH-NGP-2024-0010'] || [];

@@ -24,7 +24,8 @@ import {
   ALL_SEED_USERS,
   SEED_MEMBERS_BY_SHG,
   SEED_LOANS_BY_SHG,
-  SEED_MEETINGS_BY_SHG
+  SEED_MEETINGS_BY_SHG,
+  ALL_SEED_TRANSACTIONS
 } from '../data/seedData';
 
 const DB_NAME = 'SHGConnectDB';
@@ -47,7 +48,7 @@ export class ConcurrencyConflictError extends Error {
   }
 }
 
-let currentActiveShgId = "SHG-MH-SAT-2024-0089";
+let currentActiveShgId = "SHG-MH-NGP-2024-0010";
 
 export function getCurrentShgId(): string {
   return currentActiveShgId;
@@ -80,14 +81,14 @@ export const INITIAL_GROUP_INFO: SHGGroupInfo = {
 
 export type { GroupInfo };
 
-export const INITIAL_GROUP: GroupInfo = {
-  name: "Savitri Mahila Bachat Gat",
-  nameRegional: "सावित्री महिला बचत गट",
-  shgCode: "SHG-MH-SAT-2024-0089",
-  village: "Shirwal",
-  district: "Satara",
-  monthlyPoolRate: 500,
-  totalGroupFund: 84500,
+export const INITIAL_GROUP: GroupInfo = SEED_GROUPS[0] || {
+  name: "Krantijyoti Savitribai Phule Mahila Bachat Gat",
+  nameRegional: "क्रांतीज्योती सावित्रीबाई फुले महिला बचत गट",
+  shgCode: "SHG-MH-NGP-2024-0010",
+  village: "Bori, Hingna",
+  district: "Nagpur",
+  monthlyPoolRate: 300,
+  totalGroupFund: 68400,
   federation: INITIAL_GROUP_INFO.federation
 };
 
@@ -430,26 +431,28 @@ export async function seedInitialDataIfNeeded(): Promise<{
     }
   }
 
-  // Verify that all 6 groups, members, Officer Tier 3, and Auditor Tier 4 are seeded in IndexedDB
-  const seedKey = typeof localStorage !== 'undefined' ? localStorage.getItem('shg_seed_v5_4tiers') : null;
-  if (seedKey !== 'COMPLETED' || groupList.length < 6 || members.length < 80) {
+  // Verify that all 6 groups, members, transactions, Officer Tier 3, and Auditor Tier 4 are seeded in IndexedDB
+  const seedKey = typeof localStorage !== 'undefined' ? localStorage.getItem('shg_seed_v7_dynamic_member_data') : null;
+  if (seedKey !== 'COMPLETED' || groupList.length < 6 || members.length < 80 || transactions.length < 50) {
     try {
-      const tx = db.transaction(['group_info', 'members', 'loans', 'meetings'], 'readwrite');
+      const tx = db.transaction(['group_info', 'members', 'loans', 'meetings', 'transactions'], 'readwrite');
       SEED_GROUPS.forEach(g => tx.objectStore('group_info').put(g));
       ALL_SEED_USERS.forEach(m => tx.objectStore('members').put(m));
       Object.values(SEED_LOANS_BY_SHG).flat().forEach(l => tx.objectStore('loans').put(l));
       Object.values(SEED_MEETINGS_BY_SHG).flat().forEach(m => tx.objectStore('meetings').put(m));
+      ALL_SEED_TRANSACTIONS.forEach(t => tx.objectStore('transactions').put(t));
       await new Promise<void>((res, rej) => {
         tx.oncomplete = () => res();
         tx.onerror = () => rej(tx.error);
       });
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('shg_seed_v5_4tiers', 'COMPLETED');
+        localStorage.setItem('shg_seed_v7_dynamic_member_data', 'COMPLETED');
       }
       groupList = await getAllFromStore<GroupInfo>('group_info');
       members = await getAllFromStore<Member>('members');
       loans = await getAllFromStore<Loan>('loans');
       meetings = await getAllFromStore<Meeting>('meetings');
+      transactions = await getAllFromStore<Transaction>('transactions');
     } catch (e) {
       console.error('Failed to seed 6 SHG groups & 88 users into IndexedDB:', e);
     }
@@ -457,9 +460,9 @@ export async function seedInitialDataIfNeeded(): Promise<{
 
   const targetShgId = getCurrentShgId();
   const activeGroup = groupList.find(g => g.shgCode === targetShgId) || groupList[0] || INITIAL_GROUP;
-  const activeMembers = members.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode);
-  const activeLoans = loans.filter(l => (l.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode);
-  const activeMeetings = meetings.filter(m => (m.shgId || 'SHG-MH-SAT-2024-0089') === activeGroup.shgCode || !m.shgId);
+  const activeMembers = members.filter(m => (m.shgId || 'SHG-MH-NGP-2024-0010') === activeGroup.shgCode);
+  const activeLoans = loans.filter(l => (l.shgId || 'SHG-MH-NGP-2024-0010') === activeGroup.shgCode);
+  const activeMeetings = meetings.filter(m => (m.shgId || 'SHG-MH-NGP-2024-0010') === activeGroup.shgCode || !m.shgId);
 
   return {
     group: activeGroup,

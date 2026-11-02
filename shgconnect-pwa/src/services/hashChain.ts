@@ -87,6 +87,16 @@ export function getBlockPayloadString(tx: Partial<Transaction>): string {
  * Computes block hash given block parameters
  * BlockHash = SHA256(index + prevHash + timestamp + payload)
  */
+export function computeBlockHashSync(
+  index: number,
+  prevHash: string,
+  timestamp: string,
+  payload: string
+): string {
+  const rawString = `${index}|${prevHash}|${timestamp}|${payload}`;
+  return sha256(rawString);
+}
+
 export async function computeBlockHash(
   index: number,
   prevHash: string,
