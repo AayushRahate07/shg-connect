@@ -329,6 +329,7 @@ export const liveMeetingApi = {
       mem.leftReason = reason || 'घरगुती काम';
       mem.connectionStatus = 'LEFT';
       if (!mem.verified) mem.savings = 0;
+      room.totalPool = Object.values(room.members).reduce((sum, m) => sum + (m.verified ? m.savings : 0), 0);
       saveLocalRoom(room);
       broadcastLocalEvent(code, 'member_left', {
         memberId,
@@ -411,7 +412,7 @@ export const liveMeetingApi = {
         memberId: m.memberId,
         memberName: m.memberName,
         reason: m.leftReason,
-        savings: m.savings,
+        savings: m.verified ? m.savings : 0,
         verified: m.verified
       })),
       absent: Math.max(0, totalKnownMembers - quorumAttended),

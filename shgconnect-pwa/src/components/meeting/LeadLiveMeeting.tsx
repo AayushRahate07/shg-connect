@@ -298,6 +298,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
       await liveMeetingApi.markMemberStatus(room.code, markLeftModal.memberId, {
         leftEarly: true
       });
+      setSavingsInputs(prev => ({ ...prev, [markLeftModal.memberId]: '0' }));
       setMarkLeftModal({ open: false, memberId: '', memberName: '' });
       sound.playStampSound();
       tts.speak(isMr ? `${markLeftModal.memberName} बाहेर पडल्याची नोंद झाली` : `Marked ${markLeftModal.memberName} as left`);

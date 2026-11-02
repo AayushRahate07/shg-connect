@@ -378,11 +378,15 @@ meetingRouter.post('/:code/leave', (req: Request, res: Response) => {
       }
 
       // Case A & C: Attendance remains marked "हजर (Present)". Once verified in person, she cannot be retroactively marked absent.
+      if (!member.verified) {
+        member.savings = 0;
+      }
       member.attended = true;
       member.leftEarly = true;
       member.leftAt = new Date().toISOString();
       member.leftReason = reason || 'इतर काम (Other work)';
       member.connectionStatus = 'LEFT';
+      room.totalPool = Object.values(room.members).reduce((sum, m) => sum + (m.verified ? m.savings : 0), 0);
 
       broadcastToRoom(room, 'member_left', {
         memberId,
@@ -419,11 +423,15 @@ meetingRouter.post('/:code/member-status', (req: Request, res: Response) => {
           delete member.pendingSavings;
           broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'member_marked_left' });
         }
+        if (!member.verified) {
+          member.savings = 0;
+        }
         member.attended = true;
         member.leftEarly = true;
         member.leftAt = new Date().toISOString();
         member.leftReason = reason || 'लवकर बाहेर पडले (Left early)';
         member.connectionStatus = 'LEFT';
+        room.totalPool = Object.values(room.members).reduce((sum, m) => sum + (m.verified ? m.savings : 0), 0);
 
         broadcastToRoom(room, 'member_left', {
           memberId,
@@ -477,7 +485,7 @@ meetingRouter.post('/:code/complete', (req: Request, res: Response) => {
       memberId: m.memberId,
       memberName: m.memberName,
       reason: m.leftReason,
-      savings: m.savings,
+      savings: m.verified ? m.savings : 0,
       verified: m.verified
     })),
     absent,

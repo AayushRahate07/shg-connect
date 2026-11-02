@@ -520,7 +520,7 @@ function meetingRoomPlugin(): Plugin {
                 memberId: m.memberId,
                 memberName: m.memberName,
                 reason: m.leftReason,
-                savings: m.savings,
+                savings: m.verified ? m.savings : 0,
                 verified: m.verified
               })),
               absent,

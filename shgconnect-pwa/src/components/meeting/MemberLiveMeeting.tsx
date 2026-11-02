@@ -640,7 +640,7 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
           <div className="p-3.5 flex justify-between items-center">
             <span className="text-stone-500 font-bold">{t('माझी बचत जमा', 'My Savings Deposited')}</span>
             <span className="font-black text-stone-900 text-sm">
-              {myRecord?.savings ? `₹${myRecord.savings.toLocaleString('en-IN')}` : '—'}
+              {myRecord?.verified ? `₹${myRecord.savings.toLocaleString('en-IN')}` : '₹० (काही नाही)'}
             </span>
           </div>
           <div className="p-3.5 flex justify-between items-center">
