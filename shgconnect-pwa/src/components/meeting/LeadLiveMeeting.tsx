@@ -7,7 +7,7 @@ import { sound } from '../../services/sound';
 import {
   Radio, Users, IndianRupee, CheckCircle2, Loader2,
   Copy, Check, AlertCircle, Flag, ShieldCheck, KeyRound,
-  ArrowRight, X, Clock, LogOut, UserX, FileCheck
+  ArrowRight, X, Clock, LogOut, UserX, FileCheck, Zap, Wifi, WifiOff
 } from 'lucide-react';
 
 interface Props {
@@ -714,16 +714,17 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                 {t('रक्कम नोंदवून सभासदाच्या फोनवरील कोड विचारा', 'Enter amount & ask member for code')}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {isBatchConfirmActive ? (
                 <button
                   type="button"
                   onClick={handleBatchConfirmAll}
-                  className="bg-amber-400 hover:bg-amber-500 text-stone-950 px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1.5 border border-amber-500 transition active:scale-95 shadow-xs cursor-pointer animate-pulse"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap bg-amber-400 hover:bg-amber-500 text-stone-950 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black border border-amber-500 transition active:scale-95 shadow-xs cursor-pointer animate-pulse"
                   title={t(`डिस्कनेक्ट सदस्यांसाठी बचत मंजूर करा (${disconnectedUnverified.length} सदस्य)`, `Batch confirm savings for disconnected members (${disconnectedUnverified.length})`)}
                 >
-                  <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
-                  <span className="bg-amber-900 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                  <Zap className="w-3.5 h-3.5 text-stone-950 shrink-0 fill-current" />
+                  <span>{t('सर्व मंजूर करा', 'Batch Confirm')}</span>
+                  <span className="bg-amber-900 text-amber-50 text-[10px] font-black px-1.5 py-0.5 rounded-md leading-none">
                     {disconnectedUnverified.length} {t('डिस्कनेक्ट', 'offline')}
                   </span>
                 </button>
@@ -731,15 +732,17 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                 <button
                   type="button"
                   disabled={true}
-                  className="bg-stone-100 text-stone-400 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-stone-200 cursor-not-allowed opacity-60"
+                  className="inline-flex items-center gap-1.5 whitespace-nowrap bg-stone-100 text-stone-400 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold border border-stone-200 cursor-not-allowed opacity-60"
                   title={t('सर्व सदस्य जोडलेले आहेत. केवळ सदस्य डिस्कनेक्ट असल्यास Batch Confirm सक्रिय होईल.', 'Active only if a member is disconnected.')}
                 >
-                  <span>⚡ {t('सर्व मंजूर करा', 'Batch Confirm')}</span>
+                  <Zap className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  <span>{t('सर्व मंजूर करा', 'Batch Confirm')}</span>
                 </button>
               )}
-              <span className="text-xs font-black text-stone-600 bg-stone-100 px-2 py-0.5 rounded-lg">
-                {members.length} {t('सभासद', 'Members')}
-              </span>
+              <div className="inline-flex items-center gap-1 whitespace-nowrap bg-stone-100 text-stone-700 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold border border-stone-200/80">
+                <Users className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+                <span>{members.length}</span>
+              </div>
             </div>
           </div>
 
@@ -755,109 +758,118 @@ export const LeadLiveMeeting: React.FC<Props> = ({
             </div>
           ) : (
             <div className="divide-y divide-stone-100">
-              {members.map(m => (
-                <div key={m.memberId} className="p-3.5 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center text-xs font-black">
-                        {m.memberName.slice(0, 1)}
+              {members.map(m => {
+                // If member left early: sleek single row without redundant boxes
+                if (m.leftEarly) {
+                  return (
+                    <div key={m.memberId} className="p-3 sm:p-3.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-stone-100 text-stone-600 flex items-center justify-center text-xs font-black shrink-0">
+                          {m.memberName.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-stone-900 truncate">{m.memberName}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              <LogOut className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                              <span>{isMr ? 'लवकर बाहेर पडली' : 'Left Early'}</span>
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-stone-800">{m.memberName}</span>
-                          {!m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly ? (
+
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        {m.verified ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200/80 whitespace-nowrap">
+                            <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                            <span>₹{m.savings.toLocaleString('en-IN')} {isMr ? 'पडताळले' : 'Verified'}</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-stone-600 bg-stone-100 px-2.5 py-1 rounded-lg border border-stone-200/70 whitespace-nowrap">
+                            <span>{isMr ? 'बिनबचत (₹०)' : 'No Deposit (₹0)'}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // If member is verified and in meeting: clean verified row
+                if (m.verified) {
+                  return (
+                    <div key={m.memberId} className="p-3 sm:p-3.5 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-800 flex items-center justify-center text-xs font-black shrink-0 border border-emerald-200">
+                          {m.memberName.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-stone-900 truncate">{m.memberName}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                              <Wifi className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                              <span>{isMr ? 'ऑनलाइन' : 'Online'}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 whitespace-nowrap">
+                          <Check className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                          <span>₹{m.savings.toLocaleString('en-IN')} {isMr ? 'पडताळले' : 'Verified'}</span>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Active unverified member: input row with clean one-liner actions
+                return (
+                  <div key={m.memberId} className="p-3 sm:p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center text-xs font-black shrink-0">
+                          {m.memberName.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-bold text-stone-900 truncate">{m.memberName}</span>
+                          {m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' ? (
                             <button
                               type="button"
                               onClick={() => handleToggleConnection(m.memberId)}
-                              className="text-[9.5px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.2 rounded flex items-center gap-1 cursor-pointer hover:bg-amber-200 transition"
+                              className="inline-flex items-center gap-1 text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md hover:bg-amber-200 transition cursor-pointer whitespace-nowrap"
                               title={isMr ? "सदस्य डिस्कनेक्ट आहे (टॅप करून ऑनलाइन करा)" : "Member disconnected (tap to set online)"}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping" />
+                              <WifiOff className="w-2.5 h-2.5 text-amber-700 shrink-0" />
                               <span>{isMr ? 'डिस्कनेक्ट' : 'Offline'}</span>
                             </button>
                           ) : (
                             <button
                               type="button"
                               onClick={() => handleToggleConnection(m.memberId)}
-                              className="text-[9.5px] text-stone-400 hover:text-stone-700 px-1 py-0.2 rounded flex items-center gap-1 cursor-pointer transition"
+                              className="inline-flex items-center gap-1 text-[10px] text-stone-500 hover:text-stone-800 bg-stone-100 px-1.5 py-0.5 rounded-md transition cursor-pointer whitespace-nowrap"
                               title={isMr ? "टॅप करून डिस्कनेक्ट मार्क करा (उदा. बॅटरी संपली)" : "Tap to mark disconnected (e.g. dead battery)"}
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <Wifi className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
                               <span>{isMr ? 'ऑनलाइन' : 'Online'}</span>
                             </button>
-                          ))}
+                          )}
                         </div>
-                        {m.leftEarly ? (
-                          <p className="text-[10px] text-amber-700 font-medium">
-                            {m.verified
-                              ? (isMr ? 'लवकर बाहेर पडली • बचत सुरक्षित' : 'Left early • Savings safe')
-                              : (isMr ? 'लवकर बाहेर पडली • बिनबचत' : 'Left early • No deposit')}
-                          </p>
-                        ) : null}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setMarkLeftModal({ open: true, memberId: m.memberId, memberName: m.memberName })}
+                        className="inline-flex items-center gap-1 text-[10px] text-stone-500 hover:text-amber-800 hover:bg-amber-50 px-2 py-1 rounded-md border border-stone-200 font-bold transition shrink-0 cursor-pointer whitespace-nowrap"
+                        title={isMr ? 'लवकर बाहेर पडल्याची नोंद करा' : 'Mark left early'}
+                      >
+                        <LogOut className="w-2.5 h-2.5 text-stone-400 shrink-0" />
+                        <span>{isMr ? 'बाहेर पडली?' : 'Left?'}</span>
+                      </button>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
-                      {m.leftEarly ? (
-                        m.verified ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs bg-emerald-50 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                              <Check className="w-3 h-3 text-emerald-700" />
-                              <span>₹{m.savings.toLocaleString('en-IN')} {t('पडताळले', 'Verified')}</span>
-                            </span>
-                            <span className="text-[10px] bg-amber-50 text-amber-800 font-black px-2 py-0.5 rounded-full border border-amber-200">
-                              {t('लवकर गेली', 'Left Early')}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] bg-stone-100 text-stone-700 font-black px-2 py-0.5 rounded-full border border-stone-200">
-                            {t('लवकर गेली - बिनबचत (₹०)', 'Left Early - No Deposit (₹0)')}
-                          </span>
-                        )
-                      ) : m.verified ? (
-                        <span className="text-xs bg-emerald-50 text-emerald-800 font-black px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-                          <Check className="w-3 h-3 text-emerald-700" />
-                          <span>₹{m.savings.toLocaleString('en-IN')} {t('पडताळले', 'Verified')}</span>
-                        </span>
-                      ) : m.savings > 0 ? (
-                        <span className="text-xs bg-stone-100 text-stone-700 font-bold px-2 py-0.5 rounded-full">
-                          ₹{m.savings.toLocaleString('en-IN')}
-                        </span>
-                      ) : null}
-
-                      {!m.leftEarly && (
-                        <button
-                          type="button"
-                          onClick={() => setMarkLeftModal({ open: true, memberId: m.memberId, memberName: m.memberName })}
-                          className="text-[10px] text-stone-400 hover:text-amber-800 hover:bg-amber-50 px-1.5 py-0.5 rounded border border-stone-200 font-bold transition flex items-center gap-0.5"
-                          title={t('लवकर बाहेर पडल्याची नोंद करा', 'Mark left early')}
-                        >
-                          <LogOut className="w-2.5 h-2.5" />
-                          <span>{t('लवकर गेली?', 'Left early?')}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Savings Input & Presets or Left Early Status Notice */}
-                  {m.leftEarly ? (
-                    m.verified ? (
-                      <div className="text-[11px] text-emerald-900 bg-emerald-50/70 border border-emerald-200 rounded-xl py-1.5 px-3 font-semibold flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>{t('बचत पडताळणी पूर्ण झाली आहे (लेजरमध्ये सुरक्षित)', 'Deposit verified & committed')}</span>
-                        </span>
-                        <span className="font-mono font-black text-emerald-900">₹{m.savings.toLocaleString('en-IN')}</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] text-stone-600 bg-stone-50 border border-stone-200 rounded-xl py-1.5 px-3 font-medium flex items-center justify-between">
-                        <span>{t('बिनबचत लवकर बाहेर पडले (शून्य रोख नोंद)', 'Left early with no deposit')}</span>
-                        <span className="font-mono font-bold text-stone-500">₹०</span>
-                      </div>
-                    )
-                  ) : (
                     <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
+                      <div className="relative flex-1 min-w-0">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-stone-400 font-black">₹</span>
                         <input
                           type="tel"
@@ -867,19 +879,18 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                           onKeyDown={e => {
                             if (e.key === 'Enter') handleInitiateSavings(m.memberId);
                           }}
-                          placeholder={t('रक्कम (उदा. ५००)', 'Amount (e.g. 500)')}
+                          placeholder={isMr ? 'उदा. २५०' : 'e.g. 250'}
                           className="w-full pl-7 pr-3 py-2 bg-stone-50 border border-stone-200 rounded-xl text-xs font-black outline-none focus:border-emerald-600 focus:bg-white transition"
                         />
                       </div>
 
-                      {/* Quick presets */}
-                      <div className="hidden sm:flex items-center gap-1">
-                        {[200, 300, 500].map(amt => (
+                      <div className="hidden sm:flex items-center gap-1 shrink-0">
+                        {[200, 250, 500].map(amt => (
                           <button
                             key={amt}
                             type="button"
                             onClick={() => setPresetAmount(m.memberId, amt)}
-                            className="px-2 py-1.5 text-[10px] font-black text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition"
+                            className="px-2 py-1.5 text-[10px] font-black text-stone-600 bg-stone-100 hover:bg-stone-200 rounded-lg transition cursor-pointer"
                           >
                             ₹{amt}
                           </button>
@@ -888,6 +899,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
                       {m.pendingSavings ? (
                         <button
+                          type="button"
                           onClick={() => {
                             setVerifyModal({
                               open: true,
@@ -899,25 +911,26 @@ export const LeadLiveMeeting: React.FC<Props> = ({
                               loading: false
                             });
                           }}
-                          className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition flex items-center gap-1 shadow-sm active:scale-95"
+                          className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
                         >
-                          <KeyRound className="w-3.5 h-3.5" />
-                          <span>{t('कोड टाका', 'OTP')}</span>
+                          <KeyRound className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isMr ? 'कोड टाका' : 'Enter OTP'}</span>
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => handleInitiateSavings(m.memberId)}
                           disabled={!savingsInputs[m.memberId]}
-                          className="px-4 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                          className="px-4 py-2 bg-[#14532D] hover:bg-emerald-900 disabled:opacity-40 text-white text-xs font-black rounded-xl transition flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
                         >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>{t('नोंदवा', 'Save')}</span>
+                          <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                          <span>{isMr ? 'नोंदवा' : 'Save'}</span>
                         </button>
                       )}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
