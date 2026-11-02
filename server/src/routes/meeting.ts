@@ -11,6 +11,21 @@ interface MeetingMember {
   joinedAt: string;
   verified?: boolean;
   pendingSavings?: { amount: number; otp: string; timestamp: number };
+  leftEarly?: boolean;
+  leftAt?: string;
+  leftReason?: string;
+  connectionStatus?: 'CONNECTED' | 'RECONNECTING' | 'LEFT' | 'DISCONNECTED';
+}
+
+interface MeetingQuorumReport {
+  totalMembers: number;
+  attendedFull: number;
+  leftEarly: number;
+  leftEarlyMembers: Array<{ memberId: string; memberName: string; reason?: string; savings: number; verified?: boolean }>;
+  absent: number;
+  quorumRequired: number;
+  quorumAttended: number;
+  quorumMet: boolean;
 }
 
 interface LiveMeeting {
@@ -24,6 +39,7 @@ interface LiveMeeting {
   members: Record<string, MeetingMember>;
   totalPool: number;
   completedAt?: string;
+  report?: MeetingQuorumReport;
   subscribers: Set<Response>;
 }
 
@@ -90,6 +106,7 @@ function roomSnapshot(room: LiveMeeting) {
     members: room.members,
     totalPool: room.totalPool,
     completedAt: room.completedAt,
+    report: room.report,
   };
 }
 
@@ -143,10 +160,15 @@ meetingRouter.post('/:code/join', (req: Request, res: Response) => {
         phone: phone || '',
         attended: true,
         savings: 0,
-        joinedAt: new Date().toISOString()
+        joinedAt: new Date().toISOString(),
+        connectionStatus: 'CONNECTED'
       };
     } else {
       room.members[memberId].attended = true;
+      room.members[memberId].leftEarly = false;
+      delete room.members[memberId].leftAt;
+      delete room.members[memberId].leftReason;
+      room.members[memberId].connectionStatus = 'CONNECTED';
     }
 
     broadcastToRoom(room, 'member_joined', { memberId, memberName, members: room.members });
@@ -207,6 +229,13 @@ meetingRouter.post('/:code/savings/verify', (req: Request, res: Response) => {
 
     if (!member || !member.pendingSavings) {
       return res.status(400).json({ ok: false, error: 'No pending savings verification found' });
+    }
+
+    // 3-Minute Handshake Expiration Safeguard
+    if (Date.now() - member.pendingSavings.timestamp > 3 * 60 * 1000) {
+      delete member.pendingSavings;
+      broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'handshake_timeout' });
+      return res.status(408).json({ ok: false, error: 'पडताळणी वेळ संपली (Handshake timed out after 3 minutes)' });
     }
 
     if (member.pendingSavings.otp !== String(otp).trim()) {
@@ -282,6 +311,100 @@ meetingRouter.post('/:code/savings', (req: Request, res: Response) => {
   }
 });
 
+// POST /api/meeting/:code/leave (Graceful Member Departure - Rural village exception)
+meetingRouter.post('/:code/leave', (req: Request, res: Response) => {
+  const code = req.params.code;
+  const room = liveRooms.get(code);
+
+  if (!room) {
+    return res.status(404).json({ ok: false, error: 'Meeting not found' });
+  }
+
+  try {
+    const { memberId, reason } = req.body || {};
+    const member = room.members[memberId];
+
+    if (member) {
+      // Case B: She leaves mid-handshake (Leader entered amount, but no OTP verified)
+      // Zero Commitment: Cash is NEVER added to the pool without Handshake OTP confirmation.
+      if (member.pendingSavings) {
+        delete member.pendingSavings;
+        broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'member_left_mid_handshake' });
+      }
+
+      // Case A & C: Attendance remains marked "हजर (Present)". Once verified in person, she cannot be retroactively marked absent.
+      member.attended = true;
+      member.leftEarly = true;
+      member.leftAt = new Date().toISOString();
+      member.leftReason = reason || 'इतर काम (Other work)';
+      member.connectionStatus = 'LEFT';
+
+      broadcastToRoom(room, 'member_left', {
+        memberId,
+        memberName: member.memberName,
+        reason: member.leftReason,
+        leftAt: member.leftAt,
+        members: room.members,
+        totalPool: room.totalPool
+      });
+    }
+
+    res.json({ ok: true, room: roomSnapshot(room) });
+  } catch (err: any) {
+    res.status(400).json({ ok: false, error: err.message || 'Bad request' });
+  }
+});
+
+// POST /api/meeting/:code/member-status (Leader manual update e.g. Phone battery death)
+meetingRouter.post('/:code/member-status', (req: Request, res: Response) => {
+  const code = req.params.code;
+  const room = liveRooms.get(code);
+
+  if (!room) {
+    return res.status(404).json({ ok: false, error: 'Meeting not found' });
+  }
+
+  try {
+    const { memberId, leftEarly, reason, connectionStatus } = req.body || {};
+    const member = room.members[memberId];
+
+    if (member) {
+      if (leftEarly) {
+        if (member.pendingSavings) {
+          delete member.pendingSavings;
+          broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'member_marked_left' });
+        }
+        member.attended = true;
+        member.leftEarly = true;
+        member.leftAt = new Date().toISOString();
+        member.leftReason = reason || 'लवकर बाहेर पडले (Left early)';
+        member.connectionStatus = 'LEFT';
+
+        broadcastToRoom(room, 'member_left', {
+          memberId,
+          memberName: member.memberName,
+          reason: member.leftReason,
+          leftAt: member.leftAt,
+          members: room.members,
+          totalPool: room.totalPool
+        });
+      } else if (connectionStatus) {
+        member.connectionStatus = connectionStatus;
+        broadcastToRoom(room, 'member_status_changed', {
+          memberId,
+          memberName: member.memberName,
+          connectionStatus,
+          members: room.members
+        });
+      }
+    }
+
+    res.json({ ok: true, members: room.members });
+  } catch (err: any) {
+    res.status(400).json({ ok: false, error: err.message || 'Bad request' });
+  }
+});
+
 // POST /api/meeting/:code/complete
 meetingRouter.post('/:code/complete', (req: Request, res: Response) => {
   const code = req.params.code;
@@ -291,8 +414,37 @@ meetingRouter.post('/:code/complete', (req: Request, res: Response) => {
     return res.status(404).json({ ok: false });
   }
 
+  const { totalKnownMembers = 14 } = req.body || {};
+  const membersList = Object.values(room.members);
+  const attendedFull = membersList.filter(m => !m.leftEarly).length;
+  const leftEarly = membersList.filter(m => m.leftEarly).length;
+  const totalAttended = attendedFull + leftEarly; // Statutory presence counts all who attended
+  const effectiveTotal = Math.max(totalKnownMembers, membersList.length);
+  const absent = Math.max(0, effectiveTotal - totalAttended);
+  const quorumRequired = Math.ceil(effectiveTotal * 0.5);
+  const quorumMet = totalAttended >= quorumRequired;
+
+  const report: MeetingQuorumReport = {
+    totalMembers: effectiveTotal,
+    attendedFull,
+    leftEarly,
+    leftEarlyMembers: membersList.filter(m => m.leftEarly).map(m => ({
+      memberId: m.memberId,
+      memberName: m.memberName,
+      reason: m.leftReason,
+      savings: m.savings,
+      verified: m.verified
+    })),
+    absent,
+    quorumRequired,
+    quorumAttended: totalAttended,
+    quorumMet
+  };
+
   room.status = 'COMPLETED';
   room.completedAt = new Date().toISOString();
+  room.report = report;
+
   broadcastToRoom(room, 'meeting_completed', roomSnapshot(room));
 
   // Auto-expire 1 hour after completion to free memory

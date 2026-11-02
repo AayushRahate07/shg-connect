@@ -10,6 +10,21 @@ export interface LiveMember {
   joinedAt: string;
   verified?: boolean;
   pendingSavings?: { amount: number; otp: string; timestamp: number };
+  leftEarly?: boolean;
+  leftAt?: string;
+  leftReason?: string;
+  connectionStatus?: 'CONNECTED' | 'RECONNECTING' | 'LEFT' | 'DISCONNECTED';
+}
+
+export interface MeetingQuorumReport {
+  totalMembers: number;
+  attendedFull: number;
+  leftEarly: number;
+  leftEarlyMembers: Array<{ memberId: string; memberName: string; reason?: string; savings: number; verified?: boolean }>;
+  absent: number;
+  quorumRequired: number;
+  quorumAttended: number;
+  quorumMet: boolean;
 }
 
 export interface LiveMeetingRoom {
@@ -22,15 +37,18 @@ export interface LiveMeetingRoom {
   members: Record<string, LiveMember>;
   totalPool: number;
   completedAt?: string;
+  report?: MeetingQuorumReport;
 }
 
 export interface LiveMeetingHandlers {
   onSnapshot?: (room: LiveMeetingRoom) => void;
   onMemberJoined?: (data: { memberId: string; memberName: string; members: Record<string, LiveMember> }) => void;
+  onMemberLeft?: (data: { memberId: string; memberName: string; reason?: string; leftAt?: string; members: Record<string, LiveMember>; totalPool: number }) => void;
+  onMemberStatusChanged?: (data: { memberId: string; memberName: string; connectionStatus: string; members: Record<string, LiveMember> }) => void;
   onSavingsUpdated?: (data: { memberId: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
   onSavingsHandshakeInitiated?: (data: { memberId: string; memberName: string; amount: number; otp: string }) => void;
   onSavingsVerified?: (data: { memberId: string; memberName: string; amount: number; totalPool: number; members: Record<string, LiveMember> }) => void;
-  onSavingsCancelled?: (data: { memberId: string }) => void;
+  onSavingsCancelled?: (data: { memberId: string; reason?: string }) => void;
   onMeetingCompleted?: (room: LiveMeetingRoom) => void;
   onRoomClosed?: (data: { reason: string }) => void;
 }
@@ -104,10 +122,32 @@ export const liveMeetingApi = {
     return res.json();
   },
 
-  /** Lead: complete the meeting */
-  async complete(code: string): Promise<{ ok: boolean; room: LiveMeetingRoom }> {
+  /** Member or Leader: record member departure / left early */
+  async leave(code: string, memberId: string, reason?: string): Promise<{ ok: boolean; room?: LiveMeetingRoom; error?: string }> {
+    const res = await fetch(`${BASE}/api/meeting/${code}/leave`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId, reason }),
+    });
+    return res.json();
+  },
+
+  /** Leader: manually mark member status (e.g. phone died, left early) */
+  async markMemberStatus(code: string, memberId: string, options: { leftEarly?: boolean; reason?: string; connectionStatus?: string }): Promise<{ ok: boolean; members?: Record<string, LiveMember>; error?: string }> {
+    const res = await fetch(`${BASE}/api/meeting/${code}/member-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memberId, ...options }),
+    });
+    return res.json();
+  },
+
+  /** Lead: complete the meeting with statutory quorum check */
+  async complete(code: string, totalKnownMembers?: number): Promise<{ ok: boolean; room: LiveMeetingRoom }> {
     const res = await fetch(`${BASE}/api/meeting/${code}/complete`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ totalKnownMembers }),
     });
     return res.json();
   },
@@ -125,6 +165,8 @@ export const liveMeetingApi = {
     const es = new EventSource(`${BASE}/api/meeting/${code}/stream`);
     es.addEventListener('snapshot', (e: MessageEvent) => handlers.onSnapshot?.(JSON.parse(e.data)));
     es.addEventListener('member_joined', (e: MessageEvent) => handlers.onMemberJoined?.(JSON.parse(e.data)));
+    es.addEventListener('member_left', (e: MessageEvent) => handlers.onMemberLeft?.(JSON.parse(e.data)));
+    es.addEventListener('member_status_changed', (e: MessageEvent) => handlers.onMemberStatusChanged?.(JSON.parse(e.data)));
     es.addEventListener('savings_updated', (e: MessageEvent) => handlers.onSavingsUpdated?.(JSON.parse(e.data)));
     es.addEventListener('savings_handshake_initiated', (e: MessageEvent) => handlers.onSavingsHandshakeInitiated?.(JSON.parse(e.data)));
     es.addEventListener('savings_verified', (e: MessageEvent) => handlers.onSavingsVerified?.(JSON.parse(e.data)));

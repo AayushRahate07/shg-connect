@@ -16,6 +16,21 @@ interface MeetingMember {
   joinedAt: string;
   verified?: boolean;
   pendingSavings?: { amount: number; otp: string; timestamp: number };
+  leftEarly?: boolean;
+  leftAt?: string;
+  leftReason?: string;
+  connectionStatus?: 'CONNECTED' | 'RECONNECTING' | 'LEFT' | 'DISCONNECTED';
+}
+
+interface MeetingQuorumReport {
+  totalMembers: number;
+  attendedFull: number;
+  leftEarly: number;
+  leftEarlyMembers: Array<{ memberId: string; memberName: string; reason?: string; savings: number; verified?: boolean }>;
+  absent: number;
+  quorumRequired: number;
+  quorumAttended: number;
+  quorumMet: boolean;
 }
 
 interface LiveMeeting {
@@ -29,6 +44,7 @@ interface LiveMeeting {
   members: Record<string, MeetingMember>;
   totalPool: number;
   completedAt?: string;
+  report?: MeetingQuorumReport;
   subscribers: Set<any>; // SSE response objects
 }
 
@@ -77,6 +93,7 @@ function roomSnapshot(room: LiveMeeting) {
     members: room.members,
     totalPool: room.totalPool,
     completedAt: room.completedAt,
+    report: room.report,
   };
 }
 
@@ -142,9 +159,21 @@ function meetingRoomPlugin(): Plugin {
             try {
               const { memberId, memberName, phone } = JSON.parse(body || '{}');
               if (!room.members[memberId]) {
-                room.members[memberId] = { memberId, memberName, phone, attended: true, savings: 0, joinedAt: new Date().toISOString() };
+                room.members[memberId] = {
+                  memberId,
+                  memberName: memberName || 'Member',
+                  phone: phone || '',
+                  attended: true,
+                  savings: 0,
+                  joinedAt: new Date().toISOString(),
+                  connectionStatus: 'CONNECTED'
+                };
               } else {
                 room.members[memberId].attended = true;
+                room.members[memberId].leftEarly = false;
+                delete room.members[memberId].leftAt;
+                delete room.members[memberId].leftReason;
+                room.members[memberId].connectionStatus = 'CONNECTED';
               }
               broadcastToRoom(room, 'member_joined', { memberId, memberName, members: room.members });
               res.setHeader('Content-Type', 'application/json');
@@ -223,6 +252,15 @@ function meetingRoomPlugin(): Plugin {
                 res.statusCode = 400;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ ok: false, error: 'No pending savings verification found' }));
+                return;
+              }
+              // 3-Minute Handshake Expiration Safeguard
+              if (Date.now() - member.pendingSavings.timestamp > 3 * 60 * 1000) {
+                delete member.pendingSavings;
+                broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'handshake_timeout' });
+                res.statusCode = 408;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ ok: false, error: 'पडताळणी वेळ संपली (Handshake timed out after 3 minutes)' }));
                 return;
               }
               if (member.pendingSavings.otp !== String(otp).trim()) {
@@ -310,19 +348,142 @@ function meetingRoomPlugin(): Plugin {
           return;
         }
 
+        // ── POST /api/meeting/:code/leave ─────────────────────────────────────
+        const leaveMatch = url.match(/^\/api\/meeting\/(\d{4})\/leave$/);
+        if (leaveMatch && req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            const room = liveRooms.get(leaveMatch[1]);
+            if (!room) { res.statusCode = 404; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: false, error: 'Meeting not found' })); return; }
+            try {
+              const { memberId, reason } = JSON.parse(body || '{}');
+              const member = room.members[memberId];
+              if (member) {
+                if (member.pendingSavings) {
+                  delete member.pendingSavings;
+                  broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'member_left_mid_handshake' });
+                }
+                member.attended = true;
+                member.leftEarly = true;
+                member.leftAt = new Date().toISOString();
+                member.leftReason = reason || 'इतर काम (Other work)';
+                member.connectionStatus = 'LEFT';
+                broadcastToRoom(room, 'member_left', {
+                  memberId,
+                  memberName: member.memberName,
+                  reason: member.leftReason,
+                  leftAt: member.leftAt,
+                  members: room.members,
+                  totalPool: room.totalPool
+                });
+              }
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(JSON.stringify({ ok: true, room: roomSnapshot(room) }));
+            } catch {
+              res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: 'Bad request' }));
+            }
+          });
+          return;
+        }
+
+        // ── POST /api/meeting/:code/member-status ─────────────────────────────
+        const statusMatch = url.match(/^\/api\/meeting\/(\d{4})\/member-status$/);
+        if (statusMatch && req.method === 'POST') {
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            const room = liveRooms.get(statusMatch[1]);
+            if (!room) { res.statusCode = 404; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: false, error: 'Meeting not found' })); return; }
+            try {
+              const { memberId, leftEarly, reason, connectionStatus } = JSON.parse(body || '{}');
+              const member = room.members[memberId];
+              if (member) {
+                if (leftEarly) {
+                  if (member.pendingSavings) {
+                    delete member.pendingSavings;
+                    broadcastToRoom(room, 'savings_cancelled', { memberId, reason: 'member_marked_left' });
+                  }
+                  member.attended = true;
+                  member.leftEarly = true;
+                  member.leftAt = new Date().toISOString();
+                  member.leftReason = reason || 'लवकर बाहेर पडले (Left early)';
+                  member.connectionStatus = 'LEFT';
+                  broadcastToRoom(room, 'member_left', {
+                    memberId,
+                    memberName: member.memberName,
+                    reason: member.leftReason,
+                    leftAt: member.leftAt,
+                    members: room.members,
+                    totalPool: room.totalPool
+                  });
+                } else if (connectionStatus) {
+                  member.connectionStatus = connectionStatus;
+                  broadcastToRoom(room, 'member_status_changed', {
+                    memberId,
+                    memberName: member.memberName,
+                    connectionStatus,
+                    members: room.members
+                  });
+                }
+              }
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(JSON.stringify({ ok: true, members: room.members }));
+            } catch {
+              res.statusCode = 400; res.end(JSON.stringify({ ok: false, error: 'Bad request' }));
+            }
+          });
+          return;
+        }
+
         // ── POST /api/meeting/:code/complete ──────────────────────────────────
         const completeMatch = url.match(/^\/api\/meeting\/(\d{4})\/complete$/);
         if (completeMatch && req.method === 'POST') {
-          const room = liveRooms.get(completeMatch[1]);
-          if (!room) { res.statusCode = 404; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: false })); return; }
-          room.status = 'COMPLETED';
-          room.completedAt = new Date().toISOString();
-          broadcastToRoom(room, 'meeting_completed', roomSnapshot(room));
-          // Auto-expire 1 hour after completion
-          setTimeout(() => purgeExpiredRoom(completeMatch[1], 'completed'), COMPLETED_ROOM_TTL_MS);
-          res.setHeader('Content-Type', 'application/json');
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.end(JSON.stringify({ ok: true, room: roomSnapshot(room) }));
+          let body = '';
+          req.on('data', c => body += c);
+          req.on('end', () => {
+            const room = liveRooms.get(completeMatch[1]);
+            if (!room) { res.statusCode = 404; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ ok: false })); return; }
+
+            const { totalKnownMembers = 14 } = JSON.parse(body || '{}');
+            const membersList = Object.values(room.members);
+            const attendedFull = membersList.filter(m => !m.leftEarly).length;
+            const leftEarly = membersList.filter(m => m.leftEarly).length;
+            const totalAttended = attendedFull + leftEarly; // Statutory presence counts all who attended
+            const effectiveTotal = Math.max(totalKnownMembers, membersList.length);
+            const absent = Math.max(0, effectiveTotal - totalAttended);
+            const quorumRequired = Math.ceil(effectiveTotal * 0.5);
+            const quorumMet = totalAttended >= quorumRequired;
+
+            const report: MeetingQuorumReport = {
+              totalMembers: effectiveTotal,
+              attendedFull,
+              leftEarly,
+              leftEarlyMembers: membersList.filter(m => m.leftEarly).map(m => ({
+                memberId: m.memberId,
+                memberName: m.memberName,
+                reason: m.leftReason,
+                savings: m.savings,
+                verified: m.verified
+              })),
+              absent,
+              quorumRequired,
+              quorumAttended: totalAttended,
+              quorumMet
+            };
+
+            room.status = 'COMPLETED';
+            room.completedAt = new Date().toISOString();
+            room.report = report;
+            broadcastToRoom(room, 'meeting_completed', roomSnapshot(room));
+            // Auto-expire 1 hour after completion
+            setTimeout(() => purgeExpiredRoom(completeMatch[1], 'completed'), COMPLETED_ROOM_TTL_MS);
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(JSON.stringify({ ok: true, room: roomSnapshot(room) }));
+          });
           return;
         }
 
