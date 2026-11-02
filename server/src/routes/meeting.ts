@@ -321,25 +321,34 @@ meetingRouter.post('/:code/batch-confirm', (req: Request, res: Response) => {
   }
 
   try {
-    const { defaultAmount = 250 } = req.body || {};
-    const amt = Number(defaultAmount) || 250;
+    const { memberAmounts = {}, defaultAmount = 0 } = req.body || {};
     let confirmedCount = 0;
 
     for (const mem of Object.values(room.members)) {
-      if (!mem.verified) {
-        mem.savings = mem.savings > 0 ? mem.savings : amt;
-        mem.verified = true;
-        delete mem.pendingSavings;
-        confirmedCount++;
+      // NEVER touch members who left early or are already verified
+      if (mem.leftEarly || mem.verified) continue;
+
+      // Only confirm disconnected/reconnecting members with valid entered amounts
+      if (mem.connectionStatus === 'DISCONNECTED' || mem.connectionStatus === 'RECONNECTING') {
+        const specificAmt = Number(memberAmounts[mem.memberId]);
+        const amt = !isNaN(specificAmt) && specificAmt > 0
+          ? specificAmt
+          : (mem.savings > 0 ? mem.savings : Number(defaultAmount) || 0);
+
+        if (amt > 0) {
+          mem.savings = amt;
+          mem.verified = true;
+          delete mem.pendingSavings;
+          confirmedCount++;
+        }
       }
     }
 
-    room.totalPool = Object.values(room.members).reduce((s, m) => s + (m.savings || 0), 0);
+    room.totalPool = Object.values(room.members).reduce((s, m) => s + (m.verified ? m.savings : 0), 0);
 
     broadcastToRoom(room, 'batch_confirmed', {
       totalPool: room.totalPool,
       members: room.members,
-      amount: amt,
       count: confirmedCount
     });
     broadcastToRoom(room, 'snapshot', roomSnapshot(room));
@@ -348,8 +357,7 @@ meetingRouter.post('/:code/batch-confirm', (req: Request, res: Response) => {
       ok: true,
       totalPool: room.totalPool,
       members: room.members,
-      count: confirmedCount,
-      amount: amt
+      count: confirmedCount
     });
   } catch (err: any) {
     res.status(400).json({ ok: false, error: err.message || 'Bad request' });

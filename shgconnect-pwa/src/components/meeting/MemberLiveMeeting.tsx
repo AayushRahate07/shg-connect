@@ -115,9 +115,9 @@ export const MemberLiveMeeting: React.FC<Props> = ({ memberId, memberName, phone
           const wasVerified = prev?.members[memberId]?.verified;
           const isNowVerified = r.members[memberId]?.verified;
           if (!wasVerified && isNowVerified) {
-            setShowVerifiedToast({ amount: r.members[memberId].savings || 250 });
+            setShowVerifiedToast({ amount: r.members[memberId].savings || 0 });
             sound.playStampSound();
-            tts.speak(isMr ? `आपली ₹${r.members[memberId].savings || 250} बचत जमा झाली` : `Your savings is verified`);
+            tts.speak(isMr ? `आपली ₹${r.members[memberId].savings || 0} बचत जमा झाली` : `Your savings is verified`);
             setTimeout(() => setShowVerifiedToast(null), 6000);
           }
           return r;

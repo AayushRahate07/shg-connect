@@ -231,24 +231,40 @@ export const LeadLiveMeeting: React.FC<Props> = ({
 
   
   const handleBatchConfirmAll = async () => {
-    if (!room?.code) return;
-    const disconnectedList = Object.values(room.members).filter(m => 
-      !m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly)
-    );
-    if (disconnectedList.length === 0) {
+    if (!room?.code || !isBatchConfirmActive) return;
+
+    // Check entered amounts for the disconnected members
+    const memberAmounts: Record<string, number> = {};
+    let hasValidAmount = false;
+
+    for (const m of disconnectedUnverified) {
+      const raw = savingsInputs[m.memberId];
+      const amt = raw ? parseInt(raw, 10) : (m.savings > 0 ? m.savings : 0);
+      if (amt > 0) {
+        memberAmounts[m.memberId] = amt;
+        hasValidAmount = true;
+      }
+    }
+
+    if (!hasValidAmount) {
+      setError(isMr
+        ? 'कृपया डिस्कनेक्ट सदस्याची रक्कम टाका (रक्कम रिकामी असू शकत नाही)'
+        : 'Please enter a savings amount for the disconnected member.'
+      );
       sound.playStampSound();
-      tts.speak(isMr ? 'कोणतेही सदस्य डिस्कनेक्ट नाहीत. थेट OTP वापरा.' : 'No members disconnected.');
+      tts.speak(isMr ? 'कृपया प्रथम रक्कम टाका' : 'Please enter amount first');
       return;
     }
+
     try {
-      const defaultAmt = 250;
-      const res = await liveMeetingApi.batchConfirmAll(room.code, defaultAmt, room.members);
+      const res = await liveMeetingApi.batchConfirmAll(room.code, memberAmounts, room.members);
       if (res.ok && res.members) {
         setRoom(prev => prev ? { ...prev, members: res.members!, totalPool: res.totalPool || prev.totalPool } : null);
         sound.playStampSound();
-        const count = res.count || disconnectedList.length;
-        setBatchNotice({ count, amount: defaultAmt });
-        tts.speak(isMr ? `डिस्कनेक्ट सदस्यांची बचत मंजूर केली.` : `Batch confirmed savings for disconnected members.`);
+        const count = res.count || Object.keys(memberAmounts).length;
+        const totalConfirmed = Object.values(memberAmounts).reduce((a, b) => a + b, 0);
+        setBatchNotice({ count, amount: totalConfirmed });
+        tts.speak(isMr ? 'बचत मंजूर झाली.' : 'Batch confirmed savings.');
         setTimeout(() => setBatchNotice(null), 6000);
       }
     } catch {
@@ -351,7 +367,7 @@ export const LeadLiveMeeting: React.FC<Props> = ({
   const members = Object.values(room.members);
   const verifiedCount = members.filter(m => m.verified).length;
   const disconnectedUnverified = members.filter(m => 
-    !m.verified && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING' || m.leftEarly)
+    !m.verified && !m.leftEarly && (m.connectionStatus === 'DISCONNECTED' || m.connectionStatus === 'RECONNECTING')
   );
   const isBatchConfirmActive = disconnectedUnverified.length > 0;
 

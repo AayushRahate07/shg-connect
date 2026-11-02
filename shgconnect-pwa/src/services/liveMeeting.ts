@@ -258,15 +258,15 @@ export const liveMeetingApi = {
     return { ok: true };
   },
 
-  /** Direct batch confirm all attended members */
-  async batchConfirmAll(code: string, defaultAmount = 250, currentMembers?: Record<string, LiveMember>): Promise<{ ok: boolean; totalPool?: number; members?: Record<string, LiveMember>; count?: number }> {
+  /** Batch confirm disconnected members with actual entered amounts */
+  async batchConfirmAll(code: string, memberAmounts: Record<string, number> = {}, currentMembers?: Record<string, LiveMember>): Promise<{ ok: boolean; totalPool?: number; members?: Record<string, LiveMember>; count?: number }> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       const res = await fetch(`${BASE}/api/meeting/${code}/batch-confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ defaultAmount }),
+        body: JSON.stringify({ memberAmounts }),
         signal: controller.signal
       });
       clearTimeout(timeoutId);
@@ -290,12 +290,15 @@ export const liveMeetingApi = {
 
     let count = 0;
     for (const mem of Object.values(membersToUse)) {
-      if (!mem.verified) {
-        mem.savings = mem.savings > 0 ? mem.savings : defaultAmount;
-        mem.verified = true;
-        mem.paperSlip = true;
-        delete mem.pendingSavings;
-        count++;
+      if (mem.leftEarly || mem.verified) continue;
+      if (mem.connectionStatus === 'DISCONNECTED' || mem.connectionStatus === 'RECONNECTING') {
+        const amt = memberAmounts[mem.memberId] || (mem.savings > 0 ? mem.savings : 0);
+        if (amt > 0) {
+          mem.savings = amt;
+          mem.verified = true;
+          delete mem.pendingSavings;
+          count++;
+        }
       }
     }
 
@@ -305,7 +308,7 @@ export const liveMeetingApi = {
       room.totalPool = totalPool;
       saveLocalRoom(room);
     }
-    broadcastLocalEvent(code, 'batch_confirmed', { totalPool, members: membersToUse, count, amount: defaultAmount });
+    broadcastLocalEvent(code, 'batch_confirmed', { totalPool, members: membersToUse, count });
     broadcastLocalEvent(code, 'snapshot', room || { code, members: membersToUse, totalPool });
     return { ok: true, totalPool, members: membersToUse, count };
   },
