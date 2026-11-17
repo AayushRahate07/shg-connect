@@ -25,6 +25,8 @@ import { Button } from '../components/ui/Button';
 import { Bell, Users, User, HandCoins, Sparkles, FileText, Award, Calendar, Landmark, Check, Banknote, Radio, UserPlus, ShieldCheck, MapPin } from 'lucide-react';
 import { LeadLiveMeeting } from '../components/meeting/LeadLiveMeeting';
 import { LiveMeetingRoom } from '../services/liveMeeting';
+import { ClimateShockSimulator } from '../components/climate/ClimateShockSimulator';
+import { ClimatePanchasutraCard } from '../components/climate/ClimatePanchasutraCard';
 
 interface OfficeBearerDashboardProps {
   onSwitchToPersonalSavings?: () => void;
@@ -813,7 +815,17 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           )}
 
           {activeTab === 'panchasutra' && (
-            <PanchasutraVisualizer score={mockPanchasutraScore} language={language} />
+            <div className="space-y-6">
+              <PanchasutraVisualizer score={mockPanchasutraScore} language={language} />
+              <ClimatePanchasutraCard
+                group={group}
+                loans={loans}
+                members={members}
+                transactions={transactions}
+                language={language}
+                officialPanchasutraScore={mockPanchasutraScore.totalScore}
+              />
+            </div>
           )}
 
           {activeTab === 'resolutions' && (
@@ -825,7 +837,24 @@ export const OfficeBearerDashboard: React.FC<OfficeBearerDashboardProps> = ({
           )}
 
           {activeTab === 'calculator' && (
-            <LoanCalculator language={language} />
+            <div className="space-y-6">
+              <LoanCalculator language={language} />
+              <ClimateShockSimulator group={group} loans={loans} members={members} language={language} />
+            </div>
+          )}
+
+          {activeTab === 'climate' && (
+            <div className="space-y-6">
+              <ClimatePanchasutraCard
+                group={group}
+                loans={loans}
+                members={members}
+                transactions={transactions}
+                language={language}
+                officialPanchasutraScore={mockPanchasutraScore.totalScore}
+              />
+              <ClimateShockSimulator group={group} loans={loans} members={members} language={language} />
+            </div>
           )}
 
           {activeTab === 'reports' && (

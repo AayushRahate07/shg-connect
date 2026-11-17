@@ -18,6 +18,11 @@ import {
   GroupInfo,
   GroupSettings
 } from '../types/shg';
+import {
+  ClimateBufferState,
+  HeatReliefProposal,
+  HeatShieldPolicy
+} from '../types/climate';
 import { computeBlockHash, calculateSHA256, generateCheckpointFingerprint } from './hashChain';
 import { DEMO_ASSIGNED_GROUPS, DEMO_MEMBERS, DEMO_LOANS, DEMO_MEETINGS } from './demoData';
 import {
@@ -33,7 +38,7 @@ import {
 } from '../data/seedData';
 
 const DB_NAME = 'SHGConnectDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const LEGACY_STORAGE_KEYS = {
   MEMBERS: 'shg_connect_members_v1',
@@ -238,6 +243,13 @@ export function openDatabase(): Promise<IDBDatabase> {
         deferredStore.createIndex('status', 'status', { unique: false });
         deferredStore.createIndex('opId', 'opId', { unique: false });
       }
+      if (!db.objectStoreNames.contains('climate_buffers')) {
+        db.createObjectStore('climate_buffers', { keyPath: 'shgId' });
+      }
+      if (!db.objectStoreNames.contains('climate_proposals')) {
+        const propStore = db.createObjectStore('climate_proposals', { keyPath: 'id' });
+        propStore.createIndex('by_shg', 'shgId', { unique: false });
+      }
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -273,6 +285,34 @@ async function putAllIntoStore<T>(storeName: string, items: T[]): Promise<void> 
     const tx = db.transaction(storeName, 'readwrite');
     const store = tx.objectStore(storeName);
     items.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/**
+ * Generic IDB Helper: get single item by key
+ */
+async function getItemFromStore<T>(storeName: string, key: IDBValidKey): Promise<T | undefined> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const store = tx.objectStore(storeName);
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result as T | undefined);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+/**
+ * Generic IDB Helper: put single item into store
+ */
+async function putItemIntoStore<T>(storeName: string, item: T): Promise<void> {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    const store = tx.objectStore(storeName);
+    store.put(item);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -1172,5 +1212,146 @@ export function updateMembershipRequestStatus(id: string, status: 'APPROVED' | '
     }
   } catch (e) {
     console.error('Failed to update membership request status:', e);
+  }
+}
+
+// ==========================================
+// CLIMATE BUFFER & HEAT SHIELD MODULE
+// ==========================================
+
+export const DEFAULT_HEAT_SHIELD_POLICY: HeatShieldPolicy = {
+  triggerMetric: 'WBGT',
+  thresholdC: 31.5,
+  minConsecutiveDays: 2,
+  waiveLatePenalty: true,
+  grantAmountPerMemberInr: 500,
+  fundingRule: {
+    interestSurplusPct: 5,
+    monthlyMemberContributionInr: 20
+  },
+  emptyBufferFallback: 'PENALTY_WAIVER_ONLY'
+};
+
+export function createDefaultClimateBuffer(shgId: string): ClimateBufferState {
+  return {
+    shgId,
+    balanceInr: 3500,
+    totalContributedInr: 4500,
+    totalDisbursedInr: 1000,
+    policy: DEFAULT_HEAT_SHIELD_POLICY,
+    isDemoEmptyBufferSimulated: false,
+    ledger: [
+      {
+        id: `buf-${shgId}-1`,
+        date: '2026-03-01',
+        type: 'CONTRIBUTION_INTEREST_SURPLUS',
+        amountInr: 2500,
+        description: '5% Retained interest surplus allocation'
+      },
+      {
+        id: `buf-${shgId}-2`,
+        date: '2026-04-01',
+        type: 'CONTRIBUTION_MEMBER_LEVY',
+        amountInr: 2000,
+        description: 'Monthly climate contingency kitty (10 members × ₹20 × 10 mo)'
+      },
+      {
+        id: `buf-${shgId}-3`,
+        date: '2026-04-20',
+        type: 'GRANT_DISBURSED',
+        amountInr: 1000,
+        memberId: 'mem-2',
+        description: 'Heat-wage relief grant during April heatwave'
+      }
+    ]
+  };
+}
+
+export async function getClimateBufferState(shgId?: string): Promise<ClimateBufferState> {
+  const targetShg = shgId || getCurrentShgId();
+  try {
+    const state = await getItemFromStore<ClimateBufferState>('climate_buffers', targetShg);
+    if (state) return state;
+    const def = createDefaultClimateBuffer(targetShg);
+    await putItemIntoStore('climate_buffers', def);
+    return def;
+  } catch (e) {
+    console.warn('IDB getClimateBufferState error, returning default:', e);
+    return createDefaultClimateBuffer(targetShg);
+  }
+}
+
+export async function saveClimateBufferState(bufferState: ClimateBufferState): Promise<void> {
+  await putItemIntoStore('climate_buffers', bufferState);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('shg_climate_buffer_updated', { detail: bufferState }));
+  }
+}
+
+export async function toggleSimulateEmptyBuffer(shgId?: string, simulateEmpty?: boolean): Promise<ClimateBufferState> {
+  const current = await getClimateBufferState(shgId);
+  const nextSimulate = simulateEmpty !== undefined ? simulateEmpty : !current.isDemoEmptyBufferSimulated;
+  const updated: ClimateBufferState = {
+    ...current,
+    isDemoEmptyBufferSimulated: nextSimulate,
+    balanceInr: nextSimulate ? 0 : (current.balanceInr === 0 ? 3500 : current.balanceInr)
+  };
+  await saveClimateBufferState(updated);
+  return updated;
+}
+
+export async function getClimateProposals(shgId?: string): Promise<HeatReliefProposal[]> {
+  const targetShg = shgId || getCurrentShgId();
+  try {
+    const all = await getAllFromStore<HeatReliefProposal>('climate_proposals');
+    const filtered = all.filter(p => p.shgId === targetShg);
+    if (filtered.length > 0) return filtered;
+
+    // Seed 1 default demo proposal for current group if none exist
+    const demoProposal: HeatReliefProposal = {
+      id: `prop-heat-${targetShg}-01`,
+      shgId: targetShg,
+      memberId: 'mem-2',
+      memberName: 'मीनाताई राऊत (Meenatai Raut)',
+      type: 'BUFFER_GRANT',
+      requestedAmountInr: 500,
+      measuredWbgtC: 32.4,
+      measuredHeatIndexC: 46.2,
+      forecastDate: '2026-05-18',
+      status: 'PROPOSED',
+      notes: 'Nagpur Extreme Heat: WBGT 32.4°C outdoor labor suspension relief'
+    };
+    await putItemIntoStore('climate_proposals', demoProposal);
+    return [demoProposal];
+  } catch (e) {
+    console.warn('IDB getClimateProposals error:', e);
+    return [];
+  }
+}
+
+export async function saveClimateProposal(proposal: HeatReliefProposal): Promise<void> {
+  await putItemIntoStore('climate_proposals', proposal);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('shg_climate_proposals_updated', { detail: proposal }));
+  }
+}
+
+export async function updateClimateProposalStatus(
+  id: string,
+  status: HeatReliefProposal['status'],
+  otpVerifiedAt?: string,
+  blockHash?: string
+): Promise<void> {
+  const proposal = await getItemFromStore<HeatReliefProposal>('climate_proposals', id);
+  if (!proposal) return;
+  const updated: HeatReliefProposal = {
+    ...proposal,
+    status,
+    otpVerifiedAt: otpVerifiedAt || proposal.otpVerifiedAt,
+    blockHash: blockHash || proposal.blockHash
+  };
+  await putItemIntoStore('climate_proposals', updated);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('shg_climate_proposals_updated', { detail: updated }));
   }
 }

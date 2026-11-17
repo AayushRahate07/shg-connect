@@ -6,6 +6,8 @@ import { PanchasutraVisualizer } from '../components/panchasutra/PanchasutraVisu
 import { LedgerVerifier } from '../components/LedgerVerifier';
 import { ReportsView } from '../components/reports/ReportsView';
 import { SettingsView } from '../components/settings/SettingsView';
+import { ClimatePanchasutraCard } from '../components/climate/ClimatePanchasutraCard';
+import { ClimateShockSimulator } from '../components/climate/ClimateShockSimulator';
 import { formatINR } from '../theme/tokens';
 import { ShieldCheck, Award, FileSpreadsheet, Search, Download, Building2, Users, FileText, CheckCircle2, ChevronRight, Calendar, UserPlus } from 'lucide-react';
 import { Badge } from '../components/ui/Badge';
@@ -265,6 +267,23 @@ export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
             </div>
           </div>
 
+          {/* Climate Shock Simulator & Supplementary Index */}
+          <ClimatePanchasutraCard
+            group={group}
+            loans={allLoans}
+            members={allMembers}
+            transactions={transactions}
+            language={language}
+            officialPanchasutraScore={mockPanchasutraScore.totalScore}
+          />
+
+          <ClimateShockSimulator
+            group={group}
+            loans={allLoans}
+            members={allMembers}
+            language={language}
+          />
+
           <ReportsView
             language={language}
             onOpenPassbook={() => onSelectTab?.('verifier')}
@@ -278,6 +297,33 @@ export const AuditorDashboard: React.FC<AuditorDashboardProps> = ({
       {activeTab === 'panchasutra' && (
         <div className="space-y-6">
           <PanchasutraVisualizer score={mockPanchasutraScore} language={language} />
+          <ClimatePanchasutraCard
+            group={group}
+            loans={allLoans}
+            members={allMembers}
+            transactions={transactions}
+            language={language}
+            officialPanchasutraScore={mockPanchasutraScore.totalScore}
+          />
+        </div>
+      )}
+
+      {activeTab === 'climate' && (
+        <div className="space-y-6">
+          <ClimatePanchasutraCard
+            group={group}
+            loans={allLoans}
+            members={allMembers}
+            transactions={transactions}
+            language={language}
+            officialPanchasutraScore={mockPanchasutraScore.totalScore}
+          />
+          <ClimateShockSimulator
+            group={group}
+            loans={allLoans}
+            members={allMembers}
+            language={language}
+          />
         </div>
       )}
 
