@@ -129,10 +129,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const roleSnippet = getRoleSnippet();
 
   return (
-    <aside className="w-64 bg-white flex flex-col h-screen sticky top-0 hidden lg:flex z-30 border-r border-stone-200 shadow-xs select-none">
+    <aside className="w-64 bg-white flex flex-col h-screen fixed inset-y-0 left-0 hidden lg:flex z-40 border-r border-stone-200 shadow-sm select-none">
       
       {/* Brand Header */}
-      <div className="p-4 flex items-center gap-3 border-b border-stone-200">
+      <div className="p-4 flex items-center gap-3 border-b border-stone-200 shrink-0">
         <ShgLogo size={36} />
         <div className="min-w-0">
           <h1 className="text-sm font-black tracking-tight text-stone-900 truncate">SHGConnect</h1>
@@ -143,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Logged-in User Identity Snippet (STATIC - No Role Jumping!) */}
-      <div className="p-3.5 mx-3 mt-3 bg-stone-50 rounded-xl border border-stone-200 space-y-1">
+      <div className="p-3.5 mx-3 mt-3 bg-stone-50 rounded-xl border border-stone-200 space-y-1 shrink-0">
         <span className="text-[10px] font-black uppercase tracking-wider text-stone-400 block">
           {isMr ? 'सक्रिय सत्र (Active Session)' : 'Active Session'}
         </span>
@@ -156,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-5 mt-4 mb-1">
+      <div className="text-[10px] font-bold text-stone-400 uppercase tracking-widest px-5 mt-4 mb-1 shrink-0">
         {isMr ? 'नेव्हिगेशन' : 'Navigation'}
       </div>
       <nav className="flex-1 px-3 pb-2 space-y-1 overflow-y-auto">
@@ -194,7 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Logout button at bottom of sidebar */}
       {onLogout && (
-        <div className="p-3 border-t border-stone-200">
+        <div className="p-3 border-t border-stone-200 shrink-0 bg-white mt-auto">
           <button
             type="button"
             onClick={onLogout}

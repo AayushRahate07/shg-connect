@@ -71,8 +71,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         onOpenNotifications={onOpenNotifications}
       />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Container - Padded on desktop for fixed sidebar */}
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
         <OfflineBanner language={language} />
         {/* Sticky Header */}
         <Header

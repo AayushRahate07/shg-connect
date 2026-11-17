@@ -11,7 +11,6 @@
     min-height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -20,6 +19,7 @@
     min-height: 100%;
     margin: 0;
     padding: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
