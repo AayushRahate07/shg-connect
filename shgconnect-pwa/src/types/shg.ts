@@ -1,3 +1,5 @@
+import { LoanClimateCategory } from './climate';
+
 /**
  * SHGConnect Role Hierarchy:
  * - MEMBER: SHG Member (personal savings, loans, passbook)
@@ -15,7 +17,16 @@ export interface OfficerSignature {
   officerName: string;
 }
 
-export type TransactionType = 'ATTENDANCE' | 'SAVINGS' | 'LOAN_DISBURSAL' | 'EMI_REPAYMENT' | 'PENALTY' | 'RESOLUTION';
+export type TransactionType =
+  | 'ATTENDANCE'
+  | 'SAVINGS'
+  | 'LOAN_DISBURSAL'
+  | 'EMI_REPAYMENT'
+  | 'PENALTY'
+  | 'RESOLUTION'
+  | 'CLIMATE_BUFFER_CONTRIBUTION'
+  | 'CLIMATE_BUFFER_GRANT'
+  | 'HEAT_PENALTY_WAIVER';
 
 export type PaymentMode = 'CASH' | 'UPI_INTENT';
 export type SettlementStatus = 'SETTLED_CASH' | 'PENDING_BANK_RECONCILIATION' | 'SETTLED_DIGITAL_UTR';
@@ -163,6 +174,7 @@ export interface Loan {
   status: 'ACTIVE' | 'REQUESTED' | 'REPAID' | 'REJECTED';
   dateDisbursed: string;
   entityVersion: number;        // OCC version
+  climateCategory?: LoanClimateCategory;
 }
 
 export interface Meeting {
@@ -267,7 +279,9 @@ export type DomainEvent =
   | { type: 'LOAN_DISBURSED'; payload: { memberId: string; amount: number; purpose: string } }
   | { type: 'EMI_REPAID'; payload: { memberId: string; principal: number; interest: number } }
   | { type: 'CASH_MISMATCH_FLAGGED'; payload: { expected: number; physicalCounted: number; variance: number } }
-  | { type: 'QUORUM_SIGNATURES_AUTHENTICATED'; payload: { officerRoles: string[]; sessionHash: string } };
+  | { type: 'QUORUM_SIGNATURES_AUTHENTICATED'; payload: { officerRoles: string[]; sessionHash: string } }
+  | { type: 'CLIMATE_BUFFER_GRANT_RELEASED'; payload: { proposalId: string; memberId: string; amount: number; metric: string; measuredValue: number } }
+  | { type: 'HEAT_PENALTY_WAIVER_APPROVED'; payload: { proposalId: string; memberId: string; metric: string; measuredValue: number } };
 
 export interface ChainVerificationBlockResult {
   index: number;

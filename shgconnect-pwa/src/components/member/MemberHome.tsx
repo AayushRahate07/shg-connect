@@ -5,6 +5,7 @@ import { formatINR, formatMarathiDate } from '../../theme/tokens';
 import { getGroupSettings } from '../../services/db';
 import { tts } from '../../services/tts';
 import { Card } from '../ui/Card';
+import { HeatWageShieldBanner } from '../climate/HeatWageShieldBanner';
 import {
   TrendingUp,
   Calendar,
@@ -134,6 +135,13 @@ export const MemberHome: React.FC<MemberHomeProps> = ({
           </button>
         </div>
       )}
+
+      {/* ── Heat-Wage Shield Contingency Banner ── */}
+      <HeatWageShieldBanner
+        member={member}
+        group={group}
+        language={language}
+      />
 
       {/* ── Greeting Row + Full Screen Audio ── */}
       <div className="flex items-center justify-between gap-2">

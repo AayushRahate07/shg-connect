@@ -1,6 +1,6 @@
 import React from 'react';
 import { SupportedLanguage } from '../../types/shg';
-import { BookOpen, Calculator, Award, RefreshCw, Settings, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { BookOpen, Calculator, Award, RefreshCw, Settings, ChevronRight, MoreHorizontal, CloudRain } from 'lucide-react';
 
 interface MoreMenuViewProps {
   language: SupportedLanguage;
@@ -26,6 +26,13 @@ export const MoreMenuView: React.FC<MoreMenuViewProps> = ({
       desc: isMr ? 'शेकडा दीड रुपये (१.५%) घटत्या बाकीनुसार हप्ता गणना' : 'Diminishing interest calculator',
       icon: <Calculator className="w-5 h-5 text-[#E8720C]" />,
       color: 'bg-[#FFEDD5]'
+    },
+    {
+      id: 'climate',
+      title: isMr ? 'हवामान ताण सिम्युलेटर' : 'Climate Shock Simulator',
+      desc: isMr ? 'दुष्काळ व उष्णतेत भांडवल सुरक्षितता स्ट्रेस टेस्ट' : 'Drought & heat stress test simulator',
+      icon: <CloudRain className="w-5 h-5 text-emerald-800" />,
+      color: 'bg-emerald-100'
     },
     {
       id: 'panchasutra',

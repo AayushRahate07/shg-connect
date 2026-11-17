@@ -3,9 +3,10 @@ import { SupportedLanguage } from '../../types/shg';
 import { translations } from '../../i18n/translations';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Button } from '../ui/Button';
-import { FileSpreadsheet, Printer, Landmark, Calendar, ShieldCheck, ArrowRight, Download } from 'lucide-react';
-import { generateMemberLedgerCSV, generateTransactionAuditCSV, printPanchasutraCertificate } from '../../services/reportGenerator';
-import { INITIAL_GROUP, getMembers, getTransactions } from '../../services/db';
+import { FileSpreadsheet, Printer, Landmark, Calendar, ShieldCheck, ArrowRight, Download, CloudRain } from 'lucide-react';
+import { generateMemberLedgerCSV, generateTransactionAuditCSV, printPanchasutraCertificate, printClimateCreditDossier } from '../../services/reportGenerator';
+import { INITIAL_GROUP, getMembers, getTransactions, getLoans, getClimateBufferState } from '../../services/db';
+import { calculateClimatePanchasutraScore } from '../../services/climateScore';
 
 interface ReportsViewProps {
   language: SupportedLanguage;
@@ -39,7 +40,32 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     printPanchasutraCertificate(INITIAL_GROUP, language);
   };
 
+  const handlePrintClimateDossier = async () => {
+    const members = await getMembers();
+    const txs = await getTransactions();
+    const loans = await getLoans();
+    const bufferState = await getClimateBufferState(INITIAL_GROUP.shgCode);
+    const report = await calculateClimatePanchasutraScore(loans, members, bufferState, 92);
+    await printClimateCreditDossier({
+      group: INITIAL_GROUP,
+      loans,
+      members,
+      transactions: txs,
+      bufferState,
+      report,
+      language
+    });
+  };
+
   const categories = [
+    {
+      title: 'Climate Resilience & Bank Dossiers',
+      icon: <CloudRain className="w-5 h-5 text-emerald-800" />,
+      items: [
+        { label: 'Climate Credit Appraisal Dossier (Print PDF)', desc: 'Bank-ready A4 dossier with NABARD score, climate index, and Merkle root proof', action: handlePrintClimateDossier },
+        { label: 'Supplementary Climate Panchasutra Index', desc: 'Survival margin, loan portfolio diversification HHI, and contingency buffer', action: onOpenPanchasutra }
+      ]
+    },
     {
       title: 'Financial Statements',
       icon: <Landmark className="w-5 h-5 text-[#176B52]" />,

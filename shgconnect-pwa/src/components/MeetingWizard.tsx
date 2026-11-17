@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Member, SupportedLanguage, Resolution, OfficerRole, OfficerSignature } from '../types/shg';
-import { verifyOfficerPin, DEFAULT_OFFICERS, getDeferredRemoteOps } from '../services/db';
+import { verifyOfficerPin, DEFAULT_OFFICERS, getDeferredRemoteOps, getCurrentShgId, getClimateBufferState, saveClimateBufferState } from '../services/db';
+import { HeatReliefProposal } from '../types/climate';
+import { HeatReliefApprovalPanel } from './climate/HeatReliefApprovalPanel';
 import { calculateSHA256 } from '../services/hashChain';
 import { UserCheck, Check, DollarSign, HandCoins, ArrowRight, ArrowLeft, CheckCircle2, Sparkles, Volume2, Key, ShieldCheck, Share2, MessageSquare, AlertCircle, FileText, Lock, Fingerprint, ShieldAlert } from 'lucide-react';
 import { tts } from '../services/tts';
@@ -66,6 +68,7 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
   // Step 3 state: Resolutions & Loan Disbursal
   const [sessionResolutions, setSessionResolutions] = useState<Omit<Resolution, 'id' | 'resolutionNumber'>[]>([]);
+  const [approvedClimateProposals, setApprovedClimateProposals] = useState<HeatReliefProposal[]>([]);
   const [disburseLoan, setDisburseLoan] = useState<boolean>(false);
   const [selectedLoanMemberId, setSelectedLoanMemberId] = useState<string>('');
   const [loanAmount, setLoanAmount] = useState<number>(0);
@@ -120,6 +123,21 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
 
   const handleAddSessionResolution = (res: Omit<Resolution, 'id' | 'resolutionNumber'>) => {
     setSessionResolutions(prev => [...prev, res]);
+  };
+
+  const handleClimateProposalApproved = (proposal: HeatReliefProposal) => {
+    setApprovedClimateProposals(prev => [...prev.filter(p => p.id !== proposal.id), proposal]);
+    handleAddSessionResolution({
+      date: new Date().toISOString().split('T')[0],
+      title: language === 'mr'
+        ? `उष्णता लाट साहाय्य मंजूर: ${proposal.memberName} (${proposal.type === 'BUFFER_GRANT' ? '₹' + proposal.requestedAmountInr + ' अनुदान' : 'दंड माफी'})`
+        : `Heat Relief Approved: ${proposal.memberName} (${proposal.type === 'BUFFER_GRANT' ? '₹' + proposal.requestedAmountInr + ' Grant' : 'Penalty Waiver'})`,
+      category: 'MEDICAL_EMERGENCY',
+      description: proposal.notes || 'Heatwave emergency relief validated by dynamic 60s member TOTP handshake',
+      proposedBy: 'Officer',
+      secondedBy: 'Group',
+      approvedUnanimously: true
+    });
   };
 
   // Quorum Role Selection Toggle
@@ -256,6 +274,41 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
         sound.playLoanApprovalFanfare();
       } else {
         sound.playCashDepositChime();
+      }
+
+      // Process any approved climate buffer grant deductions
+      if (approvedClimateProposals.length > 0) {
+        try {
+          const shgId = getCurrentShgId();
+          const bufState = await getClimateBufferState(shgId);
+          let newBalance = bufState.balanceInr;
+          const newEntries: any[] = [];
+
+          for (const prop of approvedClimateProposals) {
+            if (prop.type === 'BUFFER_GRANT' && prop.requestedAmountInr > 0 && newBalance >= prop.requestedAmountInr) {
+              newBalance -= prop.requestedAmountInr;
+              newEntries.push({
+                id: `buf-grant-${prop.id}`,
+                date: new Date().toISOString().split('T')[0],
+                type: 'GRANT_DISBURSED',
+                amountInr: prop.requestedAmountInr,
+                memberId: prop.memberId,
+                description: `Heatwave relief wage grant for ${prop.memberName} (WBGT ${prop.measuredWbgtC}°C)`
+              });
+            }
+          }
+
+          if (newEntries.length > 0) {
+            await saveClimateBufferState({
+              ...bufState,
+              balanceInr: newBalance,
+              totalDisbursedInr: bufState.totalDisbursedInr + newEntries.reduce((s, e) => s + e.amountInr, 0),
+              ledger: [...bufState.ledger, ...newEntries]
+            });
+          }
+        } catch (bufErr) {
+          console.warn('Failed to update climate buffer on meeting commit:', bufErr);
+        }
       }
 
       // Await database batch commit!
@@ -777,6 +830,14 @@ export const MeetingWizard: React.FC<MeetingWizardProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Heat-Wage Relief & Penalty Waiver Approval Panel */}
+            <HeatReliefApprovalPanel
+              shgId={getCurrentShgId()}
+              members={members}
+              language={language}
+              onApproveProposal={handleClimateProposalApproved}
+            />
 
             <div className="flex justify-between items-center pt-3 border-t border-stone-200">
               <button

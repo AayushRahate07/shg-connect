@@ -27,6 +27,8 @@ import { SettingsView } from '../components/settings/SettingsView';
 import { MemberDossierModal } from '../components/MemberDossierModal';
 import { SavingsGoal } from '../components/member/SavingsGoal';
 import { MemberLiveMeeting } from '../components/meeting/MemberLiveMeeting';
+import { ClimateShockSimulator } from '../components/climate/ClimateShockSimulator';
+import { ClimatePanchasutraCard } from '../components/climate/ClimatePanchasutraCard';
 import { Radio } from 'lucide-react';
 
 interface MemberDashboardProps {
@@ -243,19 +245,73 @@ export const MemberDashboard: React.FC<MemberDashboardProps> = ({
 
       {/* 8. SHG Operational Health / Panchasutra Page */}
       {activeTab === 'panchasutra' && (
-        <PanchasutraVisualizer
-          score={{
-            regularMeetingsScore: 18,
-            regularSavingsScore: 20,
-            internalLendingScore: 18,
-            timelyRecoveryScore: 16,
-            transparentBooksScore: 20,
-            totalScore: 92,
-            bankGrade: 'Grade A',
-            loanEligibilityInr: 500000
-          }}
-          language={language}
-        />
+        <div className="space-y-6 max-w-2xl mx-auto">
+          <PanchasutraVisualizer
+            score={{
+              regularMeetingsScore: 18,
+              regularSavingsScore: 20,
+              internalLendingScore: 18,
+              timelyRecoveryScore: 16,
+              transparentBooksScore: 20,
+              totalScore: 92,
+              bankGrade: 'Grade A',
+              loanEligibilityInr: 500000
+            }}
+            language={language}
+          />
+          <ClimatePanchasutraCard
+            group={group || {
+              shgCode: 'SHG-MH-NGP-2024-0010',
+              name: 'Krantijyoti Savitribai Phule Mahila Bachat Gat',
+              nameRegional: 'क्रांतीज्योती सावित्रीबाई फुले महिला बचत गट',
+              village: 'Bori, Hingna',
+              district: 'Nagpur',
+              monthlyPoolRate: 300,
+              totalGroupFund: 68400
+            }}
+            loans={loans}
+            members={members}
+            transactions={transactions}
+            language={language}
+            officialPanchasutraScore={92}
+          />
+        </div>
+      )}
+
+      {/* 8b. Climate Shock Simulator */}
+      {activeTab === 'climate' && (
+        <div className="space-y-6 max-w-2xl mx-auto">
+          <ClimateShockSimulator
+            group={group || {
+              shgCode: 'SHG-MH-NGP-2024-0010',
+              name: 'Krantijyoti Savitribai Phule Mahila Bachat Gat',
+              nameRegional: 'क्रांतीज्योती सावित्रीबाई फुले महिला बचत गट',
+              village: 'Bori, Hingna',
+              district: 'Nagpur',
+              monthlyPoolRate: 300,
+              totalGroupFund: 68400
+            }}
+            loans={loans}
+            members={members}
+            language={language}
+          />
+          <ClimatePanchasutraCard
+            group={group || {
+              shgCode: 'SHG-MH-NGP-2024-0010',
+              name: 'Krantijyoti Savitribai Phule Mahila Bachat Gat',
+              nameRegional: 'क्रांतीज्योती सावित्रीबाई फुले महिला बचत गट',
+              village: 'Bori, Hingna',
+              district: 'Nagpur',
+              monthlyPoolRate: 300,
+              totalGroupFund: 68400
+            }}
+            loans={loans}
+            members={members}
+            transactions={transactions}
+            language={language}
+            officialPanchasutraScore={92}
+          />
+        </div>
       )}
 
       {/* 9. Settings Page */}
